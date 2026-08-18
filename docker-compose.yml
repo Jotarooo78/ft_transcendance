@@ -1,0 +1,84 @@
+services:
+  nginx:
+    build: ./nginx
+    container_name: ft_nginx
+    ports:
+      - "443:443"
+      - "80:80"
+    depends_on:
+      - frontend
+      - auth-service
+      - user-service
+    networks:
+      - ft_network
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: ft_frontend
+    expose:
+      - "3000"
+    env_file:
+      - .env
+    networks:
+      - ft_network
+    restart: unless-stopped
+
+  # --- Microservices backend ---
+  # Chaque service : son dossier sous /services, son Dockerfile,
+  # son bloc ci-dessous. Un ami qui ajoute "game-service" copie
+  # ce bloc en changeant le nom, le build path et le port interne.
+
+  auth-service:
+    build: ./services/auth-service
+    container_name: ft_auth_service
+    expose:
+      - "4000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+    networks:
+      - ft_network
+    restart: unless-stopped
+
+  user-service:
+    build: ./services/user-service
+    container_name: ft_user_service
+    expose:
+      - "4001"
+    env_file:
+      - .env
+    depends_on:
+      - db
+    networks:
+      - ft_network
+    restart: unless-stopped
+
+  # --- Base de données ---
+  # Partagée entre services au démarrage pour rester simple à évaluer,
+  # mais chaque service ne doit lire/écrire QUE ses propres tables
+  # (couplage logique faible même si l'instance est physiquement partagée).
+  db:
+    image: postgres:16-alpine   # -> mariadb:11 si l'équipe préfère MariaDB
+    container_name: ft_db
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    expose:
+      - "5000"
+    networks:
+      - ft_network
+    restart: unless-stopped
+
+networks:
+  ft_network:
+    driver: bridge
+
+volumes:
+  db_data:
