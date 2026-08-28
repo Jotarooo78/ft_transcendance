@@ -1,5 +1,11 @@
 # ft_transcendance
 
+## Configuration locale
+
+Avant de démarrer les conteneurs, créer le fichier `.env` local à partir de
+`.env.example`. La procédure complète et le rôle des variables sont décrits dans
+[ENVIRONMENT.md](ENVIRONMENT.md).
+
 ## 📝 Repartition des modules
 
 ### Tiphaine
