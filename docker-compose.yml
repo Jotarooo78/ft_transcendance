@@ -60,7 +60,7 @@ services:
   # mais chaque service ne doit lire/écrire QUE ses propres tables
   # (couplage logique faible même si l'instance est physiquement partagée).
   db:
-    image: postgres:16-alpine   # -> mariadb:11 si l'équipe préfère MariaDB
+    image: postgres:16-alpine
     container_name: ft_db
     env_file:
       - .env
@@ -71,7 +71,7 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
     expose:
-      - "5000"
+      - "5432"
     networks:
       - ft_network
     restart: unless-stopped
