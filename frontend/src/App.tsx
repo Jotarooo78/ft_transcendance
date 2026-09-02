@@ -1,188 +1,15 @@
-// import { useState } from 'react'
-// import heroImg from './assets/hero.png'
-// import reactLogo from './assets/react.svg'
-// import viteLogo from './assets/vite.svg'
-// import './App.css'
-
-// function App() {
-//   const [count, setCount] = useState(0)
-
-//   return (
-//     <>
-//       <section id="center">
-//         <div className="hero">
-//           <img src={heroImg} className="base" width="170" height="179" alt="" />
-//           <img src={reactLogo} className="framework" alt="React logo" />
-//           <img src={viteLogo} className="vite" alt="Vite logo" />
-//         </div>
-//         <div>
-//           <h1>Get started</h1>
-//           <p>
-//             Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-//           </p>
-//         </div>
-//         <button
-//           type="button"
-//           className="counter"
-//           onClick={() => setCount((count) => count + 1)}
-//         >
-//           Count is {count}
-//         </button>
-//       </section>
-
-//       <div className="ticks"></div>
-
-//       <section id="next-steps">
-//         <div id="docs">
-//           <svg className="icon" role="presentation" aria-hidden="true">
-//             <use href="/icons.svg#documentation-icon"></use>
-//           </svg>
-//           <h2>Documentation</h2>
-//           <p>Your questions, answered</p>
-//           <ul>
-//             <li>
-//               <a href="https://vite.dev/" target="_blank">
-//                 <img className="logo" src={viteLogo} alt="" />
-//                 Explore Vite
-//               </a>
-//             </li>
-//             <li>
-//               <a href="https://react.dev/" target="_blank">
-//                 <img className="button-icon" src={reactLogo} alt="" />
-//                 Learn more
-//               </a>
-//             </li>
-//           </ul>
-//         </div>
-//         <div id="social">
-//           <svg className="icon" role="presentation" aria-hidden="true">
-//             <use href="/icons.svg#social-icon"></use>
-//           </svg>
-//           <h2>Connect with us</h2>
-//           <p>Join the Vite community</p>
-//           <ul>
-//             <li>
-//               <a href="https://github.com/vitejs/vite" target="_blank">
-//                 <svg
-//                   className="button-icon"
-//                   role="presentation"
-//                   aria-hidden="true"
-//                 >
-//                   <use href="/icons.svg#github-icon"></use>
-//                 </svg>
-//                 GitHub
-//               </a>
-//             </li>
-//             <li>
-//               <a href="https://chat.vite.dev/" target="_blank">
-//                 <svg
-//                   className="button-icon"
-//                   role="presentation"
-//                   aria-hidden="true"
-//                 >
-//                   <use href="/icons.svg#discord-icon"></use>
-//                 </svg>
-//                 Discord
-//               </a>
-//             </li>
-//             <li>
-//               <a href="https://x.com/vite_js" target="_blank">
-//                 <svg
-//                   className="button-icon"
-//                   role="presentation"
-//                   aria-hidden="true"
-//                 >
-//                   <use href="/icons.svg#x-icon"></use>
-//                 </svg>
-//                 X.com
-//               </a>
-//             </li>
-//             <li>
-//               <a href="https://bsky.app/profile/vite.dev" target="_blank">
-//                 <svg
-//                   className="button-icon"
-//                   role="presentation"
-//                   aria-hidden="true"
-//                 >
-//                   <use href="/icons.svg#bluesky-icon"></use>
-//                 </svg>
-//                 Bluesky
-//               </a>
-//             </li>
-//           </ul>
-//         </div>
-//       </section>
-
-//       <div className="ticks"></div>
-//       <section id="spacer"></section>
-//     </>
-//   )
-// }
-
-// export default App
-
-// import "./App.css";
-
-// type RegisterForm = {
-//   displayName: string;
-//   email: string;
-//   password: string;
-//   accountType: "listener" | "artist";
-// };
-
-// function App() {
-//   const [form, setForm] = useState<RegisterForm>({
-//   displayName: "",
-//   email: "",
-//   password: "",
-//   accountType: "listener",
-//   });
-  
-//   return (
-//     <main>
-//       <h1>Create your account</h1>
-
-//       <form>
-//         <label>
-//           Display name
-//           <input type="text" />
-//         </label>
-
-//         <label>
-//           Email
-//           <input type="email" />
-//         </label>
-
-//         <label>
-//           Password
-//           <input type="password" />
-//         </label>
-
-//         <label>
-//           Account type
-//           <select>
-//             <option value="listener">Listener</option>
-//             <option value="artist">Artist</option>
-//           </select>
-//         </label>
-
-//         <button type="submit">
-//           Create account
-//         </button>
-//       </form>
-//     </main>
-//   );
-// }
-
-// export default App;
-
 import { useState, type SubmitEvent } from "react";
+import { 
+  registerUser,
+  type RegisteredUser,
+} from "./services/auth";;
 import "./App.css";
 
 type RegisterForm = {
   displayName: string;
   email: string;
   password: string;
+  passwordConfirmation: string;
   accountType: "listener" | "artist";
 };
 
@@ -191,14 +18,64 @@ function App() {
     displayName: "",
     email: "",
     password: "",
+    passwordConfirmation: "",
     accountType: "listener",
   });
 
-  function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const [RegisteredUser, setRegisteredUser] =
+    useState<RegisteredUser | null>(null);
+
+  // function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
+  //   event.preventDefault();
+
+  //   console.log(form);
+  // }
+  async function handleSubmit(
+    event: SubmitEvent<HTMLFormElement>,
+  ) {
     event.preventDefault();
 
-    console.log(form);
+    setErrorMessage("");
+    setRegisteredUser(null);
+
+    if (form.password !== form.passwordConfirmation) {
+      setErrorMessage("Passwords do not match.");
+      return;
+    }
+
+    if (form.password.length < 12) {
+      setErrorMessage(
+        "Password must contain at least 12 characters.",
+      );
+      return;
+    }
+
+    setIsSubmitting(true);
+    
+    try {
+      const user = await registerUser({
+        displayName: form.displayName.trim(),
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
+        accountType: form.accountType,
+      });
+      
+      setRegisteredUser(user);
+    } catch (error) {
+      if (error instanceof Error) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage("An unexpected error occurred.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   }
+
 
   return (
     <main>
@@ -210,6 +87,9 @@ function App() {
           <input
             type="text"
             required
+            minLength={2}
+            maxLength={100}
+            autoComplete="name"
             value={form.displayName}
             onChange={(event) => {
               setForm({
@@ -225,6 +105,7 @@ function App() {
           <input
             type="email"
             required
+            autoComplete="email"
             value={form.email}
             onChange={(event) => {
               setForm({
@@ -240,11 +121,31 @@ function App() {
           <input
             type="password"
             required
+            minLength={12}
+            maxLength={128}
+            autoComplete="new-password"
             value={form.password}
             onChange={(event) => {
               setForm({
                 ...form,
                 password: event.target.value,
+              });
+            }}
+          />
+        </label>
+
+        <label>
+          Confirm password
+          <input
+            type="password"
+            required
+            minLength={12}
+            autoComplete="new-password"
+            value={form.passwordConfirmation}
+            onChange={(event) => {
+              setForm({
+                ...form,
+                passwordConfirmation: event.target.value,
               });
             }}
           />
@@ -269,10 +170,42 @@ function App() {
           </select>
         </label>
 
-        <button type="submit">
-          Create account
+        <button
+          type="submit"
+          disabled={isSubmitting}
+        >
+          {isSubmitting
+            ? "Creating account..."
+          : "Create account"}
         </button>
       </form>
+
+      {errorMessage && (
+        <p className="message error-message" role="alert">
+          {errorMessage}
+        </p>
+      )}
+
+      {RegisteredUser && (
+        <section
+          className="message success-message"
+          aria-live="polite"
+        >
+          <h2>Account created</h2>
+
+          <p>
+            Welcome, {RegisteredUser?.displayName} !
+          </p>
+
+          <dl>
+            <div>
+              <dt>Account type</dt>
+              <dd>{RegisteredUser?.accountType}</dd>
+            </div>
+          </dl>
+        </section>
+      )}
+
     </main>
   );
 }

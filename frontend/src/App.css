@@ -215,3 +215,46 @@ button {
   background: #e175bf;
   cursor: pointer;
 }
+
+button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.message {
+  margin-top: 20px;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.error-message {
+  color: #8b0000;
+  background: #ffe1e1;
+}
+
+.success-message {
+  color: #14532d;
+  background: #dcfce7;
+}
+
+.success-message h2 {
+  margin-top: 0;
+}
+
+.success-message dl {
+  margin-bottom: 0;
+}
+
+.success-message dl div {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 8px;
+}
+
+.success-message dt {
+  font-weight: bold;
+}
+
+.success-message dd {
+  margin: 0;
+}
