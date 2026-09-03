@@ -1,6 +1,10 @@
 .env
 node_modules/
 
+# User Service
+services/user-service/src/generated/prisma/
+services/user-service/dist/
 
 # Tiphaine
 tiphaine/
+
