@@ -1,27 +1,21 @@
-export type RegisterRequest = {
-  displayName: string;
-  email: string;
-  password: string;
-  accountType: "listener" | "artist";
-};
-
-export type RegisteredUser = {
-  id: string;
-  displayName: string;
-  email: string;
-  accountType: "listener" | "artist";
-};
+import type {
+  RegisterRequest,
+  RegisteredUser,
+} from "../types/auth";
 
 export async function registerUser(
   request: RegisterRequest,
 ): Promise<RegisteredUser> {
-// Simulation attente reseau
+  // Simulation d'une attente réseau
   await new Promise((resolve) => {
     setTimeout(resolve, 1000);
   });
-// Simulation erreur backend
+
+  // Simulation d'une erreur du backend
   if (request.email === "existing@example.com") {
-    throw new Error("An account already exists with this email.");
+    throw new Error(
+      "An account already exists with this email.",
+    );
   }
 
   return {
