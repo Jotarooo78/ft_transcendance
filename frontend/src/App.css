@@ -258,3 +258,48 @@ button:disabled {
 .success-message dd {
   margin: 0;
 }
+
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 16px 32px;
+  border-bottom: 1px solid #dddddd;
+}
+
+.site-title {
+  font-size: 1.25rem;
+}
+
+.main-navigation {
+  display: flex;
+  gap: 8px;
+}
+
+.navigation-button {
+  color: #333333;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.navigation-button:hover {
+  background: #f5e9f1;
+}
+
+.navigation-button.active {
+  color: white;
+  background: #e175bf;
+}
+
+.navigation-button:focus-visible {
+  outline: 3px solid #9f337d;
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .site-header {
+    flex-direction: column;
+    padding: 16px;
+  }
+}
