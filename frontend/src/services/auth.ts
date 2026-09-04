@@ -1,7 +1,16 @@
 import type {
+  AuthenticatedUser,
+  LoginRequest,
   RegisterRequest,
   RegisteredUser,
 } from "../types/auth";
+
+const mockUser:AuthenticatedUser = {
+  id: "mock-user-1",
+  displayName: "test",
+  email: "test@test.fr",
+  accountType: "artist",
+}
 
 export async function registerUser(
   request: RegisterRequest,
@@ -24,4 +33,25 @@ export async function registerUser(
     email: request.email,
     accountType: request.accountType,
   };
+}
+
+export async function loginUser(
+  request: LoginRequest,
+): Promise<AuthenticatedUser> {
+  await new Promise((resolve) => {
+    setTimeout(resolve, 1000);
+  });
+
+  const normalizedEmail =
+    request.email.trim().toLowerCase();
+  
+  const credentialsAreValid =
+    normalizedEmail == mockUser.email &&
+    request.password == "password1234";
+
+  if (!credentialsAreValid) {
+    throw new Error("Invalid email or password.");
+  }
+
+  return mockUser;
 }

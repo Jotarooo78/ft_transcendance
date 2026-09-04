@@ -13,3 +13,15 @@ export type RegisteredUser = {
   email: string;
   accountType: AccountType;
 };
+
+export type LoginRequest = {
+  email: string;
+  password: string;
+};
+
+export type AuthenticatedUser = {
+  id: string;
+  displayName: string;
+  email: string;
+  accountType: AccountType;
+};
