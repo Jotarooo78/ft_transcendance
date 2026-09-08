@@ -2,6 +2,9 @@ import { useState } from "react";
 
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import type {
+  AuthenticatedUser,
+} from "./types/auth";
 
 import "./App.css";
 
@@ -12,6 +15,69 @@ type PublicPage =
 function App() {
   const [currentPage, setCurrentPage] =
     useState<PublicPage>("register");
+
+  const [currentUser, setCurrentUser] =
+    useState<AuthenticatedUser | null>(null);
+
+  function handleLoginSuccess(
+    user: AuthenticatedUser,
+  ) {
+    setCurrentUser(user);
+  }
+
+  function handleLogout() {
+    setCurrentUser(null);
+    setCurrentPage("login");
+  }
+
+  if (currentUser !== null) {
+    return (
+      <>
+        <header className="site-header">
+          <strong className="site-title">
+            FT Music
+          </strong>
+
+          <nav
+            className="main-navigation"
+            aria-label="User navigation"
+          >
+            <span>
+              Connected as{" "}
+              {currentUser.displayName}
+            </span>
+
+            <button
+              type="button"
+              className="navigation-button"
+              onClick={handleLogout}
+            >
+              Log out
+            </button>
+          </nav>
+        </header>
+
+        <main>
+          <h1>
+            Welcome, {currentUser.displayName}!
+          </h1>
+
+          <p>
+            You are connected as{" "}
+            <strong>
+              {currentUser.accountType}
+            </strong>
+            .
+          </p>
+
+          <p>
+            Your profile page will be added in the
+            next step.
+          </p>
+        </main>
+      </>
+    );
+  }
 
   return (
     <>
@@ -57,8 +123,14 @@ function App() {
       </header>
 
       {currentPage === "register"
-        ? <RegisterPage />
-        : <LoginPage />}
+        ? (
+          <RegisterPage />
+        )
+        : (
+          <LoginPage
+            onLoginSuccess={handleLoginSuccess}
+          />
+        )}
     </>
   );
 }

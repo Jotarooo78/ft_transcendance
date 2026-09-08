@@ -10,12 +10,20 @@ type LoginFormValues = {
   password: string;
 };
 
+type LoginFormProps = {
+  onLoginSuccess: (
+    user: AuthenticatedUser,
+  ) => void;
+};
+
 const initialForm: LoginFormValues = {
   email: "",
   password: "",
 };
 
-function LoginForm() {
+function LoginForm({
+  onLoginSuccess,
+}: LoginFormProps) {
   const [form, setForm] =
     useState<LoginFormValues>(initialForm);
 
@@ -25,16 +33,12 @@ function LoginForm() {
   const [errorMessage, setErrorMessage] =
     useState("");
 
-  const [authenticatedUser, setAuthenticatedUser] =
-    useState<AuthenticatedUser | null>(null);
-
   async function handleSubmit(
     event: SubmitEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
 
     setErrorMessage("");
-    setAuthenticatedUser(null);
     setIsSubmitting(true);
 
     try {
@@ -43,8 +47,8 @@ function LoginForm() {
         password: form.password,
       });
 
-      setAuthenticatedUser(user);
       setForm(initialForm);
+      onLoginSuccess(user);
     } catch (error) {
       if (error instanceof Error) {
         setErrorMessage(error.message);
@@ -112,34 +116,6 @@ function LoginForm() {
         >
           {errorMessage}
         </p>
-      )}
-
-      {authenticatedUser && (
-        <section
-          className="message success-message"
-          aria-live="polite"
-        >
-          <h2>Login successful</h2>
-
-          <p>
-            Welcome back,{" "}
-            {authenticatedUser.displayName}!
-          </p>
-
-          <dl>
-            <div>
-              <dt>Email</dt>
-              <dd>{authenticatedUser.email}</dd>
-            </div>
-
-            <div>
-              <dt>Account type</dt>
-              <dd>
-                {authenticatedUser.accountType}
-              </dd>
-            </div>
-          </dl>
-        </section>
       )}
     </>
   );

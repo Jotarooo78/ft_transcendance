@@ -46,8 +46,8 @@ export async function loginUser(
     request.email.trim().toLowerCase();
   
   const credentialsAreValid =
-    normalizedEmail == mockUser.email &&
-    request.password == "password1234";
+    normalizedEmail === mockUser.email &&
+    request.password === "password1234";
 
   if (!credentialsAreValid) {
     throw new Error("Invalid email or password.");

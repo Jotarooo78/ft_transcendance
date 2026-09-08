@@ -1,19 +1,32 @@
 import LoginForm from "../components/LoginForm";
+import type {
+  AuthenticatedUser,
+} from "../types/auth";
 
-function LoginPage() {
-	return (
-		<main>
-			<header>
-				<h1>Log in</h1>
+type LoginPageProps = {
+  onLoginSuccess: (
+    user: AuthenticatedUser,
+  ) => void;
+};
 
-				<p>
-					Access your account and continue listening.
-				</p>
-			</header>
+function LoginPage({
+  onLoginSuccess,
+}: LoginPageProps) {
+  return (
+    <main>
+      <header>
+        <h1>Log in</h1>
 
-			<LoginForm />
-		</main>
-	);
+        <p>
+          Access your account and continue listening.
+        </p>
+      </header>
+
+      <LoginForm
+        onLoginSuccess={onLoginSuccess}
+      />
+    </main>
+  );
 }
 
 export default LoginPage;
