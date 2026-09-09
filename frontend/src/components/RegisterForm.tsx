@@ -2,24 +2,21 @@ import { useState, type SubmitEvent } from "react";
 
 import { registerUser } from "../services/auth";
 import type {
-  AccountType,
   RegisteredUser,
 } from "../types/auth";
 
 type RegisterFormValues = {
-  displayName: string;
+  username: string;
   email: string;
   password: string;
   passwordConfirmation: string;
-  accountType: AccountType;
 };
 
 const initialForm: RegisterFormValues = {
-  displayName: "",
+  username: "",
   email: "",
   password: "",
   passwordConfirmation: "",
-  accountType: "listener",
 };
 
 function RegisterForm() {
@@ -59,10 +56,9 @@ function RegisterForm() {
 
     try {
       const user = await registerUser({
-        displayName: form.displayName.trim(),
+        username: form.username.trim(),
         email: form.email.trim().toLowerCase(),
         password: form.password,
-        accountType: form.accountType,
       });
 
       setRegisteredUser(user);
@@ -84,19 +80,19 @@ function RegisterForm() {
     <>
       <form onSubmit={handleSubmit}>
         <label>
-          Display name
+          Username
 
           <input
             type="text"
             required
-            minLength={2}
-            maxLength={100}
-            autoComplete="name"
-            value={form.displayName}
+            minLength={3}
+            maxLength={30}
+            autoComplete="username"
+            value={form.username}
             onChange={(event) => {
               setForm({
                 ...form,
-                displayName: event.target.value,
+                username: event.target.value,
               });
             }}
           />
@@ -158,30 +154,6 @@ function RegisterForm() {
           />
         </label>
 
-        <label>
-          Account type
-
-          <select
-            required
-            value={form.accountType}
-            onChange={(event) => {
-              setForm({
-                ...form,
-                accountType:
-                  event.target.value as AccountType,
-              });
-            }}
-          >
-            <option value="listener">
-              Listener
-            </option>
-
-            <option value="artist">
-              Artist
-            </option>
-          </select>
-        </label>
-
         <button
           type="submit"
           disabled={isSubmitting}
@@ -209,18 +181,18 @@ function RegisterForm() {
           <h2>Account created</h2>
 
           <p>
-            Welcome, {registeredUser.displayName}!
+            Your account has been created.
           </p>
 
           <dl>
             <div>
-              <dt>Email</dt>
-              <dd>{registeredUser.email}</dd>
+              <dt>Username</dt>
+              <dd>{registeredUser.username}</dd>
             </div>
 
             <div>
-              <dt>Account type</dt>
-              <dd>{registeredUser.accountType}</dd>
+              <dt>Email</dt>
+              <dd>{registeredUser.email}</dd>
             </div>
           </dl>
         </section>

@@ -1,17 +1,13 @@
-export type AccountType = "listener" | "artist";
-
 export type RegisterRequest = {
-  displayName: string;
+  username: string;
   email: string;
   password: string;
-  accountType: AccountType;
 };
 
 export type RegisteredUser = {
   id: string;
-  displayName: string;
+  username: string;
   email: string;
-  accountType: AccountType;
 };
 
 export type LoginRequest = {
@@ -21,7 +17,7 @@ export type LoginRequest = {
 
 export type AuthenticatedUser = {
   id: string;
-  displayName: string;
+  username: string;
   email: string;
-  accountType: AccountType;
+  createdAt: string;
 };

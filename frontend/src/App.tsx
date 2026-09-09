@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import LoginPage from "./pages/LoginPage";
+import ProfilePage from "./pages/ProfilePage";
 import RegisterPage from "./pages/RegisterPage";
 import type {
   AuthenticatedUser,
@@ -44,7 +45,7 @@ function App() {
           >
             <span>
               Connected as{" "}
-              {currentUser.displayName}
+              {currentUser.username}
             </span>
 
             <button
@@ -57,24 +58,7 @@ function App() {
           </nav>
         </header>
 
-        <main>
-          <h1>
-            Welcome, {currentUser.displayName}!
-          </h1>
-
-          <p>
-            You are connected as{" "}
-            <strong>
-              {currentUser.accountType}
-            </strong>
-            .
-          </p>
-
-          <p>
-            Your profile page will be added in the
-            next step.
-          </p>
-        </main>
+        <ProfilePage user={currentUser} />
       </>
     );
   }
