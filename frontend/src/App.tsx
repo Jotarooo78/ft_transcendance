@@ -3,6 +3,8 @@ import { useState } from "react";
 import LoginPage from "./pages/LoginPage";
 import ProfilePage from "./pages/ProfilePage";
 import RegisterPage from "./pages/RegisterPage";
+import CatalogPage from "./pages/CatalogPage";
+
 import type {
   AuthenticatedUser,
 } from "./types/auth";
@@ -13,22 +15,31 @@ type PublicPage =
   | "register"
   | "login";
 
+type PrivatePage =
+  | "profile"
+  | "catalog";
+
 function App() {
   const [currentPage, setCurrentPage] =
     useState<PublicPage>("register");
 
   const [currentUser, setCurrentUser] =
     useState<AuthenticatedUser | null>(null);
+  
+  const [privatePage, setPrivatePage] =
+    useState<PrivatePage>("profile");
 
   function handleLoginSuccess(
     user: AuthenticatedUser,
   ) {
     setCurrentUser(user);
+    setPrivatePage("profile");
   }
 
   function handleLogout() {
     setCurrentUser(null);
     setCurrentPage("login");
+    setPrivatePage("profile");
   }
 
   if (currentUser !== null) {
@@ -43,9 +54,38 @@ function App() {
             className="main-navigation"
             aria-label="User navigation"
           >
+            <button
+              type="button"
+              className={
+                privatePage === "profile"
+                  ? "navigation-button active"
+                  : "navigation-button"
+              }
+              aria-pressed={privatePage === "profile"}
+              onClick={() => {
+                setPrivatePage("profile");
+              }}
+            >
+              Profile
+            </button>
+
+            <button
+              type="button"
+              className={
+                privatePage === "catalog"
+                  ? "navigation-button active"
+                  : "navigation-button"
+              }
+              aria-pressed={privatePage === "catalog"}
+              onClick={() => {
+                setPrivatePage("catalog");
+              }}
+            >
+              Catalog
+            </button>
+
             <span>
-              Connected as{" "}
-              {currentUser.username}
+              Connected as {currentUser.username}
             </span>
 
             <button
@@ -58,7 +98,13 @@ function App() {
           </nav>
         </header>
 
-        <ProfilePage user={currentUser} />
+        {privatePage === "profile"
+          ? (
+            <ProfilePage user={currentUser} />
+          )
+          : (
+            <CatalogPage />
+          )}
       </>
     );
   }
