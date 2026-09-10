@@ -5,17 +5,17 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  schemas  = ["users"]
 }
 
-model User {
-  id           String   @id @default(uuid()) @db.Uuid
-  email        String   @unique
-  username     String   @unique
-  displayName  String?
-  passwordHash String
-  avatarUrl    String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+model Profile {
+  userId      String   @id @map("user_id") @db.Uuid
+  username    String?  @unique
+  displayName String   @map("display_name")
+  avatarUrl   String?  @map("avatar_url")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
 
-  @@map("users")
+  @@map("profiles")
+  @@schema("users")
 }

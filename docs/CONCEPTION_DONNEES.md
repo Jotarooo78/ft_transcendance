@@ -183,17 +183,19 @@ Ces gestes sont proposés ; la todo indique leur état réel et leurs conditions
 
 ## 6. Les décisions à prendre
 
-**Toutes les décisions ci-dessous sont ouvertes.** Une recommandation décrit une option de départ, pas un accord déjà obtenu.
+Les statuts ci-dessous distinguent les décisions validées de celles qui restent à
+confirmer. Une recommandation décrit une option de départ, pas un accord déjà
+obtenu.
 
 « Pilote recommandé » signifie : préparer la proposition et recueillir l’accord des personnes concernées. Pour fermer une décision, ajouter une entrée datée dans le [journal](#journal), avec le choix exact, les participants et ses conséquences. Une modification de code ne constitue pas à elle seule cet accord.
 
 | ID | Question | Option de départ | Pilote et personnes concernées | Actions | Statut |
 | --- | --- | --- | --- | --- | --- |
-| D01 | Séparer identité et profil ? | Séparer Auth et Users pour confiner les secrets et suivre les conventions du dépôt. | Emile + Armand ; Tiphaine consultée | M0-03, M0-05, M0-07, M0-08 | Ouverte |
-| D02 | Le pseudo est-il obligatoire ? | Facultatif tant qu’un besoin d’URL ou de mention ne le justifie pas ; nom affiché obligatoire et non unique. | Tiphaine + Armand ; Emile consulté | M0-03, M0-06, M0-08, M0-12 | Ouverte |
-| D03 | Que signifie « artiste » à l’inscription ? | Remplacer accountType par onboardingIntent ; les droits de gestion d’un artiste restent séparés. | Tiphaine + Armand ; futur Catalogue et équipe | M0-03, M0-08, M0-12, M1-02 | Ouverte |
+| D01 | Séparer identité et profil ? | Identité et secrets dans Auth ; profil dans Users ; même UUID comme référence logique, sans FK interservice. | Emile + Armand ; Tiphaine consultée | M0-03, M0-05, M0-07, M0-08 | Validée le 2026-09-10 |
+| D02 | Le pseudo est-il obligatoire ? | En attendant la validation finale : `username` facultatif, mais unique lorsqu’il est renseigné ; `displayName` obligatoire et non unique. | Tiphaine + Armand ; Emile consulté | M0-03, M0-06, M0-08, M0-12 | À valider — règle provisoire appliquée |
+| D03 | Que signifie « artiste » à l’inscription ? | Supprimer `accountType` du contrat et du modèle ; ne pas le remplacer dans le périmètre actuel. Les droits artiste relèvent d’un autre objet métier. | Tiphaine + Armand ; futur Catalogue et équipe | M0-03, M0-08, M0-12, M1-02 | Validée le 2026-09-10 |
 | D04 | Qui peut créer et gérer un artiste ? | Compte actif créant un artiste → owner ; publication, modération et import administrateur à préciser. | Équipe + responsable Catalogue à désigner ; Armand consulté | M1-01, M1-02 | Ouverte |
-| D05 | Comment séparer les données et les accès ? | Une base par environnement, schémas et rôles privés ; bases ou instances séparées seulement si nécessaire. | Emile + Armand ; rôle infra à confirmer | M0-05, M0-06, T-02 | Ouverte |
+| D05 | Comment séparer les données et les accès ? | Une base par environnement, schémas et rôles privés ; chaque service accède directement uniquement à ses tables. Bases ou instances séparées seulement si nécessaire. | Emile + Armand ; rôle infra à confirmer | M0-05, M0-06, T-02 | Validée le 2026-09-10 |
 | D06 | Comment reprendre une inscription interrompue ? | Outbox HTTP : conserver la demande puis réessayer ; un worker actif par service au départ. Broker optionnel. | Armand + Emile ; Tiphaine pour l’attente affichée | M0-07, M0-08, M0-11, M0-12 | Ouverte |
 | D07 | Quand peut-on se connecter et faut-il vérifier l’email ? | Pas de token au signup ; login après création du profil. Vérification avant actions sensibles à préciser, avec le circuit d’envoi. | Armand + Tiphaine + équipe | M0-03, M0-09, M0-12, M0-14 | Ouverte |
 | D08 | Quelles règles pour mots de passe et sessions ? | Base à discuter : 12–128 caractères, Argon2id calibré, JWT 10 min, refresh 7 jours avec rotation. Documenter révocation, transport et règles communes. | Armand ; Tiphaine et Emile consultés | M0-03, M0-09, M0-14 | Ouverte |
@@ -339,8 +341,9 @@ Une dépendance inaccessible est un manque de vérification. Ce n’est pas une 
 | AUD-2026-09-08 | 2026-09-08 | Audit et tests SQL rapportés dans la rédaction initiale ; résultats conservés dans la référence technique. Sorties d’exécution originales non jointes à ce fichier. | Historique documentaire ; ne ferme aucune tâche applicative. |
 | AUD-2026-09-09 | 2026-09-09 | Lecture du checkout `main` à `235daa3256eee1e9d1ba7cf52aa380dd2d433d55` : README, conventions, routes Auth/Users, Prisma/migration/configuration, Docker, types/mocks/formulaire frontend et proxy. | P01–P06 toujours présents dans les fichiers. Initialisation de la todo ; aucun parcours applicatif ni SQL rejoué aujourd’hui. |
 | DOC-2026-09-09 | 2026-09-09 | Réorganisation en un fichier autonome ; rôles actuels issus de la clarification d’équipe du jour. | Conservation du fond technique ; aucune décision D01–D16 acceptée par cette réécriture. |
+| DEC-2026-09-10-1 | 2026-09-10 | Confirmation d’équipe transmise après échanges avec Armand et Tiphaine : séparation Auth/Users et UUID de liaison validés (D01) ; séparation par schémas et accès SQL privés validée (D05) ; `accountType` supprimé sans remplacement dans le périmètre actuel (D03). Pour D02, la décision finale reste attendue ; la règle provisoire est `username` facultatif et unique lorsqu’il est présent. | Ferme D01, D03 et D05. Maintient D02 à valider et aligne PRI-1 sur la règle provisoire existante. Les références à `onboardingIntent` plus loin dans ce document sont désormais des propositions historiques à corriger lors de la mise à jour du contrat M0-03 ; elles ne font pas foi contre D03. |
 
-**Aucune décision collective enregistrée à ce jour dans ce registre.**
+Les décisions D01, D03 et D05 sont enregistrées. D02 reste à valider.
 
 Format à reprendre pour les prochaines entrées :
 
