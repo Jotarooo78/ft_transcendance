@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: transcendence-backend
+    orgId: 1
+    folder: ft_transcendence
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/json

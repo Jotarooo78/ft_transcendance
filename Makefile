@@ -1,12 +1,15 @@
 NAME = Transcendance
 
 setup:
-	@docker-compose -f srcs/docker-compose.yml up -d --build
+	@docker compose -f docker-compose.yml up -d --build
 
 down:
-	@docker-compose -f srcs/docker-compose.yml down
+	@docker compose -f docker-compose.yml down
+
+logs:
+	@docker compose -f docker-compose.yml logs -f --tail=120
 
 prune:
 	@docker system prune -af
 
-.PHONY: up down prune
+.PHONY: setup down logs prune

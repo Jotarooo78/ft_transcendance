@@ -1,4 +1,4 @@
-FROM nginx:1.27-alpine
+FROM docker.io/library/nginx:1.27-alpine
 
 # Génère un certificat auto-signé pour le dev/l'évaluation.
 # (En prod on utiliserait Let's Encrypt, mais un cert auto-signé
