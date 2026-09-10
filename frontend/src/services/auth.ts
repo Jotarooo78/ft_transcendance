@@ -5,12 +5,12 @@ import type {
   RegisteredUser,
 } from "../types/auth";
 
-const mockUser:AuthenticatedUser = {
+const mockUser: AuthenticatedUser = {
   id: "mock-user-1",
-  displayName: "test",
+  username: "test",
   email: "test@test.fr",
-  accountType: "artist",
-}
+  createdAt: "2026-09-01T10:00:00.000Z",
+};
 
 export async function registerUser(
   request: RegisterRequest,
@@ -29,9 +29,8 @@ export async function registerUser(
 
   return {
     id: crypto.randomUUID(),
-    displayName: request.displayName,
+    username: request.username,
     email: request.email,
-    accountType: request.accountType,
   };
 }
 

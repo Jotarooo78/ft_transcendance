@@ -303,3 +303,61 @@ button:disabled {
     padding: 16px;
   }
 }
+
+.catalog-page {
+  width: min(900px, calc(100% - 32px));
+  box-sizing: border-box;
+}
+
+.catalog-section {
+  margin-top: 32px;
+}
+
+.track-list {
+  display: grid;
+  grid-template-columns:
+    repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.track-card {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  text-align: left;
+  border: 1px solid #dddddd;
+  border-radius: 12px;
+}
+
+.track-card h2 {
+  margin: 4px 0 0;
+}
+
+.track-genre {
+  color: #9f337d;
+  font-size: 0.875rem;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.track-information {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.track-information div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.track-information dt {
+  font-weight: bold;
+}
+
+.track-information dd {
+  margin: 0;
+  text-align: right;
+}

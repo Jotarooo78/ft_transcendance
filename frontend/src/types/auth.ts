@@ -1,27 +1,23 @@
-export type AccountType = "listener" | "artist";
-
 export type RegisterRequest = {
-  displayName: string;
-  email: string;
-  password: string;
-  accountType: AccountType;
+	username: string;
+	email: string;
+	password: string;
 };
 
 export type RegisteredUser = {
-  id: string;
-  displayName: string;
-  email: string;
-  accountType: AccountType;
+	id: string;
+	username: string;
+	email: string;
 };
 
 export type LoginRequest = {
-  email: string;
-  password: string;
+	email: string;
+	password: string;
 };
 
 export type AuthenticatedUser = {
-  id: string;
-  displayName: string;
-  email: string;
-  accountType: AccountType;
+	id: string;
+	username: string;
+	email: string;
+	createdAt: string;
 };
