@@ -11,8 +11,8 @@ Les sources ne disent pas toutes la même chose :
 - **Prouvé dans le dépôt** : PostgreSQL 16 est configuré ; Auth et Users utilisent
   aujourd'hui la même table SQL `users` ; les routes SQL utilisent des noms en
   snake_case, alors que la migration initiale a créé plusieurs colonnes en
-  camelCase ; le formulaire transmet `displayName` et `accountType`, sans
-  `username`.
+  camelCase ; le formulaire et son type transmettent déjà un `username`
+  obligatoire, mais la route Auth actuelle ne l'enregistre pas.
 - **Retenu pour PRI-1** : l'action Notion « Décider et documenter la propriété des
   données » est marquée terminée et attribue l'identité, l'email et le hash à
   Auth, le profil à Users, avec un UUID stable créé par Auth. Le parent de PRI-1
@@ -20,11 +20,9 @@ Les sources ne disent pas toutes la même chose :
 - **Décisions enregistrées le 10 septembre 2026** : D01 confirme la séparation
   Auth/Users et l'UUID commun ; D03 supprime `accountType` sans remplacement dans
   le périmètre actuel ; D05 confirme une base par environnement avec schémas et
-  accès SQL privés par service.
-- **Encore à valider** : D02 (`username`) reste ouverte. En attendant la réponse,
-  PRI-1 conserve la règle provisoire déjà modélisée : champ facultatif, mais
-  unique lorsqu'il est renseigné. D06 (provisionnement du profil) et les détails
-  de D09 restent également hors de l'arbitrage de cette action.
+  accès SQL privés par service ; D02 rend `username` obligatoire, non nul et
+  unique. D06 (provisionnement du profil) et les détails de D09 restent hors de
+  l'arbitrage de cette action.
 
 La séparation `auth.accounts` / `users.profiles` est donc matérialisée comme la
 décision de propriété portée par l'action Notion terminée. Les autres choix ne
@@ -60,16 +58,16 @@ résoudre le mélange actuel entre identité et profil dans PRI-1.
 | Propriété Prisma | Colonne SQL | Null | Contrainte/default | Objet d'API concerné |
 | --- | --- | --- | --- | --- |
 | `userId` | `users.profiles.user_id` | non | PK, fourni par Auth, aucun default local | `UserProfile.userId` |
-| `username` | `users.profiles.username` | oui | règle provisoire : unique pour les valeurs non nulles | `UserProfile.username` ; décision finale D02 encore attendue |
+| `username` | `users.profiles.username` | non | unique | `UserProfile.username` ; obligatoire selon D02 |
 | `displayName` | `users.profiles.display_name` | non | non unique | formulaire actuel et `UserProfile.displayName` |
 | `avatarUrl` | `users.profiles.avatar_url` | oui | aucune contrainte retenue dans PRI-1 | profil actuel ; une migration vers un asset reste hors périmètre |
 | `createdAt` | `users.profiles.created_at` | non | `now()` | interne |
 | `updatedAt` | `users.profiles.updated_at` | non | `now()` au départ ; mise à jour SQL à définir dans PRI-2 | interne |
 
-La nullabilité de `username` évite d'imposer au formulaire un champ qu'il
-n'envoie pas. PostgreSQL autorise plusieurs valeurs `NULL` avec une contrainte
-`UNIQUE`, tout en refusant deux pseudos non nuls identiques. La forme exacte et
-la normalisation du pseudo restent à arbitrer avant la migration.
+Le formulaire actuel exige déjà `username`, mais le backend doit encore le
+valider et le transmettre à Users. La forme exacte et la normalisation du pseudo
+restent à préciser sans modifier silencieusement les valeurs historiques pendant
+PRI-2.
 
 ## `accountType` : suppression validée
 
@@ -87,10 +85,10 @@ un objet métier distinct lorsqu'il sera conçu.
 
 | Surface actuelle | Écart après PRI-1 | Action dédiée |
 | --- | --- | --- |
-| `POST /signup` Auth | écrit encore dans `users`, ne crée pas de profil et ignore `displayName`/`accountType` | PRI-4 |
+| `POST /signup` Auth | écrit encore dans `users`, ne crée pas de profil et ignore le `username` reçu | PRI-4 |
 | `POST /login` Auth | lit encore `users.password_hash` | PRI-4 |
 | `GET /me` Users | lit encore email et profil dans la table commune | PRI-5 |
-| Mock frontend | renvoie un objet combiné identité/profil et utilise `accountType` | contrat M0-03 puis raccord frontend |
+| Mock frontend | renvoie encore un objet combiné identité/profil | contrat M0-03 puis raccord frontend |
 | Client Prisma Users généré | peut rester obsolète tant qu'il n'est pas régénéré | PRI-3 |
 | Client Prisma Auth | dépendances et configuration absentes | PRI-3 |
 
@@ -118,7 +116,7 @@ les codes HTTP ni le protocole de provisionnement :
 {
   "userId": "11111111-1111-4111-8111-111111111111",
   "displayName": "Léa",
-  "username": null,
+  "username": "lea",
   "avatarUrl": null
 }
 ```
@@ -137,8 +135,8 @@ initiale. Le plan de transformation à tester sur une copie isolée est :
 | `public.users.id` | `auth.accounts.id` et `users.profiles.user_id` | conserver exactement le UUID |
 | email | `auth.accounts.email` | normalisation et collisions à inventorier avant contrainte |
 | hash existant | `auth.accounts.password_hash` | copier sans ré-hacher et identifier l'algorithme |
-| username | `users.profiles.username` | conserver `NULL` ; inventorier doublons et valeurs invalides |
-| display name | `users.profiles.display_name` | ne pas inventer depuis l'email ; règle pour les absents à arbitrer |
+| username | `users.profiles.username` | obligatoire ; conserver la valeur et inventorier doublons ou valeurs invalides |
+| display name | `users.profiles.display_name` | conserver la valeur ; si elle est `NULL`, utiliser le `username`, jamais l'email |
 | avatar URL | `users.profiles.avatar_url` | conserver si la colonne existe réellement |
 | `accountType` | aucune cible | champ supprimé par D03 ; ne pas le migrer ni inventer de valeur de remplacement |
 
@@ -151,7 +149,7 @@ le rollback appartiennent à PRI-2.
 
 | Critère | Preuve dans ce changement | Limite |
 | --- | --- | --- |
-| Mapping modèle → SQL → contrat et propriétaire | tableaux ci-dessus et deux schémas Prisma par propriétaire | décision finale D02 encore attendue |
+| Mapping modèle → SQL → contrat et propriétaire | tableaux ci-dessus et deux schémas Prisma par propriétaire | règles de forme/normalisation du username encore à préciser |
 | Modèles limités à Auth et Users | `Account` et `Profile` seulement | états distribués et tables futures exclus |
 | camelCase Prisma / snake_case SQL | `@map`, `@@map`, `@@schema` et prévisualisation SQL du CLI | prévisualisation seulement, aucune migration enregistrée |
 | identité stable | UUID généré sur `Account.id`, repris sans default par `Profile.userId` | transmission interservice traitée dans PRI-4 |
@@ -168,7 +166,7 @@ Prisma Client 7.10.0, réseau désactivé.
 | `prisma validate --schema <schema-auth>` | code 0, schéma valide |
 | `prisma generate --schema <schema-users>` | code 0, client 7.10.0 généré dans le conteneur éphémère |
 | `prisma generate --schema <schema-auth>` | code 0, client 7.10.0 généré dans le conteneur éphémère |
-| `prisma migrate diff --config <config-v7> --from-empty --to-schema=<schema-users> --script` | code 0 ; SQL observé : schéma `users`, table `profiles`, colonnes snake_case, PK `user_id`, index unique nullable `username` |
+| `prisma migrate diff --config <config-v7> --from-empty --to-schema=<schema-users> --script` | code 0 ; SQL observé : schéma `users`, table `profiles`, colonnes snake_case, PK `user_id`, `username` obligatoire et unique |
 | `prisma migrate diff --config <config-v7> --from-empty --to-schema=<schema-auth> --script` | code 0 ; SQL observé : schéma `auth`, table `accounts`, UUID PostgreSQL par défaut, email unique, colonnes snake_case |
 | `git diff --check` | code 0 |
 | comparaison SHA-256 de la migration initiale avec `HEAD` | empreintes identiques |
@@ -178,7 +176,6 @@ dans le moteur de schéma, qui exigeait la datasource. Il n'est pas compté comm
 preuve. La commande finale a chargé explicitement la configuration v7, avec une
 URL PostgreSQL fictive ; elle n'a contacté ni modifié aucune base.
 
-La sous-action peut être relue techniquement. D01, D03 et D05 sont désormais
-enregistrées ; seule la décision finale D02 sur `username` reste attendue parmi
-les arbitrages explicitement suivis par PRI-1. La règle provisoire reste :
-facultatif, unique lorsqu'il est renseigné.
+La sous-action peut être relue techniquement. D01, D02, D03 et D05 sont désormais
+enregistrées. D02 impose un `username` obligatoire, non nul et unique ; le modèle
+et la migration PRI-2 ont été alignés sur cette décision.

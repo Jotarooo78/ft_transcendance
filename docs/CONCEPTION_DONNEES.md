@@ -72,7 +72,7 @@ Léa peut écouter de la musique et gérer plusieurs projets artistiques. Plusie
 | Information | Proposition | Personnes concernées maintenant |
 | --- | --- | --- |
 | Identifiant du compte, email, mot de passe protégé, sessions | Auth | Armand ; Emile pour la structure et les accès |
-| Nom affiché, pseudo éventuel, préférence auditeur/artiste | Users | Armand ; Tiphaine pour le formulaire ; Emile pour les contraintes |
+| Nom affiché, pseudo obligatoire, préférence auditeur/artiste | Users | Armand ; Tiphaine pour le formulaire ; Emile pour les contraintes |
 | Présentation des écrans et des erreurs | Frontend | Tiphaine, avec Armand pour les réponses API |
 | Artistes, morceaux et droits de gestion | Futur Catalogue | Responsable à désigner ; équipe pour le besoin |
 
@@ -192,7 +192,7 @@ obtenu.
 | ID | Question | Option de départ | Pilote et personnes concernées | Actions | Statut |
 | --- | --- | --- | --- | --- | --- |
 | D01 | Séparer identité et profil ? | Identité et secrets dans Auth ; profil dans Users ; même UUID comme référence logique, sans FK interservice. | Emile + Armand ; Tiphaine consultée | M0-03, M0-05, M0-07, M0-08 | Validée le 2026-09-10 |
-| D02 | Le pseudo est-il obligatoire ? | En attendant la validation finale : `username` facultatif, mais unique lorsqu’il est renseigné ; `displayName` obligatoire et non unique. | Tiphaine + Armand ; Emile consulté | M0-03, M0-06, M0-08, M0-12 | À valider — règle provisoire appliquée |
+| D02 | Le pseudo est-il obligatoire ? | `username` obligatoire, non nul et unique ; `displayName` obligatoire et non unique. Pour la migration historique seulement, un `displayName NULL` est remplacé par le `username`. | Tiphaine + Armand ; Emile consulté | M0-03, M0-06, M0-08, M0-12 | Validée le 2026-09-10 |
 | D03 | Que signifie « artiste » à l’inscription ? | Supprimer `accountType` du contrat et du modèle ; ne pas le remplacer dans le périmètre actuel. Les droits artiste relèvent d’un autre objet métier. | Tiphaine + Armand ; futur Catalogue et équipe | M0-03, M0-08, M0-12, M1-02 | Validée le 2026-09-10 |
 | D04 | Qui peut créer et gérer un artiste ? | Compte actif créant un artiste → owner ; publication, modération et import administrateur à préciser. | Équipe + responsable Catalogue à désigner ; Armand consulté | M1-01, M1-02 | Ouverte |
 | D05 | Comment séparer les données et les accès ? | Une base par environnement, schémas et rôles privés ; chaque service accède directement uniquement à ses tables. Bases ou instances séparées seulement si nécessaire. | Emile + Armand ; rôle infra à confirmer | M0-05, M0-06, T-02 | Validée le 2026-09-10 |
@@ -342,8 +342,9 @@ Une dépendance inaccessible est un manque de vérification. Ce n’est pas une 
 | AUD-2026-09-09 | 2026-09-09 | Lecture du checkout `main` à `235daa3256eee1e9d1ba7cf52aa380dd2d433d55` : README, conventions, routes Auth/Users, Prisma/migration/configuration, Docker, types/mocks/formulaire frontend et proxy. | P01–P06 toujours présents dans les fichiers. Initialisation de la todo ; aucun parcours applicatif ni SQL rejoué aujourd’hui. |
 | DOC-2026-09-09 | 2026-09-09 | Réorganisation en un fichier autonome ; rôles actuels issus de la clarification d’équipe du jour. | Conservation du fond technique ; aucune décision D01–D16 acceptée par cette réécriture. |
 | DEC-2026-09-10-1 | 2026-09-10 | Confirmation d’équipe transmise après échanges avec Armand et Tiphaine : séparation Auth/Users et UUID de liaison validés (D01) ; séparation par schémas et accès SQL privés validée (D05) ; `accountType` supprimé sans remplacement dans le périmètre actuel (D03). Pour D02, la décision finale reste attendue ; la règle provisoire est `username` facultatif et unique lorsqu’il est présent. | Ferme D01, D03 et D05. Maintient D02 à valider et aligne PRI-1 sur la règle provisoire existante. Les références à `onboardingIntent` plus loin dans ce document sont désormais des propositions historiques à corriger lors de la mise à jour du contrat M0-03 ; elles ne font pas foi contre D03. |
+| DEC-2026-09-10-2 | 2026-09-10 | Décision transmise pour D02 : `username` obligatoire, non nul et unique. Pendant PRI-2, si l'ancien `displayName` est `NULL`, utiliser le `username` comme valeur de repli ; ne jamais dériver ce nom depuis l'email. | Ferme D02. Aligne le modèle Users, la migration, les fixtures et les futurs contrats signup/profil. |
 
-Les décisions D01, D03 et D05 sont enregistrées. D02 reste à valider.
+Les décisions D01, D02, D03 et D05 sont enregistrées.
 
 Format à reprendre pour les prochaines entrées :
 
@@ -524,7 +525,7 @@ Chaque fiche précise le pilote, les personnes à associer, le résultat attendu
 
 **Pilote recommandé :** Armand. **À associer :** Emile ; Tiphaine pour les champs.
 
-**Fini quand :** Profil sous UUID Auth, pseudo facultatif selon D02, nom non unique. Commande interne authentifiée, inbox et profil dans une transaction. Rejeu sans duplication ni écrasement ; tombstone/version et sérialisation par userId pris en compte. PATCH privé avec contrôle de propriétaire et de version.
+**Fini quand :** Profil sous UUID Auth, pseudo obligatoire et unique selon D02, nom non unique. Commande interne authentifiée, inbox et profil dans une transaction. Rejeu sans duplication ni écrasement ; tombstone/version et sérialisation par userId pris en compte. PATCH privé avec contrôle de propriétaire et de version.
 
 **À consulter :** P01, P02 ; R03, R04, R20 ; dictionnaire Users ; contrats profil.
 
@@ -1024,7 +1025,7 @@ Ce dessin représente les interfaces métier principales, pas un graphe exhausti
 | password | Aucun stockage en clair | Entrée transitoire Auth uniquement ; jamais événement, log ou réponse. |
 | passwordHash | Auth | Jamais envoyé au frontend, Users, analytics ou RAG. |
 | displayName | Users | Obligatoire, non unique, 2–100 caractères après trim. |
-| username | Users | Facultatif, unique si présent, minuscules ASCII 3–30 ; pas d’identifiant de connexion. |
+| username | Users | Obligatoire, non nul, unique, minuscules ASCII 3–30 ; pas d’identifiant de connexion. |
 | accountType actuel | Champ de transition | Remplacé par onboardingIntent après accord ; aucun droit implicite. |
 | onboardingIntent | Users | Préférence listener/artist ; modifiable, sans effet de sécurité. |
 | platformRole | Auth | member/admin ; attribution privilégiée, jamais acceptée du signup public. |
@@ -1040,7 +1041,7 @@ Ce dessin représente les interfaces métier principales, pas un graphe exhausti
 | R01 | Un compte possède un UUID stable créé par Auth. | Default SQL Auth ; contrat interservice. |
 | R02 | L’email canonique est unique ; trim + lowercase est une politique produit explicitement assumée. | Backend puis UNIQUE/CHECK ; pas seulement frontend. |
 | R03 | Un compte opérationnel possède un profil ; pending_profile n’autorise pas l’usage normal. | Workflow Auth/Users et réconciliation. |
-| R04 | displayName n’est pas unique ; username peut être absent. | Users, contraintes locales. |
+| R04 | displayName n’est pas unique ; username est obligatoire, non nul et unique. | Users, contraintes locales. |
 | R05 | L’intention artiste n’octroie pas de droits ; un compte peut gérer N artistes. | Autorisation Catalogue, artist_members. |
 | R06 | Un artiste éditable par des utilisateurs doit garder au moins un owner ; artistes de catalogue administrés sans membre possibles. | Transaction Catalogue ; règle non garantie par la seule PK. |
 | R07 | Publier un morceau exige un média audio prêt et au moins un crédit primary. | Contrôle Media puis transaction Catalogue/verrou ; CHECK local partiel. |
@@ -1149,7 +1150,7 @@ Liveness vérifie le processus ; readiness vérifie la capacité à servir, dont
 ##### Inscription et reprise
 
 1. Auth valide email/password et les champs profil de la commande publique, sans accepter id, rôle admin ou hash fourni par le client.
-2. Transaction Auth : créer le compte `pending_profile` et une commande outbox `ProfileProvisionRequested.v1` destinée à Users, avec userId, displayName, username éventuel et onboardingIntent. Jamais de mot de passe dans le message.
+2. Transaction Auth : créer le compte `pending_profile` et une commande outbox `ProfileProvisionRequested.v1` destinée à Users, avec userId, displayName et username obligatoire. Jamais de mot de passe dans le message.
 3. Après COMMIT, tentative HTTP interne ; Users traite la commande avec inbox et crée le profil dans sa propre transaction. Un doublon de la même commande n’écrase pas un profil modifié depuis.
 4. Auth enregistre l’accusé de réception, puis active le compte si son état/version permettent encore l’activation. Si l’appel échoue ou sa réponse est perdue, le worker reprend.
 5. Réponse publique 201 si le provisionnement est achevé ; sinon 202 `REGISTRATION_PENDING`. Le client réessaie la connexion avec ses identifiants pour connaître l’état : pas d’endpoint public révélant l’existence d’un compte via un simple UUID.
@@ -1210,7 +1211,7 @@ Le compte final peut conserver uniquement UUID/état deleted pour une période d
 
 | Scénario | Résultat attendu / invariant |
 | --- | --- |
-| Inscription listener sans username | Compte + profil, pseudo NULL, aucun artiste créé. |
+| Inscription sans username | Rejet de validation ; aucun compte ni profil créé. |
 | Inscription artist | Même identité ; onboardingIntent artist ; aucun droit implicite avant création/attribution autorisée d’un artiste. |
 | Deux personnes avec le même displayName | Autorisé. |
 | Même email après normalisation, simultanément | Une seule ligne Auth ; réponse de conflit pour l’autre requête. |
@@ -1338,11 +1339,11 @@ Une demande concerne exactement un compte ; une étape concerne exactement une d
 
 Profil de l’utilisateur ; sa PK est l’UUID fourni par Auth, sans FK et sans génération locale.
 
-**Champs :** `user_id uuid PK EXT Auth` ; `username text? UQ` ; `display_name text` ; `onboarding_intent text = listener` ; `bio text?` ; `avatar_asset_id uuid? EXT Media` ; `visibility text = public` ; `locale text = fr` ; `version bigint = 1` ; `created_at` ; `updated_at`.
+**Champs :** `user_id uuid PK EXT Auth` ; `username text UQ` ; `display_name text` ; `onboarding_intent text = listener` ; `bio text?` ; `avatar_asset_id uuid? EXT Media` ; `visibility text = public` ; `locale text = fr` ; `version bigint = 1` ; `created_at` ; `updated_at`.
 
 **Contraintes :** username ASCII minuscules/chiffres/underscore 3–30 ; display_name trim 2–100 ; bio ≤500 ; intention listener/artist ; visibilité public/private. La liste de locales réellement supportées relève du contrat frontend/backend.
 
-**Cycle :** création idempotente, mises à jour par le propriétaire, suppression locale avec tombstone. Username peut être NULL pour plusieurs personnes. Un nom d’affichage n’est jamais généré publiquement à partir de l’email sans accord. **S0** pour vue publique filtrée ; **S1** pour intention/préférences et profil privé.
+**Cycle :** création idempotente, mises à jour par le propriétaire, suppression locale avec tombstone. Username est obligatoire et unique. Pour le backfill PRI-2 uniquement, un ancien `displayName NULL` prend la valeur du username ; un nom d’affichage n’est jamais généré à partir de l’email. **S0** pour vue publique filtrée ; **S1** pour intention/préférences et profil privé.
 
 ##### users.follows — option sociale, pas obligatoire pour M0
 
@@ -1676,9 +1677,9 @@ Tiphaine et Armand pour M0, Emile pour la correspondance SQL. Pour M1/M2, associ
 
 La présente section fournit les exemples complets, endpoints, erreurs, événements et règles de sécurité. La séparation minimale à retenir :
 
-- `SignUpRequest` : email, password, displayName, onboardingIntent, username optionnel.
+- `SignUpRequest` : email, password, displayName, username obligatoire.
 - `AuthIdentity` : userId, email, emailVerified, state ; aucun profil ni hash.
-- `UserProfile` : userId, displayName, username nullable, onboardingIntent, avatarAssetId, bio, visibility, version.
+- `UserProfile` : userId, displayName, username non nullable, avatarAssetId, bio, visibility, version.
 - `Artist` : artistId, name, slug, imageAssetId ; aucune obligation de compte de connexion.
 - `ArtistMembership` : artistId, userId, role.
 - `Track` : trackId, title, audioAssetId, durationMs, explicit, status, credits.
@@ -1698,7 +1699,7 @@ JSON camelCase ; SQL snake_case ; dates ISO 8601 UTC ; UUID sous forme de chaîn
 
 Les validations de présentation frontend sont répétées côté backend. Pour chaque commande, définir type, longueur, caractère facultatif, règle de normalisation et autorisation. Recommandation de travail : mot de passe 12–128 caractères, aucune transformation silencieuse, aucun trim, pas de troncature ; vérifier la même convention de comptage Unicode sur les deux côtés. Cette politique doit être confirmée avec les exigences de sécurité retenues.
 
-Email : trim/lowercase selon R02, à confirmer dans M0-03, limite 254, validation syntaxique backend puis preuve de possession séparée. DisplayName : trim, 2–100 ; username absent ou NULL, sinon lowercase ASCII 3–30 et caractères \[a-z0-9_\]. Une chaîne vide ne remplace pas automatiquement NULL sans règle contractuelle.
+Email : trim/lowercase selon R02, à confirmer dans M0-03, limite 254, validation syntaxique backend puis preuve de possession séparée. DisplayName : trim, 2–100 ; username obligatoire, lowercase ASCII 3–30 et caractères \[a-z0-9_\]. Une chaîne vide n'est pas un username valide.
 
 Pour les ressources versionnées, le serveur renvoie `ETag: "7"` et une propriété version=7 ; les mutations exigent `If-Match: "7"`. Une précondition absente donne 428 ; une version périmée donne 412. Les collisions métier distinctes restent 409. Le service applique `UPDATE ... WHERE id = ? AND version = ?`, vérifie la ligne modifiée et incrémente la version.
 
@@ -1716,7 +1717,7 @@ Requête cible :
   "password": "<mot de passe saisi, jamais journalisé>",
   "displayName": "Léa",
   "onboardingIntent": "artist",
-  "username": null
+  "username": "lea"
 }
 ```
 
@@ -1809,7 +1810,7 @@ L’état actif signifie ici profil provisionné, pas nécessairement email vér
 {
   "userId": "11111111-1111-4111-8111-111111111111",
   "displayName": "Léa",
-  "username": null,
+  "username": "lea",
   "onboardingIntent": "artist",
   "bio": null,
   "avatarAssetId": null,
@@ -1857,7 +1858,7 @@ Commande Auth → Users, transmise depuis outbox :
   "occurredAt": "2026-09-08T12:00:00Z",
   "data": {
     "displayName": "Léa",
-    "username": null,
+    "username": "lea",
     "onboardingIntent": "artist"
   }
 }
@@ -2073,7 +2074,7 @@ datasource db {
 
 model Profile {
   userId           String   @id @map("user_id") @db.Uuid
-  username         String?  @unique
+  username         String   @unique
   displayName      String   @map("display_name")
   onboardingIntent String   @default("listener") @map("onboarding_intent")
   createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -2710,7 +2711,7 @@ Dans la vidéo, revoir [Database Introduction — 02:24](https://www.youtube.com
 
 **Physique : comment le réaliser ici ?** On choisit PostgreSQL 16, les schémas propriétaires, `uuid`, `timestamptz`, les index, les permissions et les migrations. On décide aussi quelles relations restent locales et quelles références traversent une API.
 
-Sauter directement au modèle Prisma conduit facilement à imposer `username NOT NULL` sans avoir décidé pourquoi le métier en a besoin. Inversement, dessiner seulement un joli ER ne dit pas comment gérer un service indisponible. Revoir [Designing an ER Diagram — 3:55:54](https://www.youtube.com/watch?v=HXV3zeQKqGY&t=14154s), puis [Converting ER Diagrams to Schemas — 4:08:33](https://www.youtube.com/watch?v=HXV3zeQKqGY&t=14913s).
+Sauter directement au modèle Prisma aurait conduit à imposer `username NOT NULL` avant de décider pourquoi le métier en a besoin. D02 fixe désormais explicitement cette règle. Inversement, dessiner seulement un joli ER ne dit pas comment gérer un service indisponible. Revoir [Designing an ER Diagram — 3:55:54](https://www.youtube.com/watch?v=HXV3zeQKqGY&t=14154s), puis [Converting ER Diagrams to Schemas — 4:08:33](https://www.youtube.com/watch?v=HXV3zeQKqGY&t=14913s).
 
 #### Entités, attributs et identifiants
 
@@ -2891,7 +2892,7 @@ Résultat : script principal terminé avec code 0 ; 10 schémas, 20 rôles NOLOG
 | --- | --- |
 | Email unique/canonique | Doublon et majuscule non canonique rejetés. |
 | UUID default natif | INSERT SQL sans id réussi. |
-| Username optionnel | Deux profils sans username acceptés. |
+| Username optionnel — preuve historique antérieure à D02 | Deux profils sans username étaient acceptés par l'ancien DDL ; ce comportement est désormais refusé par la cible. |
 | Active sans provisioned_at | Refus CHECK. |
 | Un artiste primary + composer | Deux crédits acceptés. |
 | Même morceau à deux positions d’une sortie | Accepté. |
