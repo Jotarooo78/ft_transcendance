@@ -1,34 +1,24 @@
-import type {
-  Track,
-} from "../types/music";
+import type { Track } from "../types/music";
 
 type TrackCardProps = {
   track: Track;
+  isSelected: boolean;
+  onPlay: (track: Track) => void;
 };
 
-function formatDuration(
-  durationSeconds: number,
-): string {
-  const minutes = Math.floor(
-    durationSeconds / 60,
-  );
+function formatDuration(durationSeconds: number): string {
+  const minutes = Math.floor(durationSeconds / 60);
 
   const seconds = durationSeconds % 60;
 
-  return `${minutes}:${seconds
-    .toString()
-    .padStart(2, "0")}`;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
-function TrackCard({
-  track,
-}: TrackCardProps) {
+function TrackCard({ track, isSelected, onPlay }: TrackCardProps) {
   return (
     <article className="track-card">
       <header>
-        <p className="track-genre">
-          {track.genre}
-        </p>
+        <p className="track-genre">{track.genre}</p>
 
         <h2>{track.title}</h2>
       </header>
@@ -46,16 +36,18 @@ function TrackCard({
 
         <div>
           <dt>Duration</dt>
-          <dd>
-            {formatDuration(
-              track.durationSeconds,
-            )}
-          </dd>
+          <dd>{formatDuration(track.durationSeconds)}</dd>
         </div>
       </dl>
 
-      <button type="button">
-        Play
+      <button
+        type="button"
+        aria-pressed={isSelected}
+        onClick={() => {
+          onPlay(track);
+        }}
+      >
+        {isSelected ? "Selected" : "Play"}
       </button>
     </article>
   );

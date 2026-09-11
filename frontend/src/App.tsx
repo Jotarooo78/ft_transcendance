@@ -5,33 +5,24 @@ import ProfilePage from "./pages/ProfilePage";
 import RegisterPage from "./pages/RegisterPage";
 import CatalogPage from "./pages/CatalogPage";
 
-import type {
-  AuthenticatedUser,
-} from "./types/auth";
+import type { AuthenticatedUser } from "./types/auth";
 
 import "./App.css";
 
-type PublicPage =
-  | "register"
-  | "login";
+type PublicPage = "register" | "login";
 
-type PrivatePage =
-  | "profile"
-  | "catalog";
+type PrivatePage = "profile" | "catalog";
 
 function App() {
-  const [currentPage, setCurrentPage] =
-    useState<PublicPage>("register");
+  const [currentPage, setCurrentPage] = useState<PublicPage>("register");
 
-  const [currentUser, setCurrentUser] =
-    useState<AuthenticatedUser | null>(null);
-  
-  const [privatePage, setPrivatePage] =
-    useState<PrivatePage>("profile");
+  const [currentUser, setCurrentUser] = useState<AuthenticatedUser | null>(
+    null,
+  );
 
-  function handleLoginSuccess(
-    user: AuthenticatedUser,
-  ) {
+  const [privatePage, setPrivatePage] = useState<PrivatePage>("profile");
+
+  function handleLoginSuccess(user: AuthenticatedUser) {
     setCurrentUser(user);
     setPrivatePage("profile");
   }
@@ -46,14 +37,9 @@ function App() {
     return (
       <>
         <header className="site-header">
-          <strong className="site-title">
-            FT Music
-          </strong>
+          <strong className="site-title">FT Music</strong>
 
-          <nav
-            className="main-navigation"
-            aria-label="User navigation"
-          >
+          <nav className="main-navigation" aria-label="User navigation">
             <button
               type="button"
               className={
@@ -84,9 +70,7 @@ function App() {
               Catalog
             </button>
 
-            <span>
-              Connected as {currentUser.username}
-            </span>
+            <span>Connected as {currentUser.username}</span>
 
             <button
               type="button"
@@ -98,13 +82,11 @@ function App() {
           </nav>
         </header>
 
-        {privatePage === "profile"
-          ? (
-            <ProfilePage user={currentUser} />
-          )
-          : (
-            <CatalogPage />
-          )}
+        {privatePage === "profile" ? (
+          <ProfilePage user={currentUser} />
+        ) : (
+          <CatalogPage />
+        )}
       </>
     );
   }
@@ -112,14 +94,9 @@ function App() {
   return (
     <>
       <header className="site-header">
-        <strong className="site-title">
-          FT Music
-        </strong>
+        <strong className="site-title">FT Music</strong>
 
-        <nav
-          className="main-navigation"
-          aria-label="Authentication"
-        >
+        <nav className="main-navigation" aria-label="Authentication">
           <button
             type="button"
             className={
@@ -152,15 +129,11 @@ function App() {
         </nav>
       </header>
 
-      {currentPage === "register"
-        ? (
-          <RegisterPage />
-        )
-        : (
-          <LoginPage
-            onLoginSuccess={handleLoginSuccess}
-          />
-        )}
+      {currentPage === "register" ? (
+        <RegisterPage />
+      ) : (
+        <LoginPage onLoginSuccess={handleLoginSuccess} />
+      )}
     </>
   );
 }

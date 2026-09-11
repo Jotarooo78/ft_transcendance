@@ -1,9 +1,7 @@
 import { useState, type SubmitEvent } from "react";
 
 import { registerUser } from "../services/auth";
-import type {
-  RegisteredUser,
-} from "../types/auth";
+import type { RegisteredUser } from "../types/auth";
 
 type RegisterFormValues = {
   username: string;
@@ -20,21 +18,17 @@ const initialForm: RegisterFormValues = {
 };
 
 function RegisterForm() {
-  const [form, setForm] =
-    useState<RegisterFormValues>(initialForm);
+  const [form, setForm] = useState<RegisterFormValues>(initialForm);
 
-  const [isSubmitting, setIsSubmitting] =
-    useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [errorMessage, setErrorMessage] =
-    useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const [registeredUser, setRegisteredUser] =
-    useState<RegisteredUser | null>(null);
+  const [registeredUser, setRegisteredUser] = useState<RegisteredUser | null>(
+    null,
+  );
 
-  async function handleSubmit(
-    event: SubmitEvent<HTMLFormElement>,
-  ) {
+  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
 
     setErrorMessage("");
@@ -46,9 +40,7 @@ function RegisterForm() {
     }
 
     if (form.password.length < 12) {
-      setErrorMessage(
-        "Password must contain at least 12 characters.",
-      );
+      setErrorMessage("Password must contain at least 12 characters.");
       return;
     }
 
@@ -67,9 +59,7 @@ function RegisterForm() {
       if (error instanceof Error) {
         setErrorMessage(error.message);
       } else {
-        setErrorMessage(
-          "An unexpected error occurred.",
-        );
+        setErrorMessage("An unexpected error occurred.");
       }
     } finally {
       setIsSubmitting(false);
@@ -81,7 +71,6 @@ function RegisterForm() {
       <form onSubmit={handleSubmit}>
         <label>
           Username
-
           <input
             type="text"
             required
@@ -100,7 +89,6 @@ function RegisterForm() {
 
         <label>
           Email
-
           <input
             type="email"
             required
@@ -117,7 +105,6 @@ function RegisterForm() {
 
         <label>
           Password
-
           <input
             type="password"
             required
@@ -136,7 +123,6 @@ function RegisterForm() {
 
         <label>
           Confirm password
-
           <input
             type="password"
             required
@@ -147,42 +133,28 @@ function RegisterForm() {
             onChange={(event) => {
               setForm({
                 ...form,
-                passwordConfirmation:
-                  event.target.value,
+                passwordConfirmation: event.target.value,
               });
             }}
           />
         </label>
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-        >
-          {isSubmitting
-            ? "Creating account..."
-            : "Create account"}
+        <button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Creating account..." : "Create account"}
         </button>
       </form>
 
       {errorMessage && (
-        <p
-          className="message error-message"
-          role="alert"
-        >
+        <p className="message error-message" role="alert">
           {errorMessage}
         </p>
       )}
 
       {registeredUser && (
-        <section
-          className="message success-message"
-          aria-live="polite"
-        >
+        <section className="message success-message" aria-live="polite">
           <h2>Account created</h2>
 
-          <p>
-            Your account has been created.
-          </p>
+          <p>Your account has been created.</p>
 
           <dl>
             <div>

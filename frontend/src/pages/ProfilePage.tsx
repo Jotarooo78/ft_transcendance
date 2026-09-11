@@ -1,14 +1,10 @@
-import type {
-  AuthenticatedUser,
-} from "../types/auth";
+import type { AuthenticatedUser } from "../types/auth";
 
 type ProfilePageProps = {
   user: AuthenticatedUser;
 };
 
-function ProfilePage({
-  user,
-}: ProfilePageProps) {
+function ProfilePage({ user }: ProfilePageProps) {
   const creationDate = new Intl.DateTimeFormat("en", {
     dateStyle: "long",
   }).format(new Date(user.createdAt));
@@ -21,8 +17,8 @@ function ProfilePage({
         <h1>Welcome, {user.username}!</h1>
 
         <p>
-          This account can listen to music, create playlists,
-          and publish tracks.
+          This account can listen to music, create playlists, and publish
+          tracks.
         </p>
       </header>
 
@@ -30,9 +26,7 @@ function ProfilePage({
         className="profile-card"
         aria-labelledby="profile-information-title"
       >
-        <h2 id="profile-information-title">
-          Profile information
-        </h2>
+        <h2 id="profile-information-title">Profile information</h2>
 
         <dl className="profile-information">
           <div>

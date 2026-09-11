@@ -1,9 +1,7 @@
 import { useState, type SubmitEvent } from "react";
 
 import { loginUser } from "../services/auth";
-import type {
-  AuthenticatedUser,
-} from "../types/auth";
+import type { AuthenticatedUser } from "../types/auth";
 
 type LoginFormValues = {
   email: string;
@@ -11,9 +9,7 @@ type LoginFormValues = {
 };
 
 type LoginFormProps = {
-  onLoginSuccess: (
-    user: AuthenticatedUser,
-  ) => void;
+  onLoginSuccess: (user: AuthenticatedUser) => void;
 };
 
 const initialForm: LoginFormValues = {
@@ -21,21 +17,14 @@ const initialForm: LoginFormValues = {
   password: "",
 };
 
-function LoginForm({
-  onLoginSuccess,
-}: LoginFormProps) {
-  const [form, setForm] =
-    useState<LoginFormValues>(initialForm);
+function LoginForm({ onLoginSuccess }: LoginFormProps) {
+  const [form, setForm] = useState<LoginFormValues>(initialForm);
 
-  const [isSubmitting, setIsSubmitting] =
-    useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [errorMessage, setErrorMessage] =
-    useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
-  async function handleSubmit(
-    event: SubmitEvent<HTMLFormElement>,
-  ) {
+  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
 
     setErrorMessage("");
@@ -53,9 +42,7 @@ function LoginForm({
       if (error instanceof Error) {
         setErrorMessage(error.message);
       } else {
-        setErrorMessage(
-          "An unexpected error occurred.",
-        );
+        setErrorMessage("An unexpected error occurred.");
       }
     } finally {
       setIsSubmitting(false);
@@ -67,7 +54,6 @@ function LoginForm({
       <form onSubmit={handleSubmit}>
         <label>
           Email
-
           <input
             type="email"
             required
@@ -84,7 +70,6 @@ function LoginForm({
 
         <label>
           Password
-
           <input
             type="password"
             required
@@ -99,21 +84,13 @@ function LoginForm({
           />
         </label>
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-        >
-          {isSubmitting
-            ? "Logging in..."
-            : "Log in"}
+        <button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Logging in..." : "Log in"}
         </button>
       </form>
 
       {errorMessage && (
-        <p
-          className="message error-message"
-          role="alert"
-        >
+        <p className="message error-message" role="alert">
           {errorMessage}
         </p>
       )}

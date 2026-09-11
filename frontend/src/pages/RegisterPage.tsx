@@ -6,9 +6,7 @@ function RegisterPage() {
       <header>
         <h1>Create your account</h1>
 
-        <p>
-          Join our independent music community.
-        </p>
+        <p>Join our independent music community.</p>
       </header>
 
       <RegisterForm />

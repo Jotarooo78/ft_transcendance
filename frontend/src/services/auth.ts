@@ -22,9 +22,7 @@ export async function registerUser(
 
   // Simulation d'une erreur du backend
   if (request.email === "existing@example.com") {
-    throw new Error(
-      "An account already exists with this email.",
-    );
+    throw new Error("An account already exists with this email.");
   }
 
   return {
@@ -41,12 +39,10 @@ export async function loginUser(
     setTimeout(resolve, 1000);
   });
 
-  const normalizedEmail =
-    request.email.trim().toLowerCase();
-  
+  const normalizedEmail = request.email.trim().toLowerCase();
+
   const credentialsAreValid =
-    normalizedEmail === mockUser.email &&
-    request.password === "password1234";
+    normalizedEmail === mockUser.email && request.password === "password1234";
 
   if (!credentialsAreValid) {
     throw new Error("Invalid email or password.");
