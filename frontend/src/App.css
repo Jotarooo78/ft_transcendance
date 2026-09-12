@@ -219,3 +219,58 @@ button:disabled {
     text-align: center;
   }
 }
+
+.playlists-page {
+  width: min(900px, calc(100% - 32px));
+  box-sizing: border-box;
+}
+
+.playlist-section {
+  margin-top: 32px;
+  text-align: left;
+}
+
+.playlist-form fieldset {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.track-choice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.track-choice input {
+  width: auto;
+}
+
+.playlist-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.playlist-card {
+  display: grid;
+  gap: 8px;
+  text-align: left;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.playlist-card strong {
+  color: var(--text-h);
+}
+
+.playlist-card.active {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}

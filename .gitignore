@@ -7,3 +7,5 @@ services/user-service/dist/
 
 # Tiphaine
 tiphaine/
+frontend/public/audio
+.vscode/

@@ -8,3 +8,10 @@ export type Track = {
   audioUrl: string; // /audio/xxx.mp3
   mimeType: string; // mpeg
 };
+
+export type Playlist = {
+  id: string;
+  name: string;
+  description: string;
+  trackIds: string[];
+};

@@ -4,6 +4,7 @@ import LoginPage from "./pages/LoginPage";
 import ProfilePage from "./pages/ProfilePage";
 import RegisterPage from "./pages/RegisterPage";
 import CatalogPage from "./pages/CatalogPage";
+import PlaylistsPage from "./pages/PlaylistsPage";
 
 import type { AuthenticatedUser } from "./types/auth";
 
@@ -11,7 +12,7 @@ import "./App.css";
 
 type PublicPage = "register" | "login";
 
-type PrivatePage = "profile" | "catalog";
+type PrivatePage = "profile" | "catalog" | "playlists";
 
 function App() {
   const [currentPage, setCurrentPage] = useState<PublicPage>("register");
@@ -70,6 +71,21 @@ function App() {
               Catalog
             </button>
 
+            <button
+              type="button"
+              className={
+                privatePage === "playlists"
+                  ? "navigation-button active"
+                  : "navigation-button"
+              }
+              aria-pressed={privatePage === "playlists"}
+              onClick={() => {
+                setPrivatePage("playlists");
+              }}
+            >
+              Playlists
+            </button>
+
             <span>Connected as {currentUser.username}</span>
 
             <button
@@ -82,11 +98,11 @@ function App() {
           </nav>
         </header>
 
-        {privatePage === "profile" ? (
-          <ProfilePage user={currentUser} />
-        ) : (
-          <CatalogPage />
-        )}
+        {privatePage === "profile" && <ProfilePage user={currentUser} />}
+
+        {privatePage === "catalog" && <CatalogPage />}
+
+        {privatePage === "playlists" && <PlaylistsPage />}
       </>
     );
   }
