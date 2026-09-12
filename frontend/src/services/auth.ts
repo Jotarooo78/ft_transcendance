@@ -15,7 +15,7 @@ const mockUser: AuthenticatedUser = {
 export async function registerUser(
   request: RegisterRequest,
 ): Promise<RegisteredUser> {
-  // Simulation d'une attente réseau
+  // Simulates a network delay.
   await new Promise((resolve) => {
     setTimeout(resolve, 1000);
   });

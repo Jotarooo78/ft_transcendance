@@ -2,37 +2,55 @@ import { useState, type SubmitEvent } from "react";
 
 import AudioPlayer from "../components/AudioPlayer";
 import TrackCard from "../components/TrackCard";
-import { mockPlaylists } from "../data/playlists";
 import { mockTracks } from "../data/tracks";
 import type { Playlist, Track } from "../types/music";
 
-function PlaylistsPage() {
-  const [playlists, setPlaylists] = useState<Playlist[]>(mockPlaylists);
+type PlaylistsPageProps = {
+  playlists: Playlist[];
+  onCreatePlaylist: (playlist: Playlist) => void;
+  onRemoveTrack: (playlistId: string, trackId: string) => void;
+  onDeletePlaylist: (playlistId: string) => void;
+  onUpdatePlaylist: (
+    playlistId: string,
+    name: string,
+    description: string,
+  ) => void;
+};
 
+function PlaylistsPage({
+  playlists,
+  onCreatePlaylist,
+  onRemoveTrack,
+  onDeletePlaylist,
+  onUpdatePlaylist,
+}: PlaylistsPageProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
 
   const [selectedTrackIds, setSelectedTrackIds] = useState<string[]>([]);
 
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(
-    mockPlaylists[0]?.id ?? null,
+    playlists[0]?.id ?? null,
   );
 
   const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
 
   const selectedPlaylist =
     playlists.find((playlist) => playlist.id === selectedPlaylistId) ?? null;
 
   /*
-   * Retrouve les objets Track dont les identifiants sont présents
-   * dans la playlist sélectionnée.
+   * Finds the Track objects whose identifiers are present
+   * in the selected playlist.
    */
   const playlistTracks = selectedPlaylist
     ? mockTracks.filter((track) => selectedPlaylist.trackIds.includes(track.id))
     : [];
 
   /*
-   * Ajoute ou retire un morceau de la sélection du formulaire.
+   * Adds or removes a track from the form selection.
    */
   function handleTrackSelection(trackId: string) {
     setSelectedTrackIds((currentIds) =>
@@ -58,13 +76,75 @@ function PlaylistsPage() {
       trackIds: selectedTrackIds,
     };
 
-    setPlaylists((currentPlaylists) => [...currentPlaylists, newPlaylist]);
+    onCreatePlaylist(newPlaylist);
 
     setSelectedPlaylistId(newPlaylist.id);
 
     setName("");
     setDescription("");
     setSelectedTrackIds([]);
+  }
+
+  function handleRemoveTrack(track: Track) {
+    if (!selectedPlaylist) {
+      return;
+    }
+
+    onRemoveTrack(selectedPlaylist.id, track.id);
+
+    if (selectedTrack?.id === track.id) {
+      setSelectedTrack(null);
+    }
+  }
+
+  function handleDeletePlaylist() {
+    if (!selectedPlaylist) {
+      return;
+    }
+
+    const shouldDelete = window.confirm(
+      `Delete the playlist "${selectedPlaylist.name}"?`,
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    const nextPlaylist = playlists.find(
+      (playlist) => playlist.id !== selectedPlaylist.id,
+    );
+
+    onDeletePlaylist(selectedPlaylist.id);
+    setSelectedPlaylistId(nextPlaylist?.id ?? null);
+    setSelectedTrack(null);
+    setIsEditing(false);
+  }
+
+  function handleStartEditing() {
+    if (!selectedPlaylist) {
+      return;
+    }
+
+    setEditName(selectedPlaylist.name);
+    setEditDescription(selectedPlaylist.description);
+    setIsEditing(true);
+  }
+
+  function handleUpdateSubmit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!selectedPlaylist) {
+      return;
+    }
+
+    const trimmedName = editName.trim();
+
+    if (trimmedName === "") {
+      return;
+    }
+
+    onUpdatePlaylist(selectedPlaylist.id, trimmedName, editDescription.trim());
+    setIsEditing(false);
   }
 
   return (
@@ -152,6 +232,7 @@ function PlaylistsPage() {
                 key={playlist.id}
                 onClick={() => {
                   setSelectedPlaylistId(playlist.id);
+                  setIsEditing(false);
                 }}
               >
                 <strong>{playlist.name}</strong>
@@ -169,20 +250,97 @@ function PlaylistsPage() {
             className="playlist-section"
             aria-labelledby="playlist-tracks-title"
           >
-            <h2 id="playlist-tracks-title">
-              Tracks in {selectedPlaylist.name}
-            </h2>
+            <div className="playlist-heading">
+              <h2 id="playlist-tracks-title">
+                Tracks in {selectedPlaylist.name}
+              </h2>
 
-            <div className="track-list">
-              {playlistTracks.map((track) => (
-                <TrackCard
-                  key={track.id}
-                  track={track}
-                  isSelected={selectedTrack?.id === track.id}
-                  onPlay={setSelectedTrack}
-                />
-              ))}
+              <div className="playlist-heading-actions">
+                <button
+                  type="button"
+                  className="edit-playlist-button"
+                  onClick={handleStartEditing}
+                >
+                  Edit playlist
+                </button>
+
+                <button
+                  type="button"
+                  className="delete-playlist-button"
+                  onClick={handleDeletePlaylist}
+                >
+                  Delete playlist
+                </button>
+              </div>
             </div>
+
+            {isEditing && (
+              <form
+                className="edit-playlist-form"
+                onSubmit={handleUpdateSubmit}
+              >
+                <label>
+                  Name
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(event) => setEditName(event.target.value)}
+                    required
+                  />
+                </label>
+
+                <label>
+                  Description
+                  <input
+                    type="text"
+                    value={editDescription}
+                    onChange={(event) => setEditDescription(event.target.value)}
+                  />
+                </label>
+
+                <div className="edit-playlist-actions">
+                  <button
+                    type="button"
+                    className="cancel-edit-button"
+                    onClick={() => setIsEditing(false)}
+                  >
+                    Cancel
+                  </button>
+
+                  <button type="submit" disabled={editName.trim() === ""}>
+                    Save changes
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {playlistTracks.length === 0 ? (
+              <p className="empty-playlist-message">
+                This playlist does not contain any tracks yet.
+              </p>
+            ) : (
+              <div className="track-list">
+                {playlistTracks.map((track) => (
+                  <div className="playlist-track" key={track.id}>
+                    <TrackCard
+                      track={track}
+                      isSelected={selectedTrack?.id === track.id}
+                      onPlay={setSelectedTrack}
+                    />
+
+                    <button
+                      type="button"
+                      className="track-action-button remove-track-button"
+                      onClick={() => handleRemoveTrack(track)}
+                      aria-label={`Remove ${track.title} from playlist`}
+                      title="Remove from playlist"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
         )}
       </main>

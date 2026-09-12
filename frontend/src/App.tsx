@@ -6,7 +6,9 @@ import RegisterPage from "./pages/RegisterPage";
 import CatalogPage from "./pages/CatalogPage";
 import PlaylistsPage from "./pages/PlaylistsPage";
 
+import { mockPlaylists } from "./data/playlists";
 import type { AuthenticatedUser } from "./types/auth";
+import type { Playlist } from "./types/music";
 
 import "./App.css";
 
@@ -23,6 +25,8 @@ function App() {
 
   const [privatePage, setPrivatePage] = useState<PrivatePage>("profile");
 
+  const [playlists, setPlaylists] = useState<Playlist[]>(mockPlaylists);
+
   function handleLoginSuccess(user: AuthenticatedUser) {
     setCurrentUser(user);
     setPrivatePage("profile");
@@ -32,6 +36,62 @@ function App() {
     setCurrentUser(null);
     setCurrentPage("login");
     setPrivatePage("profile");
+  }
+
+  function handleCreatePlaylist(playlist: Playlist) {
+    setPlaylists((currentPlaylists) => [...currentPlaylists, playlist]);
+  }
+
+  function handleAddTrackToPlaylist(playlistId: string, trackId: string) {
+    setPlaylists((currentPlaylists) =>
+      currentPlaylists.map((playlist) => {
+        if (playlist.id !== playlistId) {
+          return playlist;
+        }
+
+        if (playlist.trackIds.includes(trackId)) {
+          return playlist;
+        }
+
+        return {
+          ...playlist,
+          trackIds: [...playlist.trackIds, trackId],
+        };
+      }),
+    );
+  }
+
+  function handleRemoveTrackFromPlaylist(playlistId: string, trackId: string) {
+    setPlaylists((currentPlaylists) =>
+      currentPlaylists.map((playlist) =>
+        playlist.id === playlistId
+          ? {
+              ...playlist,
+              trackIds: playlist.trackIds.filter((id) => id !== trackId),
+            }
+          : playlist,
+      ),
+    );
+  }
+
+  function handleDeletePlaylist(playlistId: string) {
+    setPlaylists((currentPlaylists) =>
+      currentPlaylists.filter((playlist) => playlist.id !== playlistId),
+    );
+  }
+
+  function handleUpdatePlaylist(
+    playlistId: string,
+    name: string,
+    description: string,
+  ) {
+    setPlaylists((currentPlaylists) =>
+      currentPlaylists.map((playlist) =>
+        playlist.id === playlistId
+          ? { ...playlist, name, description }
+          : playlist,
+      ),
+    );
   }
 
   if (currentUser !== null) {
@@ -100,9 +160,22 @@ function App() {
 
         {privatePage === "profile" && <ProfilePage user={currentUser} />}
 
-        {privatePage === "catalog" && <CatalogPage />}
+        {privatePage === "catalog" && (
+          <CatalogPage
+            playlists={playlists}
+            onAddTrackToPlaylist={handleAddTrackToPlaylist}
+          />
+        )}
 
-        {privatePage === "playlists" && <PlaylistsPage />}
+        {privatePage === "playlists" && (
+          <PlaylistsPage
+            playlists={playlists}
+            onCreatePlaylist={handleCreatePlaylist}
+            onRemoveTrack={handleRemoveTrackFromPlaylist}
+            onDeletePlaylist={handleDeletePlaylist}
+            onUpdatePlaylist={handleUpdatePlaylist}
+          />
+        )}
       </>
     );
   }
