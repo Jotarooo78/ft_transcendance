@@ -23,8 +23,9 @@ Depuis la racine du dépôt :
 cp .env.example .env
 ```
 
-Dans `.env`, remplacer ensuite les deux occurrences de `change_me` par le même mot de
-passe local :
+Dans `.env`, remplacer toutes les occurrences de `change_me` par les valeurs
+locales correspondantes. Tant que les rôles PostgreSQL dédiés ne sont pas créés,
+les URLs de développement peuvent réutiliser le même compte local :
 
 ```dotenv
 DB_USER=transcendence
@@ -32,6 +33,12 @@ DB_PASSWORD=mon_mot_de_passe_local
 DB_NAME=transcendence
 DATABASE_URL=postgresql://transcendence:mon_mot_de_passe_local@db:5432/transcendence?schema=public
 ```
+
+Les variables `<SERVICE>_DATABASE_URL` sont consommées par les clients au
+runtime. Les variables `<SERVICE>_MIGRATION_DATABASE_URL` sont réservées à la
+CLI Prisma et devront utiliser des rôles plus puissants mais non exposés aux
+serveurs HTTP. La liste complète et les commandes sont documentées dans
+[services/PRISMA.md](services/PRISMA.md).
 
 Le `.env` est ignoré par Git. `.env.example` reste dans Git et ne doit contenir aucun
 vrai mot de passe.

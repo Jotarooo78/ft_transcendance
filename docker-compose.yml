@@ -54,6 +54,62 @@ services:
       - ft_network
     restart: unless-stopped
 
+  catalog-service:
+    build: ./services/catalog-service
+    container_name: ft_catalog_service
+    expose:
+      - "4002"
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - ft_network
+    restart: unless-stopped
+
+  media-service:
+    build: ./services/media-service
+    container_name: ft_media_service
+    expose:
+      - "4003"
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - ft_network
+    restart: unless-stopped
+
+  library-service:
+    build: ./services/library-service
+    container_name: ft_library_service
+    expose:
+      - "4004"
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - ft_network
+    restart: unless-stopped
+
+  playback-service:
+    build: ./services/playback-service
+    container_name: ft_playback_service
+    expose:
+      - "4005"
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - ft_network
+    restart: unless-stopped
+
   prometheus:
     image: docker.io/prom/prometheus:v2.55.1
     container_name: ft_prometheus

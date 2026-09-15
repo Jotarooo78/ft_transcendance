@@ -1,0 +1,13 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["library"]
+}
+
+// The Library models will be added by the dedicated M1 modeling action.

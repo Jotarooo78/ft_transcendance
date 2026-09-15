@@ -1,9 +1,19 @@
 .env
 node_modules/
 
-# User Service
+# Generated Prisma clients and TypeScript builds
+services/auth-service/src/generated/prisma/
+services/auth-service/dist/
 services/user-service/src/generated/prisma/
 services/user-service/dist/
+services/catalog-service/src/generated/prisma/
+services/catalog-service/dist/
+services/media-service/src/generated/prisma/
+services/media-service/dist/
+services/library-service/src/generated/prisma/
+services/library-service/dist/
+services/playback-service/src/generated/prisma/
+services/playback-service/dist/
 
 # Tiphaine
 tiphaine/

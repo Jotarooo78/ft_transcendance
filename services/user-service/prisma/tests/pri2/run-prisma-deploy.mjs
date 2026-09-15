@@ -8,17 +8,26 @@ if (!testDatabase?.startsWith("transcendence_pri2_test_")) {
   );
 }
 
-const databaseUrl = new URL(process.env.DATABASE_URL);
+const sourceDatabaseUrl =
+  process.env.USER_MIGRATION_DATABASE_URL ??
+  process.env.MIGRATION_DATABASE_URL ??
+  process.env.DATABASE_URL;
+
+if (!sourceDatabaseUrl) {
+  throw new Error("A migration database URL is required");
+}
+
+const databaseUrl = new URL(sourceDatabaseUrl);
 databaseUrl.pathname = `/${testDatabase}`;
 
 const result = spawnSync(
   "/app/node_modules/.bin/prisma",
-  ["migrate", "deploy", "--config", "prisma7.config.ts"],
+  ["migrate", "deploy", "--config", "prisma.migration.config.ts"],
   {
     stdio: "inherit",
     env: {
       ...process.env,
-      DATABASE_URL: databaseUrl.toString(),
+      USER_MIGRATION_DATABASE_URL: databaseUrl.toString(),
     },
   },
 );

@@ -6,6 +6,27 @@ Avant de démarrer les conteneurs, créer le fichier `.env` local à partir de
 `.env.example`. La procédure complète et le rôle des variables sont décrits dans
 [ENVIRONMENT.md](ENVIRONMENT.md).
 
+## Services backend M1
+
+Chaque domaine propriétaire est déployé dans son propre conteneur :
+
+| Service | Port interne | Responsabilité |
+| --- | --- | --- |
+| `auth-service` | 4000 | Identité et authentification |
+| `user-service` | 4001 | Profils utilisateurs |
+| `catalog-service` | 4002 | Artistes, morceaux, crédits et sorties |
+| `media-service` | 4003 | Upload, validation et stockage des médias |
+| `library-service` | 4004 | Playlists, occurrences et favoris |
+| `playback-service` | 4005 | Sessions et progression d'écoute |
+
+Les clients et commandes Prisma sont documentés dans
+[services/PRISMA.md](services/PRISMA.md). Les modèles M1 ne sont pas encore
+figés : les nouveaux schémas Prisma matérialisent seulement leurs frontières de
+propriété.
+
+Le rôle de chaque fichier présent dans ces dossiers est résumé dans
+[docs/STRUCTURE_SERVICES.md](docs/STRUCTURE_SERVICES.md).
+
 ## 📝 Repartition des modules
 
 ### Tiphaine

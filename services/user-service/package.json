@@ -9,11 +9,14 @@
   "scripts": {
     "start": "node index.js",
     "dev": "tsx watch src/index.ts",
+    "prebuild": "npm run prisma:generate",
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
+    "typecheck": "npm run prisma:generate && tsc --noEmit",
+    "prisma:validate": "prisma validate --schema prisma/schema.prisma",
+    "prisma:generate": "prisma generate --schema prisma/schema.prisma",
+    "prisma:migrate:dev": "prisma migrate dev --config prisma.migration.config.ts",
+    "prisma:migrate:deploy": "prisma migrate deploy --config prisma.migration.config.ts",
+    "prisma:smoke": "npm run build && node dist/database/prisma.smoke.js"
   },
   "dependencies": {
     "@fastify/jwt": "^10.2.2",
