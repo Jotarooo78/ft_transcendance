@@ -381,3 +381,39 @@ button:disabled {
     flex-direction: column;
   }
 }
+
+.catalog-search {
+  display: grid;
+  gap: 16px;
+  margin-top: 32px;
+  text-align: left;
+}
+
+.catalog-search h2 {
+  margin: 0;
+}
+
+.search-result-count {
+  margin-top: 20px;
+  text-align: left;
+}
+
+.empty-search-message {
+  margin-top: 20px;
+  padding: 24px;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
+
+.catalog-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 600px) {
+  .catalog-filters {
+    grid-template-columns: 1fr;
+  }
+}

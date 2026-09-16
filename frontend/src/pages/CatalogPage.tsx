@@ -12,10 +12,50 @@ type CatalogPageProps = {
 
 function CatalogPage({ playlists, onAddTrackToPlaylist }: CatalogPageProps) {
   const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
+
   const [selectedPlaylistId, setSelectedPlaylistId] = useState(
     playlists[0]?.id ?? "",
   );
+
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const [selectedGenre, setSelectedGenre] = useState("all");
+
+  type SortOption = "title" | "artist" | "duration";
+
+  const [sortOption, setSortOption] = useState<SortOption>("title");
+
   const [message, setMessage] = useState("");
+
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+
+  const filteredTracks = mockTracks.filter((track) => {
+    const matchesSearch =
+      normalizedQuery === "" ||
+      track.title.toLowerCase().includes(normalizedQuery) ||
+      track.artistName.toLowerCase().includes(normalizedQuery) ||
+      track.albumTitle.toLowerCase().includes(normalizedQuery) ||
+      track.genre.toLowerCase().includes(normalizedQuery);
+
+    const matchesGenre =
+      selectedGenre === "all" || track.genre === selectedGenre;
+
+    return matchesSearch && matchesGenre;
+  });
+
+  const sortedTracks = [...filteredTracks].sort((firstTrack, secondTrack) => {
+    if (sortOption === "artist") {
+      return firstTrack.artistName.localeCompare(secondTrack.artistName);
+    }
+
+    if (sortOption === "duration") {
+      return firstTrack.durationSeconds - secondTrack.durationSeconds;
+    }
+
+    return firstTrack.title.localeCompare(secondTrack.title);
+  });
+
+  const genres = [...new Set(mockTracks.map((track) => track.genre))];
 
   function handlePlay(track: Track) {
     setSelectedTrack(track);
@@ -55,6 +95,62 @@ function CatalogPage({ playlists, onAddTrackToPlaylist }: CatalogPageProps) {
           <p>Explore independent tracks published by our community.</p>
         </header>
 
+        <section
+          className="catalog-search"
+          aria-labelledby="catalog-search-title"
+        >
+          <h2 id="catalog-search-title">Search</h2>
+
+          <label htmlFor="track-search">
+            Search by title, artist, album or genre
+            <input
+              id="track-search"
+              type="search"
+              value={searchQuery}
+              onChange={(event) => {
+                setSearchQuery(event.target.value);
+              }}
+              placeholder="Example: Aya"
+            />
+          </label>
+
+          <div className="catalog-filters">
+            <label htmlFor="genre-filter">
+              Genre
+              <select
+                id="genre-filter"
+                value={selectedGenre}
+                onChange={(event) => {
+                  setSelectedGenre(event.target.value);
+                }}
+              >
+                <option value="all">All genres</option>
+
+                {genres.map((genre) => (
+                  <option key={genre} value={genre}>
+                    {genre}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label htmlFor="sort-option">
+              Sort by
+              <select
+                id="sort-option"
+                value={sortOption}
+                onChange={(event) => {
+                  setSortOption(event.target.value as SortOption);
+                }}
+              >
+                <option value="title">Title</option>
+                <option value="artist">Artist</option>
+                <option value="duration">Duration</option>
+              </select>
+            </label>
+          </div>
+        </section>
+
         <section className="catalog-section" aria-labelledby="catalog-title">
           <h2 id="catalog-title">Available tracks</h2>
 
@@ -89,28 +185,36 @@ function CatalogPage({ playlists, onAddTrackToPlaylist }: CatalogPageProps) {
             )}
           </div>
 
-          <div className="track-list">
-            {mockTracks.map((track) => (
-              <div className="catalog-track" key={track.id}>
-                <TrackCard
-                  track={track}
-                  isSelected={selectedTrack?.id === track.id}
-                  onPlay={handlePlay}
-                />
+          <p className="search-result-count" aria-live="polite">
+            {sortedTracks.length} track(s) found
+          </p>
 
-                <button
-                  type="button"
-                  className="track-action-button add-track-button"
-                  onClick={() => handleAddToPlaylist(track)}
-                  disabled={playlists.length === 0}
-                  aria-label={`Add ${track.title} to playlist`}
-                  title="Add to playlist"
-                >
-                  +
-                </button>
-              </div>
-            ))}
-          </div>
+          {sortedTracks.length === 0 ? (
+            <p className="empty-search-message">No tracks match your search.</p>
+          ) : (
+            <div className="track-list">
+              {sortedTracks.map((track) => (
+                <div className="catalog-track" key={track.id}>
+                  <TrackCard
+                    track={track}
+                    isSelected={selectedTrack?.id === track.id}
+                    onPlay={handlePlay}
+                  />
+
+                  <button
+                    type="button"
+                    className="track-action-button add-track-button"
+                    onClick={() => handleAddToPlaylist(track)}
+                    disabled={playlists.length === 0}
+                    aria-label={`Add ${track.title} to playlist`}
+                    title="Add to playlist"
+                  >
+                    +
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       </main>
 
