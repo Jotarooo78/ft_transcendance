@@ -5,7 +5,11 @@ import EditProfileForm from "../components/EditProfileForm";
 
 type ProfilePageProps = {
   user: AuthenticatedUser;
-  onUpdateProfile: (username: string, bio: string) => void;
+  onUpdateProfile: (
+    username: string,
+    bio: string,
+    avatarFile: File | null,
+  ) => void;
 };
 
 function ProfilePage({ user, onUpdateProfile }: ProfilePageProps) {
@@ -17,8 +21,9 @@ function ProfilePage({ user, onUpdateProfile }: ProfilePageProps) {
 
   const [isEditing, setIsEditing] = useState(false);
 
-  function handleSave(username: string, bio: string) {
-    onUpdateProfile(username, bio);
+  function handleSave(username: string, bio: string, avatarFile: File | null) {
+    onUpdateProfile(username, bio, avatarFile);
+
     setIsEditing(false);
   }
 

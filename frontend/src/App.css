@@ -484,3 +484,21 @@ button:disabled {
   border: 3px solid var(--accent-border);
   border-radius: 50%;
 }
+
+.avatar-editor {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.avatar-editor label {
+  width: 100%;
+}
+
+.field-help {
+  font-size: 0.875rem;
+  text-align: center;
+}

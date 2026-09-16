@@ -98,16 +98,31 @@ function App() {
     );
   }
 
-  function handleUpdateProfile(username: string, bio: string) {
+  function handleUpdateProfile(
+    username: string,
+    bio: string,
+    avatarFile: File | null,
+  ) {
     setCurrentUser((currentUser) => {
       if (currentUser === null) {
         return null;
+      }
+
+      let avatarUrl = currentUser.avatarUrl;
+
+      if (avatarFile !== null) {
+        if (avatarUrl?.startsWith("blob:")) {
+          URL.revokeObjectURL(avatarUrl);
+        }
+
+        avatarUrl = URL.createObjectURL(avatarFile);
       }
 
       return {
         ...currentUser,
         username,
         bio,
+        avatarUrl,
       };
     });
   }

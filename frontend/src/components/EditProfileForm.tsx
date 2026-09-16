@@ -1,10 +1,10 @@
-import { useState, type SubmitEvent } from "react";
+import { useState, type ChangeEvent, type SubmitEvent } from "react";
 
 import type { AuthenticatedUser } from "../types/auth";
 
 type EditProfileFormProps = {
   user: AuthenticatedUser;
-  onSave: (username: string, bio: string) => void;
+  onSave: (username: string, bio: string, avatarSource: File | null) => void;
   onCancel: () => void;
 };
 
@@ -17,6 +17,51 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
   const [bio, setBio] = useState(user.bio);
 
   const [errorMessage, setErrorMessage] = useState("");
+
+  const defaultAvatarUrl = "/images/default-avatar.svg";
+
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState(
+    user.avatarUrl ?? defaultAvatarUrl,
+  );
+
+  function handleAvatarChange(event: ChangeEvent<HTMLInputElement>) {
+    setErrorMessage("");
+
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    const allowedTypes = ["image/png", "image/jpeg", "image/webp"];
+
+    if (!allowedTypes.includes(file.type)) {
+      setErrorMessage("Avatar must be a PNG, JPEG or WebP image.");
+
+      event.target.value = "";
+      return;
+    }
+
+    const maximumSize = 2 * 1024 * 1024;
+
+    if (file.size > maximumSize) {
+      setErrorMessage("Avatar must not exceed 2 MB.");
+
+      event.target.value = "";
+      return;
+    }
+
+    if (avatarPreviewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(avatarPreviewUrl);
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+
+    setAvatarFile(file);
+    setAvatarPreviewUrl(previewUrl);
+  }
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -41,11 +86,30 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
       return;
     }
 
-    onSave(trimmedUsername, trimmedBio);
+    onSave(trimmedUsername, trimmedBio, avatarFile);
   }
 
   return (
     <form className="edit-profile-form" onSubmit={handleSubmit}>
+      <div className="avatar-editor">
+        <img
+          className="profile-avatar"
+          src={avatarPreviewUrl}
+          alt="Avatar preview"
+        />
+
+        <label htmlFor="profile-avatar">
+          Choose an avatar
+          <input
+            id="profile-avatar"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            onChange={handleAvatarChange}
+          />
+        </label>
+
+        <p className="field-help">PNG, JPEG or WebP. Maximum size: 2 MB.</p>
+      </div>
       <label htmlFor="profile-username">
         Username
         <input
