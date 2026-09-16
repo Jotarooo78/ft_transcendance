@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import LoginPage from "./pages/LoginPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -6,9 +6,9 @@ import RegisterPage from "./pages/RegisterPage";
 import CatalogPage from "./pages/CatalogPage";
 import PlaylistsPage from "./pages/PlaylistsPage";
 
-import { mockPlaylists } from "./data/playlists";
 import type { AuthenticatedUser } from "./types/auth";
 import type { Playlist } from "./types/music";
+import { loadPlaylists, savePlaylists } from "./storage/playlistsStorage";
 
 import "./App.css";
 
@@ -25,7 +25,11 @@ function App() {
 
   const [privatePage, setPrivatePage] = useState<PrivatePage>("profile");
 
-  const [playlists, setPlaylists] = useState<Playlist[]>(mockPlaylists);
+  const [playlists, setPlaylists] = useState<Playlist[]>(loadPlaylists);
+
+  useEffect(() => {
+    savePlaylists(playlists);
+  }, [playlists]);
 
   function handleLoginSuccess(user: AuthenticatedUser) {
     setCurrentUser(user);
