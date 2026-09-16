@@ -9,6 +9,8 @@ const mockUser: AuthenticatedUser = {
   id: "mock-user-1",
   username: "test",
   email: "test@test.fr",
+  bio: "",
+  avatarUrl: null,
   createdAt: "2026-09-01T10:00:00.000Z",
 };
 

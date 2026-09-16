@@ -98,6 +98,20 @@ function App() {
     );
   }
 
+  function handleUpdateProfile(username: string, bio: string) {
+    setCurrentUser((currentUser) => {
+      if (currentUser === null) {
+        return null;
+      }
+
+      return {
+        ...currentUser,
+        username,
+        bio,
+      };
+    });
+  }
+
   if (currentUser !== null) {
     return (
       <>
@@ -162,7 +176,12 @@ function App() {
           </nav>
         </header>
 
-        {privatePage === "profile" && <ProfilePage user={currentUser} />}
+        {privatePage === "profile" && (
+          <ProfilePage
+            user={currentUser}
+            onUpdateProfile={handleUpdateProfile}
+          />
+        )}
 
         {privatePage === "catalog" && (
           <CatalogPage

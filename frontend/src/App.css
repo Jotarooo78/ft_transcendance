@@ -435,3 +435,52 @@ button:disabled {
     flex-wrap: wrap;
   }
 }
+
+.edit-profile-form textarea {
+  padding: 12px;
+  font: inherit;
+  resize: vertical;
+}
+
+.character-count {
+  text-align: right;
+  font-size: 0.875rem;
+}
+
+.edit-profile-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.cancel-edit-button {
+  color: var(--text-h);
+  background: transparent;
+  border: 1px solid var(--border);
+}
+
+.profile-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.profile-heading h2 {
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .profile-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+.profile-avatar {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border: 3px solid var(--accent-border);
+  border-radius: 50%;
+}

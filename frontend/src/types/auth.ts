@@ -19,5 +19,7 @@ export type AuthenticatedUser = {
   id: string;
   username: string;
   email: string;
+  bio: string;
+  avatarUrl: string | null;
   createdAt: string;
 };
