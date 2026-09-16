@@ -417,3 +417,21 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.pagination span {
+  color: var(--text-h);
+}
+
+@media (max-width: 600px) {
+  .pagination {
+    flex-wrap: wrap;
+  }
+}

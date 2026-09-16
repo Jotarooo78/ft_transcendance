@@ -10,7 +10,11 @@ type CatalogPageProps = {
   onAddTrackToPlaylist: (playlistId: string, trackId: string) => void;
 };
 
+const TRACKS_PER_PAGE = 2;
+
 function CatalogPage({ playlists, onAddTrackToPlaylist }: CatalogPageProps) {
+  const [currentPage, setCurrentPage] = useState(1);
+
   const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
 
   const [selectedPlaylistId, setSelectedPlaylistId] = useState(
@@ -56,6 +60,15 @@ function CatalogPage({ playlists, onAddTrackToPlaylist }: CatalogPageProps) {
   });
 
   const genres = [...new Set(mockTracks.map((track) => track.genre))];
+
+  const totalPages = Math.ceil(sortedTracks.length / TRACKS_PER_PAGE);
+
+  const firstTrackIndex = (currentPage - 1) * TRACKS_PER_PAGE;
+
+  const paginatedTracks = sortedTracks.slice(
+    firstTrackIndex,
+    firstTrackIndex + TRACKS_PER_PAGE,
+  );
 
   function handlePlay(track: Track) {
     setSelectedTrack(track);
@@ -109,6 +122,7 @@ function CatalogPage({ playlists, onAddTrackToPlaylist }: CatalogPageProps) {
               value={searchQuery}
               onChange={(event) => {
                 setSearchQuery(event.target.value);
+                setCurrentPage(1);
               }}
               placeholder="Example: Aya"
             />
@@ -122,6 +136,7 @@ function CatalogPage({ playlists, onAddTrackToPlaylist }: CatalogPageProps) {
                 value={selectedGenre}
                 onChange={(event) => {
                   setSelectedGenre(event.target.value);
+                  setCurrentPage(1);
                 }}
               >
                 <option value="all">All genres</option>
@@ -192,28 +207,58 @@ function CatalogPage({ playlists, onAddTrackToPlaylist }: CatalogPageProps) {
           {sortedTracks.length === 0 ? (
             <p className="empty-search-message">No tracks match your search.</p>
           ) : (
-            <div className="track-list">
-              {sortedTracks.map((track) => (
-                <div className="catalog-track" key={track.id}>
-                  <TrackCard
-                    track={track}
-                    isSelected={selectedTrack?.id === track.id}
-                    onPlay={handlePlay}
-                  />
+            <>
+              <div className="track-list">
+                {paginatedTracks.map((track) => (
+                  <div className="catalog-track" key={track.id}>
+                    <TrackCard
+                      track={track}
+                      isSelected={selectedTrack?.id === track.id}
+                      onPlay={handlePlay}
+                    />
+
+                    <button
+                      type="button"
+                      className="track-action-button add-track-button"
+                      onClick={() => handleAddToPlaylist(track)}
+                      disabled={playlists.length === 0}
+                      aria-label={`Add ${track.title} to playlist`}
+                      title="Add to playlist"
+                    >
+                      +
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <nav className="pagination" aria-label="Catalog pagination">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCurrentPage((page) => page - 1);
+                    }}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </button>
+
+                  <span aria-live="polite">
+                    Page {currentPage} of {totalPages}
+                  </span>
 
                   <button
                     type="button"
-                    className="track-action-button add-track-button"
-                    onClick={() => handleAddToPlaylist(track)}
-                    disabled={playlists.length === 0}
-                    aria-label={`Add ${track.title} to playlist`}
-                    title="Add to playlist"
+                    onClick={() => {
+                      setCurrentPage((page) => page + 1);
+                    }}
+                    disabled={currentPage === totalPages}
                   >
-                    +
+                    Next
                   </button>
-                </div>
-              ))}
-            </div>
+                </nav>
+              )}
+            </>
           )}
         </section>
       </main>
