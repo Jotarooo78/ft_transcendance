@@ -23,3 +23,11 @@ export type AuthenticatedUser = {
   avatarUrl: string | null;
   createdAt: string;
 };
+
+export type PublicUser = {
+  id: string;
+  username: string;
+  bio: string;
+  avatarUrl: string | null;
+  isOnline: boolean;
+};

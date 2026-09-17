@@ -502,3 +502,74 @@ button:disabled {
   font-size: 0.875rem;
   text-align: center;
 }
+
+.users-page {
+  width: min(900px, calc(100% - 32px));
+  box-sizing: border-box;
+}
+
+.users-section {
+  margin-top: 32px;
+  text-align: left;
+}
+
+.user-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.user-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.user-card-avatar {
+  width: 64px;
+  height: 64px;
+  flex: 0 0 auto;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.user-card-information {
+  display: grid;
+  gap: 8px;
+}
+
+.user-card-information h2 {
+  margin: 0;
+}
+
+.user-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.user-status.online .status-indicator {
+  background: #16a34a;
+}
+
+.user-status.offline .status-indicator {
+  background: #6b7280;
+}
+
+.empty-users-message {
+  margin-top: 20px;
+  padding: 24px;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
