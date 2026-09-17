@@ -5,7 +5,9 @@ import ProfilePage from "./pages/ProfilePage";
 import RegisterPage from "./pages/RegisterPage";
 import CatalogPage from "./pages/CatalogPage";
 import PlaylistsPage from "./pages/PlaylistsPage";
+import UsersPage from "./pages/UsersPage";
 
+import { mockUsers } from "./data/users";
 import type { AuthenticatedUser } from "./types/auth";
 import type { Playlist } from "./types/music";
 import { loadPlaylists, savePlaylists } from "./storage/playlistsStorage";
@@ -14,7 +16,7 @@ import "./App.css";
 
 type PublicPage = "register" | "login";
 
-type PrivatePage = "profile" | "catalog" | "playlists";
+type PrivatePage = "profile" | "catalog" | "playlists" | "users";
 
 function App() {
   const [currentPage, setCurrentPage] = useState<PublicPage>("register");
@@ -179,6 +181,21 @@ function App() {
               Playlists
             </button>
 
+            <button
+              type="button"
+              className={
+                privatePage === "users"
+                  ? "navigation-button active"
+                  : "navigation-button"
+              }
+              aria-pressed={privatePage === "users"}
+              onClick={() => {
+                setPrivatePage("users");
+              }}
+            >
+              Users
+            </button>
+
             <span>Connected as {currentUser.username}</span>
 
             <button
@@ -214,6 +231,8 @@ function App() {
             onUpdatePlaylist={handleUpdatePlaylist}
           />
         )}
+
+        {privatePage === "users" && <UsersPage users={mockUsers} />}
       </>
     );
   }
