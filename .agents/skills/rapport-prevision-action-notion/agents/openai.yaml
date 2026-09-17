@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rapport de prévision d’action"
+  short_description: "Préparer une action avant son exécution"
+  default_prompt: "Utilise $rapport-prevision-action-notion pour expliquer et documenter cette action avant de l'exécuter."

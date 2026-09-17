@@ -7,7 +7,7 @@
     "node": "22.x"
   },
   "scripts": {
-    "start": "node index.js",
+    "start": "node dist/index.js",
     "prebuild": "npm run prisma:generate",
     "build": "tsc -p tsconfig.json",
     "typecheck": "npm run prisma:generate && tsc --noEmit",
@@ -19,7 +19,6 @@
   },
   "dependencies": {
     "@fastify/jwt": "^10.2.2",
-    "@fastify/postgres": "^6.1.0",
     "@fastify/rate-limit": "^11.2.0",
     "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",

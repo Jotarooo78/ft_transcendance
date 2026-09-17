@@ -19,3 +19,7 @@ services/playback-service/dist/
 tiphaine/
 frontend/public/audio
 .vscode/
+
+# Local Codex instructions and personal workflow skills
+/AGENTS.md
+/.agents/skills/rapports-pedagogiques-notion/
