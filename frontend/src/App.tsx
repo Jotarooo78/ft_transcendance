@@ -31,6 +31,8 @@ function App() {
 
   const [friendIds, setFriendIds] = useState<string[]>([]);
 
+  const friends = mockUsers.filter((user) => friendIds.includes(user.id));
+
   useEffect(() => {
     savePlaylists(playlists);
   }, [playlists]);
@@ -229,7 +231,9 @@ function App() {
         {privatePage === "profile" && (
           <ProfilePage
             user={currentUser}
+            friends={friends}
             onUpdateProfile={handleUpdateProfile}
+            onRemoveFriend={handleRemoveFriend}
           />
         )}
 

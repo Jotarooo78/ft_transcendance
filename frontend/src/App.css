@@ -583,3 +583,60 @@ button:disabled {
   background: transparent;
   border: 1px solid currentColor;
 }
+
+.friends-section {
+  margin-top: 32px;
+  text-align: left;
+}
+
+.friends-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.friends-heading h2 {
+  margin: 0;
+}
+
+.friend-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.friend-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.friend-avatar {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.friend-information {
+  display: grid;
+  gap: 6px;
+}
+
+.friend-information h3 {
+  margin: 0;
+  color: var(--text-h);
+}
+
+.empty-friends-message {
+  margin-top: 20px;
+  padding: 24px;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
