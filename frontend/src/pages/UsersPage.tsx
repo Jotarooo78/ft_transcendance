@@ -3,9 +3,17 @@ import type { PublicUser } from "../types/auth";
 
 type UsersPageProps = {
   users: PublicUser[];
+  friendIds: string[];
+  onAddFriend: (userId: string) => void;
+  onRemoveFriend: (userId: string) => void;
 };
 
-function UsersPage({ users }: UsersPageProps) {
+function UsersPage({
+  users,
+  friendIds,
+  onAddFriend,
+  onRemoveFriend,
+}: UsersPageProps) {
   return (
     <main className="users-page">
       <header>
@@ -23,9 +31,19 @@ function UsersPage({ users }: UsersPageProps) {
           <p className="empty-users-message">No users are available.</p>
         ) : (
           <div className="user-list">
-            {users.map((user) => (
-              <UserCard key={user.id} user={user} />
-            ))}
+            {users.map((user) => {
+              const isFriend = friendIds.includes(user.id);
+
+              return (
+                <UserCard
+                  key={user.id}
+                  user={user}
+                  isFriend={isFriend}
+                  onAddFriend={onAddFriend}
+                  onRemoveFriend={onRemoveFriend}
+                />
+              );
+            })}
           </div>
         )}
       </section>

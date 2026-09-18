@@ -29,6 +29,8 @@ function App() {
 
   const [playlists, setPlaylists] = useState<Playlist[]>(loadPlaylists);
 
+  const [friendIds, setFriendIds] = useState<string[]>([]);
+
   useEffect(() => {
     savePlaylists(playlists);
   }, [playlists]);
@@ -127,6 +129,22 @@ function App() {
         avatarUrl,
       };
     });
+  }
+
+  function handleAddFriend(userId: string) {
+    setFriendIds((currentFriendIds) => {
+      if (currentFriendIds.includes(userId)) {
+        return currentFriendIds;
+      }
+
+      return [...currentFriendIds, userId];
+    });
+  }
+
+  function handleRemoveFriend(userId: string) {
+    setFriendIds((currentFriendIds) =>
+      currentFriendIds.filter((friendId) => friendId !== userId),
+    );
   }
 
   if (currentUser !== null) {
@@ -232,7 +250,14 @@ function App() {
           />
         )}
 
-        {privatePage === "users" && <UsersPage users={mockUsers} />}
+        {privatePage === "users" && (
+          <UsersPage
+            users={mockUsers}
+            friendIds={friendIds}
+            onAddFriend={handleAddFriend}
+            onRemoveFriend={handleRemoveFriend}
+          />
+        )}
       </>
     );
   }

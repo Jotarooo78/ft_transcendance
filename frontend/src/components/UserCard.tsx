@@ -2,9 +2,17 @@ import type { PublicUser } from "../types/auth";
 
 type UserCardProps = {
   user: PublicUser;
+  isFriend: boolean;
+  onAddFriend: (userId: string) => void;
+  onRemoveFriend: (userId: string) => void;
 };
 
-function UserCard({ user }: UserCardProps) {
+function UserCard({
+  user,
+  isFriend,
+  onAddFriend,
+  onRemoveFriend,
+}: UserCardProps) {
   const avatarSource = user.avatarUrl ?? "/images/default-avatar.svg";
 
   return (
@@ -29,6 +37,22 @@ function UserCard({ user }: UserCardProps) {
 
           {user.isOnline ? "Online" : "Offline"}
         </span>
+
+        <button
+          type="button"
+          className={
+            isFriend ? "friend-button remove-friend-button" : "friend-button"
+          }
+          onClick={() => {
+            if (isFriend) {
+              onRemoveFriend(user.id);
+            } else {
+              onAddFriend(user.id);
+            }
+          }}
+        >
+          {isFriend ? "Remove friend" : "Add friend"}
+        </button>
       </div>
     </article>
   );

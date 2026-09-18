@@ -573,3 +573,13 @@ button:disabled {
   border: 1px dashed var(--border);
   border-radius: 12px;
 }
+
+.friend-button {
+  margin-top: 8px;
+}
+
+.remove-friend-button {
+  color: #8b0000;
+  background: transparent;
+  border: 1px solid currentColor;
+}
