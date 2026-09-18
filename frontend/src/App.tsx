@@ -11,6 +11,7 @@ import { mockUsers } from "./data/users";
 import type { AuthenticatedUser } from "./types/auth";
 import type { Playlist } from "./types/music";
 import { loadPlaylists, savePlaylists } from "./storage/playlistsStorage";
+import { loadFriendIds, saveFriendIds } from "./storage/friendsStorage";
 
 import "./App.css";
 
@@ -29,13 +30,17 @@ function App() {
 
   const [playlists, setPlaylists] = useState<Playlist[]>(loadPlaylists);
 
-  const [friendIds, setFriendIds] = useState<string[]>([]);
+  const [friendIds, setFriendIds] = useState<string[]>(loadFriendIds);
 
   const friends = mockUsers.filter((user) => friendIds.includes(user.id));
 
   useEffect(() => {
     savePlaylists(playlists);
   }, [playlists]);
+
+  useEffect(() => {
+    saveFriendIds(friendIds);
+  }, [friendIds]);
 
   function handleLoginSuccess(user: AuthenticatedUser) {
     setCurrentUser(user);
