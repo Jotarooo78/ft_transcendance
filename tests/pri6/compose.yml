@@ -1,0 +1,104 @@
+services:
+  db:
+    image: docker.io/library/postgres:16-alpine
+    environment:
+      POSTGRES_USER: pri6
+      POSTGRES_PASSWORD: pri6_test_only
+      POSTGRES_DB: transcendence_pri6
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pri6 -d transcendence_pri6"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - pri6_db_data:/var/lib/postgresql/data
+
+  migrate-users:
+    build:
+      context: ../../services/user-service
+      target: build
+    environment:
+      USER_MIGRATION_DATABASE_URL: postgresql://pri6:pri6_test_only@db:5432/transcendence_pri6?schema=public
+    command: ["npm", "run", "prisma:migrate:deploy"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  migrate-auth:
+    build:
+      context: ../../services/auth-service
+      target: build
+    environment:
+      AUTH_MIGRATION_DATABASE_URL: postgresql://pri6:pri6_test_only@db:5432/transcendence_pri6?schema=auth
+    command: ["npm", "run", "prisma:migrate:deploy"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  user-service:
+    build:
+      context: ../../services/user-service
+    environment:
+      JWT_SECRET: pri6_test_jwt_secret_with_sufficient_length
+      INTERNAL_SERVICE_TOKEN: pri6_test_internal_service_token_with_sufficient_length
+      USER_DATABASE_URL: postgresql://pri6:pri6_test_only@db:5432/transcendence_pri6?schema=users
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4001/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    depends_on:
+      db:
+        condition: service_healthy
+
+  auth-service:
+    build:
+      context: ../../services/auth-service
+    environment:
+      JWT_SECRET: pri6_test_jwt_secret_with_sufficient_length
+      INTERNAL_SERVICE_TOKEN: pri6_test_internal_service_token_with_sufficient_length
+      USER_SERVICE_URL: http://user-service:4001
+      AUTH_DATABASE_URL: postgresql://pri6:pri6_test_only@db:5432/transcendence_pri6?schema=auth
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4000/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    depends_on:
+      db:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+
+  scenario:
+    image: docker.io/library/node:22-alpine
+    working_dir: /scenario
+    environment:
+      AUTH_URL: http://auth-service:4000
+      USER_URL: http://user-service:4001
+      PRI6_EMAIL: pri6@example.invalid
+      PRI6_PASSWORD: pri6-password-42
+      PRI6_USERNAME: pri6_user
+      PRI6_DISPLAY_NAME: PRI-6 User
+    volumes:
+      - ./:/scenario:ro
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+
+volumes:
+  pri6_db_data:

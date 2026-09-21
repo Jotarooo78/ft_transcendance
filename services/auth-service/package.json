@@ -8,6 +8,7 @@
   },
   "scripts": {
     "start": "node dist/index.js",
+    "test": "npm run build && node --test dist/app.test.js",
     "prebuild": "npm run prisma:generate",
     "build": "tsc -p tsconfig.json",
     "typecheck": "npm run prisma:generate && tsc --noEmit",

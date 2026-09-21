@@ -3,8 +3,30 @@ import { randomUUID } from "node:crypto";
 import test from "node:test";
 
 import { buildApp, type ProfileDto, type ProfileReader } from "./app.js";
+import {
+  type ProfileProvisionCommand,
+  UsernameTakenError,
+  profileProvisionType,
+} from "./profile-provisioning.js";
 
 const jwtSecret = "test-only-user-service-secret-with-sufficient-length";
+const internalServiceToken =
+  "test-only-internal-service-token-with-sufficient-length";
+
+function createProvisionCommand(userId = randomUUID()): ProfileProvisionCommand {
+  return {
+    eventId: randomUUID(),
+    type: profileProvisionType,
+    schemaVersion: 1,
+    aggregateId: userId,
+    aggregateVersion: 1,
+    occurredAt: new Date().toISOString(),
+    data: {
+      displayName: "Léa",
+      username: "lea",
+    },
+  };
+}
 
 async function createToken(
   readProfile: ProfileReader,
@@ -155,6 +177,114 @@ test("GET /me rejects a request without a token", async () => {
     assert.equal(response.statusCode, 401);
     assert.deepEqual(response.json(), { error: "unauthorized" });
     assert.equal(readCount, 0);
+  } finally {
+    await app.close();
+  }
+});
+
+test("PUT /internal/profiles creates a profile and accepts an idempotent replay", async () => {
+  const processedEvents = new Set<string>();
+  const receivedCommands: ProfileProvisionCommand[] = [];
+  const app = buildApp({
+    internalServiceToken,
+    jwtSecret,
+    logger: false,
+    provisionProfile: async (command) => {
+      receivedCommands.push(command);
+      if (processedEvents.has(command.eventId)) {
+        return { status: "already_processed" };
+      }
+      processedEvents.add(command.eventId);
+      return { status: "created" };
+    },
+    readProfile: async () => null,
+  });
+  const command = createProvisionCommand();
+
+  try {
+    const firstResponse = await app.inject({
+      method: "PUT",
+      url: `/internal/profiles/${command.aggregateId}`,
+      headers: { authorization: `Bearer ${internalServiceToken}` },
+      payload: command,
+    });
+    const replayResponse = await app.inject({
+      method: "PUT",
+      url: `/internal/profiles/${command.aggregateId}`,
+      headers: { authorization: `Bearer ${internalServiceToken}` },
+      payload: command,
+    });
+
+    assert.equal(firstResponse.statusCode, 201);
+    assert.deepEqual(firstResponse.json(), {
+      status: "created",
+      userId: command.aggregateId,
+    });
+    assert.equal(replayResponse.statusCode, 200);
+    assert.deepEqual(replayResponse.json(), {
+      status: "already_processed",
+      userId: command.aggregateId,
+    });
+    assert.equal(receivedCommands.length, 2);
+  } finally {
+    await app.close();
+  }
+});
+
+test("PUT /internal/profiles rejects a request without the internal credential", async () => {
+  let provisionCount = 0;
+  const app = buildApp({
+    internalServiceToken,
+    jwtSecret,
+    logger: false,
+    provisionProfile: async () => {
+      provisionCount += 1;
+      return { status: "created" };
+    },
+    readProfile: async () => null,
+  });
+  const command = createProvisionCommand();
+
+  try {
+    const response = await app.inject({
+      method: "PUT",
+      url: `/internal/profiles/${command.aggregateId}`,
+      payload: command,
+    });
+
+    assert.equal(response.statusCode, 401);
+    assert.deepEqual(response.json(), { error: "unauthorized" });
+    assert.equal(provisionCount, 0);
+  } finally {
+    await app.close();
+  }
+});
+
+test("PUT /internal/profiles exposes a username conflict without retrying it", async () => {
+  const app = buildApp({
+    internalServiceToken,
+    jwtSecret,
+    logger: false,
+    provisionProfile: async () => {
+      throw new UsernameTakenError();
+    },
+    readProfile: async () => null,
+  });
+  const command = createProvisionCommand();
+
+  try {
+    const response = await app.inject({
+      method: "PUT",
+      url: `/internal/profiles/${command.aggregateId}`,
+      headers: { authorization: `Bearer ${internalServiceToken}` },
+      payload: command,
+    });
+
+    assert.equal(response.statusCode, 409);
+    assert.deepEqual(response.json(), {
+      error: "username already registered",
+      code: "USERNAME_TAKEN",
+    });
   } finally {
     await app.close();
   }

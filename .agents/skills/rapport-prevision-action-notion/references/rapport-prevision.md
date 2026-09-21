@@ -27,6 +27,17 @@ await app.pg.query("INSERT INTO users ...");
 \`\`\`
 ```
 
+## Le modèle mental nécessaire
+
+Avant les détails, explique en quelques lignes :
+
+- le rôle de la partie concernée dans Transcendence ;
+- le flux utile sous la forme `entrée → traitement → stockage → sortie`, lorsqu'il existe ;
+- au maximum trois notions indispensables pour comprendre ou vérifier l'action ;
+- ce qui peut être appris plus tard sans bloquer l'action actuelle.
+
+La partie principale doit rester lisible en quelques minutes. Les notions secondaires vont dans des toggles ou sont proposées comme notes de connaissance séparées.
+
 ## Ce qui sera fait
 
 Décris les étapes prévues dans leur ordre logique. Pour chaque étape importante :
@@ -52,7 +63,7 @@ Le client Prisma appliquerait le mapping du modèle `Account` vers la table prop
 
 Ne produis pas un diff exhaustif. Garde seulement les lignes nécessaires au raisonnement.
 
-## Les socles de connaissance mobilisés
+## Les socles de connaissance indispensables
 
 Présente un toggle Notion par connaissance importante :
 
@@ -64,7 +75,7 @@ Un service modifie uniquement les données dont il est responsable. Pour cette a
 </details>
 ```
 
-Chaque toggle contient une définition simple, son rôle général, son application concrète et le risque qu'il aide à éviter.
+Chaque toggle contient une définition simple, son rôle général, son application concrète et le risque qu'il aide à éviter. Ne conserve pas une notion seulement parce qu'elle apparaît dans le code.
 
 ## Les choix prévus
 
@@ -99,19 +110,29 @@ Dans chaque toggle :
 
 1. explique comment satisfaire ou vérifier les prérequis ;
 2. donne les commandes dans leur ordre d'exécution ;
-3. explique la commande principale, sa sous-commande et chaque option, paramètre, chemin, image ou service ciblé ;
+3. explique la commande principale, sa sous-commande et les options, chemins ou services qui influencent réellement le résultat ;
 4. indique le résultat attendu et comment reconnaître une réussite ;
 5. précise ce que le contrôle prouvera et ce qu'il ne prouvera pas.
 
 Ne laisse jamais un prérequis abstrait comme « construire l'image » ou « démarrer la base » sans procédure concrète.
 
+## Ton point d'entrée dans l'action
+
+Ajoute, lorsque cela apporte une compétence utile :
+
+- une prédiction courte à formuler avant l'exécution ;
+- un fichier ou un flux à observer ;
+- une petite partie que l'utilisateur pourra vérifier ou réaliser lui-même.
+
+Cette participation doit aider à comprendre, agir ou diagnostiquer. N'invente pas une manipulation décorative et ne bloque pas l'exécution si l'utilisateur a demandé d'avancer sans interruption.
+
 ## Risques, limites et points encore ouverts
 
 Distingue les risques couverts, les limites hors périmètre, les décisions ou autorisations nécessaires et le comportement prévu en cas d'échec ou d'état partiel.
 
-## Ce qu'il faut retenir
+## Ce qu'il faudra savoir expliquer
 
-Termine par trois à cinq idées permettant au lecteur d'expliquer le changement prévu, le raisonnement, les connaissances mobilisées, les principaux extraits de code, le plan de vérification et les incertitudes restantes.
+Termine par trois à cinq questions courtes permettant au lecteur de vérifier s'il peut expliquer le changement prévu, le trajet des données, le plan de vérification et les incertitudes restantes. Ne donne pas immédiatement les réponses sous une autre forme et ne prétends pas que l'utilisateur les maîtrise déjà.
 
 ## Critères de complétude du rapport
 

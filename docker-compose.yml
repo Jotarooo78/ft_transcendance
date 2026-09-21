@@ -36,6 +36,9 @@ services:
       - "4000"
     env_file:
       - .env
+    environment:
+      USER_SERVICE_URL: http://user-service:4001
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
     depends_on:
       db:
         condition: service_healthy
@@ -50,6 +53,11 @@ services:
       - "4001"
     env_file:
       - .env
+    environment:
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
+    depends_on:
+      db:
+        condition: service_healthy
     networks:
       - ft_network
     restart: unless-stopped

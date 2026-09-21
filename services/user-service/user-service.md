@@ -13,8 +13,10 @@ Port interne : `4001`. Nginx l'expose sous `/api/users/`.
 - `src/app.ts` construit l'application Fastify et définit les routes.
 - `src/index.ts` raccorde l'application au client Prisma de Users et démarre le
   serveur.
+- `src/profile-provisioning.ts` décrit le contrat interne reçu depuis Auth.
 - `src/database/prisma.ts` crée l'instance Prisma unique.
-- `prisma/schema.prisma` mappe `Profile` vers `users.profiles`.
+- `prisma/schema.prisma` mappe `Profile` vers `users.profiles` et
+  `InboxMessage` vers `users.inbox_messages`.
 - `src/app.test.ts` vérifie le contrat HTTP sans dépendre d'une base active.
 
 Le build génère le client Prisma puis compile TypeScript dans `dist/`.
@@ -32,6 +34,28 @@ Le build génère le client Prisma puis compile TypeScript dans `dist/`.
 
 Le service ne dépend plus d'`argon2` ni de l'accès SQL brut : ces responsabilités
 appartiennent à Auth ou au client Prisma propriétaire.
+
+## `PUT /internal/profiles/:userId`
+
+Cette route interne reçoit la demande de création de profil produite par Auth.
+Elle exige `Authorization: Bearer <INTERNAL_SERVICE_TOKEN>` et vérifie que
+le `userId` du chemin est identique à l'UUID du message.
+
+Users exécute ensuite une transaction unique :
+
+1. il refuse un `eventId` déjà traité en répondant
+   `200 already_processed` ;
+2. il inscrit le nouvel `eventId` dans `users.inbox_messages` ;
+3. il crée `users.profiles` avec le même UUID, le username et le display name.
+
+L'inbox rend le contrat idempotent : si Auth n'a pas reçu la première réponse,
+il peut envoyer exactement le même message sans créer un second profil.
+La contrainte unique sur `username` est traduite en `409 USERNAME_TAKEN` ; un
+profil déjà rattaché au même UUID par une autre commande produit
+`409 PROFILE_CONFLICT`.
+
+Nginx répond `404` pour `/api/users/internal/*`. Le contrat est donc accessible
+sur le réseau Docker interne, pas depuis l'entrée publique de l'application.
 
 ## `GET /me`
 
@@ -96,4 +120,4 @@ npm run build
 Le test SQL
 `prisma/tests/pri5/username_conflict.sql` vérifie séparément que la contrainte
 unique de `users.profiles.username` refuse un doublon. Ce conflit concerne les
-futures écritures de profil ; `GET /me` reste une lecture par clé primaire.
+écritures de profil ; `GET /me` reste une lecture par clé primaire.

@@ -32,6 +32,7 @@ DB_USER=transcendence
 DB_PASSWORD=mon_mot_de_passe_local
 DB_NAME=transcendence
 DATABASE_URL=postgresql://transcendence:mon_mot_de_passe_local@db:5432/transcendence?schema=public
+INTERNAL_SERVICE_TOKEN=une_longue_valeur_aleatoire_distincte
 ```
 
 Les variables `<SERVICE>_DATABASE_URL` sont consommées par les clients au
@@ -42,6 +43,12 @@ serveurs HTTP. La liste complète et les commandes sont documentées dans
 
 Le `.env` est ignoré par Git. `.env.example` reste dans Git et ne doit contenir aucun
 vrai mot de passe.
+
+`INTERNAL_SERVICE_TOKEN` protège le contrat HTTP privé entre Auth et Users. Il
+doit être long, aléatoire, identique dans les deux conteneurs et différent de
+`JWT_SECRET`. `USER_SERVICE_URL` est fixé par Compose à
+`http://user-service:4001` pour Auth ; il n'est normalement pas nécessaire de
+l'ajouter au `.env` local.
 
 cette configuration amène à la création en locale, pour chaque membre de l'équipe de sa propre instance PostgreSQL, contenant une database nommée `transcendence` et un compte technique PostgreSQL également nommé `transcendence`, protégé par le mot de passe défini dans son fichier `.env`.
 

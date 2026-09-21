@@ -21,3 +21,16 @@ model Profile {
   @@map("profiles")
   @@schema("users")
 }
+
+model InboxMessage {
+  id               String   @id @db.Uuid
+  type             String
+  aggregateId      String   @map("aggregate_id") @db.Uuid
+  aggregateVersion Int      @map("aggregate_version")
+  result           Json
+  processedAt      DateTime @default(now()) @map("processed_at") @db.Timestamptz(6)
+
+  @@index([aggregateId])
+  @@map("inbox_messages")
+  @@schema("users")
+}

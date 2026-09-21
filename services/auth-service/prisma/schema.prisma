@@ -14,9 +14,33 @@ model Account {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email        String   @unique
   passwordHash String   @map("password_hash")
+  state        String   @default("pending_profile")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  outboxMessages OutboxMessage[]
 
   @@map("accounts")
+  @@schema("auth")
+}
+
+model OutboxMessage {
+  id               String    @id @db.Uuid
+  type             String
+  aggregateId      String    @map("aggregate_id") @db.Uuid
+  aggregateVersion Int       @default(1) @map("aggregate_version")
+  payload          Json
+  status           String    @default("pending")
+  attempts         Int       @default(0)
+  nextAttemptAt    DateTime  @default(now()) @map("next_attempt_at") @db.Timestamptz(6)
+  lastError        String?   @map("last_error")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  deliveredAt      DateTime? @map("delivered_at") @db.Timestamptz(6)
+
+  account Account @relation(fields: [aggregateId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextAttemptAt])
+  @@index([aggregateId])
+  @@map("outbox_messages")
   @@schema("auth")
 }

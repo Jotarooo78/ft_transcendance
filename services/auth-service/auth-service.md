@@ -2,82 +2,91 @@
 
 ## Rôle
 
-Service responsable de la création de compte et de la connexion. C'est le
-seul service qui manipule le mot de passe en clair (uniquement le temps de
-le hasher) et qui émet les JWT que les autres services (ex: user-service)
-utilisent ensuite pour authentifier les requêtes.
+Auth est propriétaire des comptes, des mots de passe et de l'émission des JWT.
+Il ne crée jamais directement de ligne dans le schéma `users` : il demande à
+`user-service` de provisionner le profil avec le même UUID.
 
-Port interne : `4000`. Routé par nginx sur `/api/auth/`.
+Port interne : `4000`. Nginx l'expose sous `/api/auth/`.
 
-## Dépendances (`package.json`)
+## Parcours d'inscription
 
-| Dépendance | Rôle |
-|---|---|
-| `fastify` | Framework HTTP du service |
-| `prom-client` | Expose les métriques par défaut (CPU, mémoire, event loop) au format Prometheus, sur `/metrics` — prépare le module Prometheus/Grafana |
-| `@fastify/postgres` | Plugin officiel Fastify pour interroger PostgreSQL (`app.pg.query(...)`), connecté via `DATABASE_URL` | 
-| `@fastify/jwt` | Signature et vérification de JWT (`app.jwt.sign`, `req.jwtVerify`) |
-| `argon2` | Hash + salage du mot de passe |
+`POST /signup` attend :
 
-⚠️ Voir la section **À corriger** plus bas : ces trois dernières lignes ne
-sont *pas* actuellement dans `package.json`, alors que le code les importe.
-
-## Explication de `index.js`
-
-```js
-const app = Fastify({ logger: true });
-client.collectDefaultMetrics();
-app.register(postgres, { connectionString: process.env.DATABASE_URL });
-app.register(jwt, { secret: process.env.JWT_SECRET });
-```
-Initialisation : le serveur Fastify, la collecte de métriques par défaut, la
-connexion Postgres, et le plugin JWT configuré avec le secret partagé (même
-valeur que dans `user-service`, sinon les tokens émis ici ne seront pas
-reconnus ailleurs).
-
-### `GET /health` et `GET /metrics`
-Déjà en place avant l'implémentation de l'auth. `/health` sert au
-`docker-compose depends_on: condition: service_healthy` d'un futur service
-dépendant, et à un status page. `/metrics` sera scrapé par Prometheus.
-
-### `POST /signup`
-```js
-if (!email || !password || password.length < 8) { ... 400 ... }
-const passwordHash = await argon2.hash(password);
-try {
-  INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id, email
-} catch (err) {
-  if (err.code === '23505') { ... 409 ... }
+```json
+{
+  "email": "lea@example.com",
+  "password": "password1234",
+  "username": "lea",
+  "displayName": "Léa"
 }
 ```
-- **Pourquoi argon2 plutôt que bcrypt** : recommandation OWASP actuelle
-  (résistant aux attaques par GPU), et le salage est géré automatiquement —
-  `argon2.hash()` génère un sel aléatoire et l'intègre dans la chaîne
-  retournée, donc une seule colonne `password_hash` suffit en base.
-- **Pourquoi catcher le code `23505`** plutôt que faire un `SELECT` avant
-  l'`INSERT` : un `SELECT` puis `INSERT` laisse une fenêtre de race condition
-  entre deux requêtes concurrentes sur le même email (deux comptes créés en
-  parallèle passeraient tous les deux le `SELECT` avant que l'un des deux
-  `INSERT` n'existe). La contrainte `UNIQUE` en base (voir schéma DB) est la
-  seule garantie fiable ; `23505` est le code Postgres standard pour une
-  violation de cette contrainte.
-- Le hash n'est jamais renvoyé dans la réponse (`RETURNING id, email`
-  seulement).
 
-### `POST /login`
-```js
-SELECT id, password_hash FROM users WHERE email = $1
-argon2.verify(rows[0].password_hash, password)
-app.jwt.sign({ sub: rows[0].id, email }, { expiresIn: '1h' })
+Dans une transaction PostgreSQL unique, Auth :
+
+1. crée `auth.accounts` dans l'état `pending_profile` ;
+2. crée un message `ProfileProvisionRequested.v1` dans
+   `auth.outbox_messages` ;
+3. essaie immédiatement d'envoyer ce message à Users.
+
+Si Users confirme la création, le message devient `delivered`, le compte
+devient `active` et le signup répond `201`. Si Users est temporairement
+indisponible, le signup répond `202 REGISTRATION_PENDING` et le worker rejoue
+le message avec un délai progressif. Un compte `pending_profile` ne peut pas
+recevoir de JWT.
+
+Un conflit permanent de username ou de profil répond `409` et place le compte
+dans l'état explicite `profile_failed`. Un email déjà présent répond également
+`409`, grâce à la contrainte unique de la base.
+
+## Contrat interne Auth vers Users
+
+Auth appelle :
+
+```text
+PUT http://user-service:4001/internal/profiles/:userId
+Authorization: Bearer <INTERNAL_SERVICE_TOKEN>
 ```
-- Erreur `401` générique ("invalid credentials") que ce soit parce que
-  l'email n'existe pas ou parce que le mot de passe est faux — un message
-  différencié permettrait à un attaquant d'énumérer les emails enregistrés.
-- `sub` (subject) est le nom de champ JWT standard pour l'identifiant de
-  l'utilisateur — convention reprise par `@fastify/jwt` et par `user-service`
-  qui lit `req.user.sub`.
-- Expiration courte (1h) : limite la fenêtre d'exploitation si un token fuite.
-  Pas de refresh token pour l'instant (à ajouter si besoin de sessions plus
-  longues).
 
-## À corriger
+Le corps contient `eventId`, `aggregateId` (l'UUID Auth), la version du contrat,
+la date, `username` et `displayName`. L'identifiant stable `eventId` permet à
+Users de reconnaître un rejeu. Le timeout HTTP est de trois secondes ; les
+erreurs réseau et les réponses non permanentes restent dans l'outbox.
+
+`USER_SERVICE_URL` configure la destination et `INTERNAL_SERVICE_TOKEN` est un
+secret technique partagé uniquement entre Auth et Users. La route interne
+n'est pas publiée par Nginx.
+
+## Connexion
+
+`POST /login` vérifie le mot de passe avec Argon2 puis regarde l'état du compte :
+
+- `active` : réponse `200` avec un JWT d'une heure ;
+- `pending_profile` : réponse `202 REGISTRATION_PENDING` ;
+- `profile_failed` : réponse `409 REGISTRATION_FAILED` ;
+- identifiants invalides : réponse générique `401`.
+
+Le claim JWT `sub` contient l'UUID commun au compte et au profil.
+
+## Fichiers principaux
+
+- `src/app.ts` : routes HTTP, validation et états du signup/login ;
+- `src/database/registration-store.ts` : transaction compte + outbox et
+  transitions d'état ;
+- `src/http-profile-provisioner.ts` : appel HTTP interne ;
+- `src/provisioning.ts` : contrat et classification temporaire/permanente ;
+- `src/index.ts` : câblage runtime et worker de rejeu ;
+- `src/app.test.ts` : réussite, indisponibilité, rejeu et conflit permanent.
+
+## Vérifications
+
+Depuis `services/auth-service` :
+
+```bash
+npm run prisma:validate
+npm run typecheck
+npm test
+npm run build
+```
+
+Les migrations ajoutent l'état du compte et l'outbox sans rendre les anciens
+comptes inutilisables : les lignes préexistantes sont migrées vers `active`.

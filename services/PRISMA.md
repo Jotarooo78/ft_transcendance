@@ -56,13 +56,27 @@ d'erreur.
 - Catalogue, Media, Library et Playback ont chacun un client et un schéma privé,
   mais aucun modèle métier ni migration initiale n'est inventé dans PRI-3.
 
-Ne pas lancer les migrations Auth indépendamment sur la base partagée avant le
-baselining de l'historique PRI-2. Pour les services M1, créer la première
-migration uniquement après validation de leurs modèles.
+Sur une base partagée où PRI-2 a déjà créé `auth.accounts`, marquer d'abord la
+baseline Auth comme appliquée, puis déployer les migrations Auth suivantes :
+
+```sh
+cd services/auth-service
+npx prisma migrate resolve \
+  --applied 20260910140100_baseline_auth_accounts \
+  --config prisma.migration.config.ts
+npm run prisma:migrate:deploy
+```
+
+`migrate resolve --applied` enregistre la baseline dans l'historique Auth sans
+réexécuter son SQL, puisque la table existe déjà grâce à PRI-2. Cette commande
+ne doit être utilisée qu'après avoir vérifié cet état. Sur une base Auth dédiée
+et vide, `migrate deploy` peut exécuter la baseline normalement.
+
+Pour les services M1, créer la première migration uniquement après validation
+de leurs modèles.
 
 Le paramètre `schema` des URLs doit correspondre au propriétaire indiqué dans
-`.env.example`, mais cela ne suffit pas encore à valider plusieurs historiques
-Prisma indépendants dans une même base. Ce point reste à trancher dans D09. Les
-scripts PRI-3 ont donc été vérifiés sur une base jetable distincte par service ;
-sur la base partagée, conserver une seule autorité de migration tant que le
-baselining et l'isolation des historiques ne sont pas prouvés.
+`.env.example`. Les scripts PRI-3 ont été vérifiés sur une base jetable distincte
+par service. PRI-6 prouve l'ordre partagé Users, baseline Auth résolue, puis
+migrations Auth ; la séparation effective des rôles SQL reste toutefois une
+décision distincte.
