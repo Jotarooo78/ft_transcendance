@@ -231,8 +231,6 @@ function App() {
               Users
             </button>
 
-            <span>Connected as {currentUser.username}</span>
-
             <button
               type="button"
               className="navigation-button"
