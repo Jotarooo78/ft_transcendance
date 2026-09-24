@@ -13,6 +13,8 @@ import type { Playlist } from "./types/music";
 import { loadPlaylists, savePlaylists } from "./storage/playlistsStorage";
 import { loadFriendIds, saveFriendIds } from "./storage/friendsStorage";
 
+import { clearAccessToken, onSessionCleared } from "./services/session";
+
 import "./App.css";
 
 type PublicPage = "register" | "login";
@@ -23,7 +25,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState<PublicPage>("register");
 
   const [currentUser, setCurrentUser] = useState<AuthenticatedUser | null>(
-    null,
+    null
   );
 
   const [privatePage, setPrivatePage] = useState<PrivatePage>("profile");
@@ -42,15 +44,23 @@ function App() {
     saveFriendIds(friendIds);
   }, [friendIds]);
 
+  useEffect(() => {
+    const unsubscribe = onSessionCleared(() => {
+      setCurrentUser(null);
+      setCurrentPage("login");
+      setPrivatePage("profile");
+    });
+
+    return unsubscribe;
+  }, []);
+
   function handleLoginSuccess(user: AuthenticatedUser) {
     setCurrentUser(user);
     setPrivatePage("profile");
   }
 
   function handleLogout() {
-    setCurrentUser(null);
-    setCurrentPage("login");
-    setPrivatePage("profile");
+    clearAccessToken();
   }
 
   function handleCreatePlaylist(playlist: Playlist) {
@@ -72,7 +82,7 @@ function App() {
           ...playlist,
           trackIds: [...playlist.trackIds, trackId],
         };
-      }),
+      })
     );
   }
 
@@ -84,35 +94,35 @@ function App() {
               ...playlist,
               trackIds: playlist.trackIds.filter((id) => id !== trackId),
             }
-          : playlist,
-      ),
+          : playlist
+      )
     );
   }
 
   function handleDeletePlaylist(playlistId: string) {
     setPlaylists((currentPlaylists) =>
-      currentPlaylists.filter((playlist) => playlist.id !== playlistId),
+      currentPlaylists.filter((playlist) => playlist.id !== playlistId)
     );
   }
 
   function handleUpdatePlaylist(
     playlistId: string,
     name: string,
-    description: string,
+    description: string
   ) {
     setPlaylists((currentPlaylists) =>
       currentPlaylists.map((playlist) =>
         playlist.id === playlistId
           ? { ...playlist, name, description }
-          : playlist,
-      ),
+          : playlist
+      )
     );
   }
 
   function handleUpdateProfile(
     username: string,
     bio: string,
-    avatarFile: File | null,
+    avatarFile: File | null
   ) {
     setCurrentUser((currentUser) => {
       if (currentUser === null) {
@@ -150,7 +160,7 @@ function App() {
 
   function handleRemoveFriend(userId: string) {
     setFriendIds((currentFriendIds) =>
-      currentFriendIds.filter((friendId) => friendId !== userId),
+      currentFriendIds.filter((friendId) => friendId !== userId)
     );
   }
 

@@ -14,7 +14,7 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
    * de l'utilisateur.
    */
   const [username, setUsername] = useState(user.username);
-  const [bio, setBio] = useState(user.bio);
+  const [bio, setBio] = useState(user.bio ?? "");
 
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -23,7 +23,7 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState(
-    user.avatarUrl ?? defaultAvatarUrl,
+    user.avatarUrl ?? defaultAvatarUrl
   );
 
   function handleAvatarChange(event: ChangeEvent<HTMLInputElement>) {

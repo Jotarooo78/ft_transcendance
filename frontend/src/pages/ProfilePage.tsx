@@ -10,7 +10,7 @@ type ProfilePageProps = {
   onUpdateProfile: (
     username: string,
     bio: string,
-    avatarFile: File | null,
+    avatarFile: File | null
   ) => void;
 
   onRemoveFriend: (userId: string) => void;
@@ -22,9 +22,12 @@ function ProfilePage({
   onUpdateProfile,
   onRemoveFriend,
 }: ProfilePageProps) {
-  const creationDate = new Intl.DateTimeFormat("en", {
-    dateStyle: "long",
-  }).format(new Date(user.createdAt));
+  const creationDate =
+    user.createdAt === null
+      ? "Not available"
+      : new Intl.DateTimeFormat("en", {
+          dateStyle: "long",
+        }).format(new Date(user.createdAt));
 
   const avatarSource = user.avatarUrl ?? "/images/default-avatar.svg";
 
@@ -96,7 +99,11 @@ function ProfilePage({
 
             <div>
               <dt>Bio</dt>
-              <dd>{user.bio || "No bio provided."}</dd>
+              <dd>
+                {user.bio === null
+                  ? "Not available"
+                  : user.bio || "No bio provided."}
+              </dd>
             </div>
 
             <div>
