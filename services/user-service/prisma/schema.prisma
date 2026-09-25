@@ -18,6 +18,10 @@ model Profile {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
 
+  friendsInitiated Friend[]   @relation("friends_initiated")
+  friendsReceived  Friend[]   @relation("friends_received")
+  presence         Presence?
+
   @@map("profiles")
   @@schema("users")
 }
@@ -32,5 +36,30 @@ model InboxMessage {
 
   @@index([aggregateId])
   @@map("inbox_messages")
+  @@schema("users")
+}
+
+model Friend {
+  userId    String   @map("user_id") @db.Uuid
+  friendId  String   @map("friend_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user   Profile @relation("friends_initiated", fields: [userId], references: [userId], onDelete: Cascade)
+  friend Profile @relation("friends_received", fields: [friendId], references: [userId], onDelete: Cascade)
+
+  @@id([userId, friendId])
+  @@index([friendId], map: "friends_friend_id_idx")
+  @@map("friends")
+  @@schema("users")
+}
+
+model Presence {
+  userId     String   @id @map("user_id") @db.Uuid
+  isOnline   Boolean  @default(false) @map("is_online")
+  lastSeenAt DateTime @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+
+  profile Profile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@map("presences")
   @@schema("users")
 }
