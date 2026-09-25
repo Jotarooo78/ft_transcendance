@@ -106,6 +106,7 @@ export async function loginUser(
 
   return {
     id: profile.userId,
+    displayName: profile.displayName,
     username: profile.username,
     email,
     bio: null,

@@ -120,6 +120,7 @@ function App() {
   }
 
   function handleUpdateProfile(
+    displayName: string,
     username: string,
     bio: string,
     avatarFile: File | null
@@ -141,6 +142,7 @@ function App() {
 
       return {
         ...currentUser,
+        displayName,
         username,
         bio,
         avatarUrl,

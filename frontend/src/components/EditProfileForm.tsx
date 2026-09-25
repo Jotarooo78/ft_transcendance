@@ -4,7 +4,12 @@ import type { AuthenticatedUser } from "../types/auth";
 
 type EditProfileFormProps = {
   user: AuthenticatedUser;
-  onSave: (username: string, bio: string, avatarSource: File | null) => void;
+  onSave: (
+    displayName: string,
+    username: string,
+    bio: string,
+    avatarSource: File | null
+  ) => void;
   onCancel: () => void;
 };
 
@@ -13,7 +18,10 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
    * Le formulaire commence avec les informations actuelles
    * de l'utilisateur.
    */
+  const [displayName, setDisplayName] = useState(user.displayName);
+
   const [username, setUsername] = useState(user.username);
+
   const [bio, setBio] = useState(user.bio ?? "");
 
   const [errorMessage, setErrorMessage] = useState("");
@@ -44,10 +52,10 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
       return;
     }
 
-    const maximumSize = 2 * 1024 * 1024;
+    const maximumSize = 5 * 1024 * 1024;
 
     if (file.size > maximumSize) {
-      setErrorMessage("Avatar must not exceed 2 MB.");
+      setErrorMessage("Avatar must not exceed 5 MB.");
 
       event.target.value = "";
       return;
@@ -68,9 +76,14 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
 
     setErrorMessage("");
 
+    const trimmedDisplayName = displayName.trim();
     const trimmedUsername = username.trim();
     const trimmedBio = bio.trim();
 
+    if (trimmedDisplayName.length < 2 || trimmedDisplayName.length > 100) {
+      setErrorMessage("Display name must contain 2 to 100 characters.");
+      return;
+    }
     if (trimmedUsername.length < 3) {
       setErrorMessage("Username must contain at least 3 characters.");
       return;
@@ -86,7 +99,7 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
       return;
     }
 
-    onSave(trimmedUsername, trimmedBio, avatarFile);
+    onSave(trimmedDisplayName, trimmedUsername, trimmedBio, avatarFile);
   }
 
   return (
@@ -108,8 +121,25 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
           />
         </label>
 
-        <p className="field-help">PNG, JPEG or WebP. Maximum size: 2 MB.</p>
+        <p className="field-help">PNG, JPEG or WebP. Maximum size: 5 MB.</p>
       </div>
+
+      <label htmlFor="profile-display-name">
+        Display name
+        <input
+          id="profile-display-name"
+          type="text"
+          required
+          minLength={2}
+          maxLength={100}
+          autoComplete="name"
+          value={displayName}
+          onChange={(event) => {
+            setDisplayName(event.target.value);
+          }}
+        />
+      </label>
+
       <label htmlFor="profile-username">
         Username
         <input
@@ -153,7 +183,10 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
           Cancel
         </button>
 
-        <button type="submit" disabled={username.trim() === ""}>
+        <button
+          type="submit"
+          disabled={displayName.trim() === "" || username.trim() === ""}
+        >
           Save changes
         </button>
       </div>

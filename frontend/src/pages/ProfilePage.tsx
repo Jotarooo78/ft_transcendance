@@ -8,6 +8,7 @@ type ProfilePageProps = {
   friends: PublicUser[];
 
   onUpdateProfile: (
+    displayName: string,
     username: string,
     bio: string,
     avatarFile: File | null
@@ -22,60 +23,67 @@ function ProfilePage({
   onUpdateProfile,
   onRemoveFriend,
 }: ProfilePageProps) {
-  const creationDate =
-    user.createdAt === null
-      ? "Not available"
-      : new Intl.DateTimeFormat("en", {
-          dateStyle: "long",
-        }).format(new Date(user.createdAt));
-
   const avatarSource = user.avatarUrl ?? "/images/default-avatar.svg";
+  const profileBio = user.bio?.trim();
 
   const [isEditing, setIsEditing] = useState(false);
 
-  function handleSave(username: string, bio: string, avatarFile: File | null) {
-    onUpdateProfile(username, bio, avatarFile);
-
+  function handleSave(
+    displayName: string,
+    username: string,
+    bio: string,
+    avatarFile: File | null
+  ) {
+    onUpdateProfile(displayName, username, bio, avatarFile);
     setIsEditing(false);
   }
 
   return (
     <main>
-      <header>
-        <img
-          className="profile-avatar"
-          src={avatarSource}
-          alt={`${user.username}'s avatar`}
-        />
+      <section className="profile-card" aria-labelledby="profile-name">
+        <div className="profile-cover" aria-hidden="true" />
 
-        <p className="page-label">My account</p>
+        {!isEditing && (
+          <button
+            className="edit-profile-button"
+            type="button"
+            aria-label="Edit profile"
+            title="Edit profile"
+            onClick={() => {
+              setIsEditing(true);
+            }}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M4 16.5V20h3.5L18.1 9.4l-3.5-3.5L4 16.5Zm16.7-9.7a1 1 0 0 0 0-1.4l-2.1-2.1a1 1 0 0 0-1.4 0l-1.6 1.6 3.5 3.5 1.6-1.6Z" />
+            </svg>
+          </button>
+        )}
 
-        <h1>Welcome, {user.username}!</h1>
+        <div className="profile-summary">
+          <img
+            className="profile-avatar"
+            src={avatarSource}
+            alt={`${user.displayName}'s avatar`}
+          />
 
-        <p>
-          This account can listen to music, create playlists, and publish
-          tracks.
-        </p>
-      </header>
-
-      <section
-        className="profile-card"
-        aria-labelledby="profile-information-title"
-      >
-        <div className="profile-heading">
-          <h2 id="profile-information-title">Profile information</h2>
-
-          {!isEditing && (
-            <button
-              type="button"
-              onClick={() => {
-                setIsEditing(true);
-              }}
-            >
-              Edit profile
-            </button>
-          )}
+          <div className="profile-identity">
+            <h1 id="profile-name">{user.displayName}</h1>
+            <p>@{user.username}</p>
+          </div>
         </div>
+
+        {!isEditing && (
+          <>
+            {profileBio && <p className="profile-bio">{profileBio}</p>}
+
+            <div className="profile-stats" aria-label="Profile statistics">
+              <span>
+                <strong>{friends.length}</strong>
+                {friends.length === 1 ? " friend" : " friends"}
+              </span>
+            </div>
+          </>
+        )}
 
         {isEditing ? (
           <EditProfileForm
@@ -85,33 +93,7 @@ function ProfilePage({
               setIsEditing(false);
             }}
           />
-        ) : (
-          <dl className="profile-information">
-            <div>
-              <dt>Username</dt>
-              <dd>{user.username}</dd>
-            </div>
-
-            <div>
-              <dt>Email</dt>
-              <dd>{user.email}</dd>
-            </div>
-
-            <div>
-              <dt>Bio</dt>
-              <dd>
-                {user.bio === null
-                  ? "Not available"
-                  : user.bio || "No bio provided."}
-              </dd>
-            </div>
-
-            <div>
-              <dt>Member since</dt>
-              <dd>{creationDate}</dd>
-            </div>
-          </dl>
-        )}
+        ) : null}
       </section>
 
       <section className="friends-section" aria-labelledby="friends-title">

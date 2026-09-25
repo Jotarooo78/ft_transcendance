@@ -247,7 +247,7 @@ select:disabled {
 .edit-playlist-button,
 .cancel-edit-button,
 .close-player-button,
-.profile-heading > button,
+.edit-profile-button,
 .pagination button {
   color: var(--lavender-ink);
   background: var(--lavender);
@@ -256,7 +256,7 @@ select:disabled {
 .edit-playlist-button:hover:not(:disabled),
 .cancel-edit-button:hover:not(:disabled),
 .close-player-button:hover:not(:disabled),
-.profile-heading > button:hover:not(:disabled),
+.edit-profile-button:hover:not(:disabled),
 .pagination button:hover:not(:disabled) {
   color: var(--lavender-ink);
   background: #e3dcf1;
@@ -331,7 +331,6 @@ form > p[id$="-help"],
   margin-top: 36px;
 }
 
-.profile-card,
 .friends-section,
 .playlist-section {
   padding-top: 28px;
@@ -339,7 +338,6 @@ form > p[id$="-help"],
 }
 
 .playlist-heading,
-.profile-heading,
 .friends-heading {
   display: flex;
   align-items: center;
@@ -347,33 +345,106 @@ form > p[id$="-help"],
   gap: 16px;
 }
 
+.profile-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.profile-cover {
+  height: 148px;
+  background:
+    radial-gradient(circle at 18% 25%, rgb(255 255 255 / 55%) 0 18px, transparent 19px),
+    radial-gradient(circle at 82% 68%, rgb(255 255 255 / 45%) 0 28px, transparent 29px),
+    linear-gradient(135deg, var(--accent-bg), var(--lavender));
+}
+
+.profile-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: end;
+  gap: 20px;
+  padding: 0 28px;
+}
+
 .profile-avatar {
-  width: 88px;
-  height: 88px;
-  margin-bottom: 8px;
+  width: 112px;
+  height: 112px;
+  margin-top: -48px;
   border: 5px solid var(--surface);
-  border-radius: 32px;
+  border-radius: 38px;
   background: var(--accent-bg);
   object-fit: cover;
   box-shadow: 0 0 0 1px var(--border);
 }
 
-.profile-information {
+.profile-identity {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px 32px;
-  margin: 28px 0 0;
+  gap: 2px;
+  padding-block: 20px 4px;
 }
 
-.profile-information dt {
-  margin-bottom: 6px;
-  font-size: 0.8125rem;
+.profile-identity h1 {
+  font-size: clamp(1.6rem, 4vw, 2.15rem);
 }
 
-.profile-information dd {
-  margin: 0;
+.profile-identity p {
+  color: var(--accent);
+  font-size: 0.9rem;
+}
+
+.edit-profile-button {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border: 1px solid rgb(255 255 255 / 70%);
+  border-radius: 50%;
+  color: var(--accent);
+  background: rgb(255 255 255 / 82%);
+  box-shadow: 0 4px 14px rgb(84 57 75 / 10%);
+  backdrop-filter: blur(6px);
+}
+
+.edit-profile-button svg {
+  width: 17px;
+  height: 17px;
+  fill: currentColor;
+}
+
+.edit-profile-button:hover:not(:disabled) {
+  color: var(--accent-hover);
+  background: var(--surface);
+}
+
+.profile-bio {
+  max-width: 60ch;
+  padding: 22px 28px 0;
   color: var(--text-h);
   overflow-wrap: anywhere;
+}
+
+.profile-stats {
+  display: flex;
+  gap: 24px;
+  padding: 18px 28px 26px;
+  font-size: 0.875rem;
+}
+
+.profile-stats strong {
+  margin-right: 5px;
+  color: var(--text-h);
+}
+
+.profile-card > .edit-profile-form {
+  margin: 24px 28px 28px;
 }
 
 .edit-profile-form,
@@ -754,15 +825,44 @@ form > p[id$="-help"],
     padding-inline: 12px;
   }
 
-  .profile-information,
   .catalog-filters {
     grid-template-columns: 1fr;
   }
 
-  .playlist-heading,
-  .profile-heading {
+  .playlist-heading {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .profile-cover {
+    height: 112px;
+  }
+
+  .profile-summary {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 14px;
+    padding-inline: 20px;
+  }
+
+  .profile-avatar {
+    width: 88px;
+    height: 88px;
+    margin-top: -32px;
+    border-radius: 30px;
+  }
+
+  .profile-identity {
+    padding-top: 12px;
+  }
+
+  .profile-bio,
+  .profile-stats {
+    padding-inline: 20px;
+  }
+
+  .profile-card > .edit-profile-form {
+    margin-inline: 20px;
   }
 
   .track-card,

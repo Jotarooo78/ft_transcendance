@@ -42,6 +42,7 @@ export type LoginRequest = {
 
 export type AuthenticatedUser = {
   id: string;
+  displayName: string;
   username: string;
   email: string;
   bio: string | null;
