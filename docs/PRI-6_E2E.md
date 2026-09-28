@@ -23,7 +23,9 @@ Le scénario prouve successivement :
 7. le refus explicite d'une fixture historique divergente par la précondition
    de la migration no-op ;
 8. le rejet d'une écriture SQL directe non canonique par la contrainte
-   `profiles_username_canonical_check`.
+   `profiles_username_canonical_check` ;
+9. l'ajout de `bio` comme colonne nullable sans valeur par défaut ni backfill,
+   avec une clé `bio: null` toujours présente dans le DTO `/me`.
 
 ## Exécution
 
@@ -54,16 +56,17 @@ les conteneurs, le réseau et le volume du projet `transcendence_pri6`.
 | Critère | Preuve | Observé | Conclusion |
 | --- | --- | --- | --- |
 | Contrat Auth | typecheck et tests dans l'image | 6 tests réussis ; ` ALICE_2 ` est provisionné en `alice_2` | validé |
-| Contrat Users | typecheck et tests dans l'image | 10 tests réussis ; la frontière interne renormalise défensivement | validé |
-| Frontend | lint puis build Vite dans l'image | ESLint sans erreur et build de 36 modules | validé |
+| Contrat Users | typecheck et tests dans l'image | 11 tests réussis ; bio nulle et textuelle couvertes, frontière interne toujours défensive | validé |
+| Frontend | lint puis build Vite dans l'image | ESLint sans erreur et build de 37 modules | validé |
 | Contrainte PostgreSQL | migration et `username_format.sql` | valeur canonique acceptée, valeur divergente refusée par la contrainte nommée | validé |
 | Parcours réel | scénario HTTP initial puis deux redémarrages | saisie ` PRI6_USER `, stockage et lecture `pri6_user`, UUID stable | validé |
 | No-op historique | deux bases legacy jetables | fixture canonique préservée à 3/3/3 ; fixture divergente bloquée avec `USERNAME migration blocked` | validé |
+| Bio facultative | migration, scénario HTTP et assertions SQL | colonne nullable sur base neuve et legacy ; DTO à cinq clés avec `bio: null` | validé |
 
 La sortie finale observée est :
 
 ```text
-[PRI-6] PASS: canonical username, storage constraint, restarts, and controlled historical no-op
+[PRI-6] PASS: canonical username, nullable bio, restarts, and controlled historical no-op
 ```
 
 ## Résultats observés — 17 septembre 2026

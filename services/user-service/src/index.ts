@@ -37,6 +37,7 @@ const readProfile: ProfileReader = (userId) =>
       userId: true,
       displayName: true,
       username: true,
+      bio: true,
       avatarUrl: true,
     },
   }).then((profile) => {

@@ -177,4 +177,4 @@ if ! grep -q "USERNAME migration blocked" "$invalid_migration_log"; then
 fi
 rm -f "$invalid_migration_log"
 
-echo "[PRI-6] PASS: canonical username, storage constraint, restarts, and controlled historical no-op"
+echo "[PRI-6] PASS: canonical username, nullable bio, restarts, and controlled historical no-op"

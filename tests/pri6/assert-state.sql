@@ -18,6 +18,7 @@ BEGIN
          WHERE user_id = active_user_id
            AND username = 'pri6_user'
            AND display_name = 'PRI-6 User'
+           AND bio IS NULL
     ) THEN
         RAISE EXCEPTION 'PRI-6: matching profile was not found';
     END IF;

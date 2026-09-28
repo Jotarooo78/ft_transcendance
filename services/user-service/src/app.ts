@@ -33,6 +33,7 @@ export type ProfileDto = {
   userId: string;
   displayName: string;
   username: string;
+  bio: string | null;
   avatarUrl: string | null;
 };
 
@@ -263,6 +264,7 @@ export function buildApp({
         userId: profile.userId,
         displayName: profile.displayName,
         username: profile.username,
+        bio: profile.bio,
         avatarUrl: profile.avatarUrl,
       } satisfies ProfileDto;
     },

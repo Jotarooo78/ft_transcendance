@@ -62,6 +62,7 @@ test("GET /me returns exactly the allowed profile DTO", async () => {
     userId,
     displayName: "Léa",
     username: "lea",
+    bio: null,
     avatarUrl: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -87,14 +88,47 @@ test("GET /me returns exactly the allowed profile DTO", async () => {
       userId,
       displayName: "Léa",
       username: "lea",
+      bio: null,
       avatarUrl: null,
     });
     assert.deepEqual(Object.keys(body).sort(), [
       "avatarUrl",
+      "bio",
       "displayName",
       "userId",
       "username",
     ]);
+  } finally {
+    await app.close();
+  }
+});
+
+test("GET /me returns a stored bio without exposing internal fields", async () => {
+  const userId = randomUUID();
+  const readProfile: ProfileReader = async () => ({
+    userId,
+    displayName: "Léa",
+    username: "lea",
+    bio: "Learning distributed systems.",
+    avatarUrl: null,
+  });
+  const { app, token } = await createToken(readProfile, userId);
+
+  try {
+    const response = await app.inject({
+      method: "GET",
+      url: "/me",
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.json<ProfileDto>(), {
+      userId,
+      displayName: "Léa",
+      username: "lea",
+      bio: "Learning distributed systems.",
+      avatarUrl: null,
+    });
   } finally {
     await app.close();
   }
@@ -128,6 +162,7 @@ test("GET /me ignores client-controlled identity values", async () => {
       userId,
       displayName: "Authenticated user",
       username: "authenticated_user",
+      bio: null,
       avatarUrl: null,
     };
   };

@@ -109,7 +109,7 @@ export async function loginUser(
     displayName: profile.displayName,
     username: profile.username,
     email,
-    bio: null,
+    bio: profile.bio,
     avatarUrl: profile.avatarUrl,
     createdAt: null,
   };

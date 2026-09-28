@@ -86,13 +86,18 @@ async function loginAndReadProfile() {
   assert.equal(profile.status, 200);
   assert.deepEqual(Object.keys(profile.body).sort(), [
     "avatarUrl",
+    "bio",
     "displayName",
     "userId",
     "username",
   ]);
   assert.equal(profile.body.displayName, displayName);
   assert.equal(profile.body.username, username);
-  assert.equal(profile.body.avatarUrl, null);
+  assert.equal(profile.body.bio, null);
+  assert.equal(
+    profile.body.avatarUrl,
+    "/api/users/avatars/default-avatar.png",
+  );
   assert.match(profile.body.userId, /^[0-9a-f-]{36}$/i);
 
   return profile.body.userId;

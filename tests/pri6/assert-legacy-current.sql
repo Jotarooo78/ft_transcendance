@@ -10,6 +10,10 @@ BEGIN
         RAISE EXCEPTION 'PRI-6 legacy: migrated accounts must be active';
     END IF;
 
+    IF EXISTS (SELECT 1 FROM users.profiles WHERE bio IS NOT NULL) THEN
+        RAISE EXCEPTION 'PRI-6 legacy: the additive bio migration must not backfill content';
+    END IF;
+
     IF EXISTS (SELECT 1 FROM auth.outbox_messages)
        OR EXISTS (SELECT 1 FROM users.inbox_messages) THEN
         RAISE EXCEPTION 'PRI-6 legacy: migration invented provisioning messages';
