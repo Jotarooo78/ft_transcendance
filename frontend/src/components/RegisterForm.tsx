@@ -1,7 +1,7 @@
 import { useState, type SubmitEvent } from "react";
 
 import { registerUser } from "../services/auth";
-import type { RegisteredUser } from "../types/auth";
+import type { RegisterResponse } from "../types/auth";
 import {
   isCanonicalUsername,
   normalizeUsername,
@@ -10,6 +10,7 @@ import {
 
 type RegisterFormValues = {
   username: string;
+  displayName: string;
   email: string;
   password: string;
   passwordConfirmation: string;
@@ -17,6 +18,7 @@ type RegisterFormValues = {
 
 const initialForm: RegisterFormValues = {
   username: "",
+  displayName: "",
   email: "",
   password: "",
   passwordConfirmation: "",
@@ -29,15 +31,28 @@ function RegisterForm() {
 
   const [errorMessage, setErrorMessage] = useState("");
 
-  const [registeredUser, setRegisteredUser] = useState<RegisteredUser | null>(
-    null,
+  const [registration, setRegistration] = useState<RegisterResponse | null>(
+    null
   );
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
 
     setErrorMessage("");
-    setRegisteredUser(null);
+    setRegistration(null);
+
+    const normalizedUsername = normalizeUsername(form.username);
+    const displayName = form.displayName.trim();
+
+    if (!isCanonicalUsername(normalizedUsername)) {
+      setErrorMessage(usernameErrorMessage);
+      return;
+    }
+
+    if (displayName.length < 2 || displayName.length > 100) {
+      setErrorMessage("Display name must contain 2 to 100 characters.");
+      return;
+    }
 
     if (form.password !== form.passwordConfirmation) {
       setErrorMessage("Passwords do not match.");
@@ -49,23 +64,17 @@ function RegisterForm() {
       return;
     }
 
-    const normalizedUsername = normalizeUsername(form.username);
-
-    if (!isCanonicalUsername(normalizedUsername)) {
-      setErrorMessage(usernameErrorMessage);
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
-      const user = await registerUser({
+      const result = await registerUser({
         username: normalizedUsername,
+        displayName,
         email: form.email.trim().toLowerCase(),
         password: form.password,
       });
 
-      setRegisteredUser(user);
+      setRegistration(result);
       setForm(initialForm);
     } catch (error) {
       if (error instanceof Error) {
@@ -89,6 +98,7 @@ function RegisterForm() {
             minLength={3}
             maxLength={30}
             autoComplete="username"
+            aria-describedby="register-username-help"
             value={form.username}
             onChange={(event) => {
               setForm({
@@ -99,11 +109,36 @@ function RegisterForm() {
           />
         </label>
 
+        <p id="register-username-help">
+          Use 3 to 30 letters (a-z), numbers or underscores.
+        </p>
+
+        <label>
+          Display name
+          <input
+            type="text"
+            required
+            minLength={2}
+            maxLength={100}
+            autoComplete="nickname"
+            aria-describedby="register-display-name-help"
+            value={form.displayName}
+            onChange={(event) => {
+              setForm({ ...form, displayName: event.target.value });
+            }}
+          />
+        </label>
+
+        <p id="register-display-name-help">
+          The name displayed on your profile. Spaces and accents are welcome.
+        </p>
+
         <label>
           Email
           <input
             type="email"
             required
+            maxLength={254}
             autoComplete="email"
             value={form.email}
             onChange={(event) => {
@@ -162,23 +197,20 @@ function RegisterForm() {
         </p>
       )}
 
-      {registeredUser && (
+      {registration?.status === "registered" && (
         <section className="message success-message" aria-live="polite">
           <h2>Account created</h2>
+          <p>Your account has been created. You can now log in.</p>
+        </section>
+      )}
 
-          <p>Your account has been created.</p>
-
-          <dl>
-            <div>
-              <dt>Username</dt>
-              <dd>{registeredUser.username}</dd>
-            </div>
-
-            <div>
-              <dt>Email</dt>
-              <dd>{registeredUser.email}</dd>
-            </div>
-          </dl>
+      {registration?.status === "pending" && (
+        <section className="message" aria-live="polite">
+          <h2>Registration in progress</h2>
+          <p>
+            Your profile is being created. Try logging in after{" "}
+            {registration.retryAfterSeconds} seconds.
+          </p>
         </section>
       )}
     </>
