@@ -7,6 +7,7 @@ const password = process.env.PRI6_PASSWORD;
 const username = process.env.PRI6_USERNAME;
 const displayName = process.env.PRI6_DISPLAY_NAME;
 const mode = process.argv[2];
+const submittedUsername = ` ${username.toUpperCase()} `;
 
 for (const [name, value] of Object.entries({
   AUTH_URL: authUrl,
@@ -101,7 +102,12 @@ async function runInitialScenario() {
   const signup = await request(`${authUrl}/signup`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ email, password, username, displayName }),
+    body: JSON.stringify({
+      email,
+      password,
+      username: submittedUsername,
+      displayName,
+    }),
   });
 
   assert.ok(
@@ -134,6 +140,18 @@ async function runInitialScenario() {
   });
   assert.equal(missingField.status, 400);
 
+  const invalidUsername = await request(`${authUrl}/signup`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      email: "pri6-invalid-username@example.invalid",
+      password,
+      username: "invalid-name",
+      displayName: "Invalid Username",
+    }),
+  });
+  assert.equal(invalidUsername.status, 400);
+
   const unknownUser = await request(`${authUrl}/login`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -150,7 +168,7 @@ async function runInitialScenario() {
     body: JSON.stringify({
       email: "pri6-duplicate-username@example.invalid",
       password,
-      username,
+      username: submittedUsername,
       displayName: "Duplicate Username",
     }),
   });

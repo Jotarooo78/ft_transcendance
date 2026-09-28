@@ -2,6 +2,11 @@ import { useState, type SubmitEvent } from "react";
 
 import { registerUser } from "../services/auth";
 import type { RegisteredUser } from "../types/auth";
+import {
+  isCanonicalUsername,
+  normalizeUsername,
+  usernameErrorMessage,
+} from "../username";
 
 type RegisterFormValues = {
   username: string;
@@ -44,11 +49,18 @@ function RegisterForm() {
       return;
     }
 
+    const normalizedUsername = normalizeUsername(form.username);
+
+    if (!isCanonicalUsername(normalizedUsername)) {
+      setErrorMessage(usernameErrorMessage);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       const user = await registerUser({
-        username: form.username.trim(),
+        username: normalizedUsername,
         email: form.email.trim().toLowerCase(),
         password: form.password,
       });

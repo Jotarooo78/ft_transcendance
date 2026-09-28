@@ -1,0 +1,4 @@
+interface:
+  display_name: "Création de Ressources IA liées"
+  short_description: "Créer et relier des ressources Notion choisies"
+  default_prompt: "Utilise $creation-ressources-ia-liees pour créer des Ressources IA à partir de cette liste de sujets, les relier à leur Action ou sous-action et à leur GPR, puis ajouter leurs liens au plan concerné."

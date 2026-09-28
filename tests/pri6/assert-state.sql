@@ -46,6 +46,7 @@ BEGIN
     IF EXISTS (
         SELECT 1 FROM auth.accounts WHERE email IN (
             'missing@example.invalid',
+            'pri6-invalid-username@example.invalid',
             'unknown@example.invalid'
         )
     ) THEN

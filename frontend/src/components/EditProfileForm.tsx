@@ -1,6 +1,11 @@
 import { useState, type ChangeEvent, type SubmitEvent } from "react";
 
 import type { AuthenticatedUser } from "../types/auth";
+import {
+  isCanonicalUsername,
+  normalizeUsername,
+  usernameErrorMessage,
+} from "../username";
 
 type EditProfileFormProps = {
   user: AuthenticatedUser;
@@ -68,16 +73,11 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
 
     setErrorMessage("");
 
-    const trimmedUsername = username.trim();
+    const normalizedUsername = normalizeUsername(username);
     const trimmedBio = bio.trim();
 
-    if (trimmedUsername.length < 3) {
-      setErrorMessage("Username must contain at least 3 characters.");
-      return;
-    }
-
-    if (trimmedUsername.length > 30) {
-      setErrorMessage("Username must contain no more than 30 characters.");
+    if (!isCanonicalUsername(normalizedUsername)) {
+      setErrorMessage(usernameErrorMessage);
       return;
     }
 
@@ -86,7 +86,7 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
       return;
     }
 
-    onSave(trimmedUsername, trimmedBio, avatarFile);
+    onSave(normalizedUsername, trimmedBio, avatarFile);
   }
 
   return (

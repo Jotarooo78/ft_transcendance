@@ -51,6 +51,15 @@ const uuidPattern =
 
 const usernamePattern = /^[a-z0-9_]{3,30}$/;
 
+export function normalizeUsername(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalizedUsername = value.trim().toLowerCase();
+  return usernamePattern.test(normalizedUsername) ? normalizedUsername : null;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -63,7 +72,7 @@ function parseProfileProvisionCommand(
   }
 
   const displayName = body.data.displayName;
-  const username = body.data.username;
+  const username = normalizeUsername(body.data.username);
 
   if (
     typeof body.eventId !== "string" ||
@@ -81,8 +90,7 @@ function parseProfileProvisionCommand(
     displayName !== displayName.trim() ||
     displayName.length < 2 ||
     displayName.length > 100 ||
-    typeof username !== "string" ||
-    !usernamePattern.test(username)
+    username === null
   ) {
     return null;
   }

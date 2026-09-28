@@ -1,0 +1,130 @@
+services:
+  db:
+    image: docker.io/library/postgres:16-alpine
+    environment:
+      POSTGRES_USER: per_admin
+      POSTGRES_PASSWORD: per_admin_test_only
+      POSTGRES_DB: transcendence_per
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U per_admin -d transcendence_per",
+        ]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - per_db_data:/var/lib/postgresql/data
+      - ../../database/permissions:/permissions:ro
+
+  # Exception réservée à l’installation d’une base neuve.
+  # L’historique Users existant crée encore des objets Auth.
+  migrate-users-bootstrap:
+    build:
+      context: ../../services/user-service
+      target: build
+    environment:
+      USER_MIGRATION_DATABASE_URL: >-
+        postgresql://per_admin:per_admin_test_only@db:5432/transcendence_per?schema=public
+    command: ["npm", "run", "prisma:migrate:deploy"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Identité utilisée par les migrations Users courantes.
+  migrate-users:
+    build:
+      context: ../../services/user-service
+      target: build
+    environment:
+      USER_MIGRATION_DATABASE_URL: >-
+        postgresql://users_migration:per_users_migration_test_only@db:5432/transcendence_per?schema=public
+    command: ["npm", "run", "prisma:migrate:deploy"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Identité utilisée par les migrations Auth courantes.
+  migrate-auth:
+    build:
+      context: ../../services/auth-service
+      target: build
+    environment:
+      AUTH_MIGRATION_DATABASE_URL: >-
+        postgresql://auth_migration:per_auth_migration_test_only@db:5432/transcendence_per?schema=auth
+    command: ["npm", "run", "prisma:migrate:deploy"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  user-service:
+    build:
+      context: ../../services/user-service
+    environment:
+      JWT_SECRET: per_jwt_secret_with_sufficient_length
+      INTERNAL_SERVICE_TOKEN: per_internal_token_with_sufficient_length
+      USER_DATABASE_URL: >-
+        postgresql://users_runtime:per_users_test_only@db:5432/transcendence_per?schema=users
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4001/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    depends_on:
+      db:
+        condition: service_healthy
+
+  auth-service:
+    build:
+      context: ../../services/auth-service
+    environment:
+      JWT_SECRET: per_jwt_secret_with_sufficient_length
+      INTERNAL_SERVICE_TOKEN: per_internal_token_with_sufficient_length
+      USER_SERVICE_URL: http://user-service:4001
+      AUTH_DATABASE_URL: >-
+        postgresql://auth_runtime:per_auth_test_only@db:5432/transcendence_per?schema=auth
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4000/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    depends_on:
+      db:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+
+  scenario:
+    image: docker.io/library/node:22-alpine
+    working_dir: /scenario
+    environment:
+      AUTH_URL: http://auth-service:4000
+      USER_URL: http://user-service:4001
+      PRI6_EMAIL: per@example.invalid
+      PRI6_PASSWORD: per-password-42
+      PRI6_USERNAME: per_user
+      PRI6_DISPLAY_NAME: PER User
+    volumes:
+      - ../pri6/http-scenario.mjs:/scenario/http-scenario.mjs:ro
+    command: ["node", "http-scenario.mjs", "initial"]
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+
+volumes:
+  per_db_data:

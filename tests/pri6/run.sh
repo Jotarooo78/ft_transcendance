@@ -6,6 +6,7 @@ repo_dir="$(cd -- "$script_dir/../.." && pwd)"
 compose_file="$script_dir/compose.yml"
 project_name="transcendence_pri6"
 legacy_database="transcendence_pri2_test_pri6"
+invalid_legacy_database="transcendence_pri2_test_pri6_invalid"
 
 compose=(docker compose -p "$project_name" -f "$compose_file")
 
@@ -45,6 +46,12 @@ echo "[PRI-6] Running Auth and Users static checks and unit tests"
 
 echo "[PRI-6] Applying Users migrations to the fresh database"
 "${compose[@]}" run --rm migrate-users
+"${compose[@]}" exec -T db psql \
+  -U pri6 \
+  -d transcendence_pri6 \
+  -v ON_ERROR_STOP=1 \
+  -f /dev/stdin \
+  < "$repo_dir/services/user-service/prisma/tests/pri5/username_format.sql"
 
 echo "[PRI-6] Applying Auth migrations after Users"
 "${compose[@]}" run --rm \
@@ -92,7 +99,7 @@ echo "[PRI-6] Replaying the PRI-2 legacy fixture into a dedicated database"
   -d "$legacy_database" \
   -v ON_ERROR_STOP=1 \
   -f /dev/stdin \
-  < "$repo_dir/services/user-service/prisma/tests/pri2/legacy_fixture_valid.sql"
+  < "$script_dir/legacy-fixture-canonical.sql"
 
 legacy_public_url="postgresql://pri6:pri6_test_only@db:5432/${legacy_database}?schema=public"
 legacy_auth_url="postgresql://pri6:pri6_test_only@db:5432/${legacy_database}?schema=auth"
@@ -129,4 +136,45 @@ legacy_auth_url="postgresql://pri6:pri6_test_only@db:5432/${legacy_database}?sch
   -f /dev/stdin \
   < "$script_dir/assert-legacy-current.sql"
 
-echo "[PRI-6] PASS: fresh install, HTTP path, both restart levels, failures, and legacy migration"
+echo "[PRI-6] Proving that the no-op migration rejects divergent history"
+"${compose[@]}" exec -T db createdb -U pri6 "$invalid_legacy_database"
+"${compose[@]}" exec -T db psql \
+  -U pri6 \
+  -d "$invalid_legacy_database" \
+  -v ON_ERROR_STOP=1 \
+  -f /dev/stdin \
+  < "$repo_dir/services/user-service/prisma/migrations/20260905155209_init/migration.sql"
+"${compose[@]}" exec -T db psql \
+  -U pri6 \
+  -d "$invalid_legacy_database" \
+  -v ON_ERROR_STOP=1 \
+  -f /dev/stdin \
+  < "$repo_dir/services/user-service/prisma/tests/pri2/legacy_fixture_valid.sql"
+
+invalid_legacy_public_url="postgresql://pri6:pri6_test_only@db:5432/${invalid_legacy_database}?schema=public"
+"${compose[@]}" run --rm \
+  -e USER_MIGRATION_DATABASE_URL="$invalid_legacy_public_url" \
+  migrate-users \
+  npx prisma migrate resolve \
+    --applied 20260905155209_init \
+    --config prisma.migration.config.ts
+
+invalid_migration_log="$(mktemp)"
+if "${compose[@]}" run --rm \
+  -e USER_MIGRATION_DATABASE_URL="$invalid_legacy_public_url" \
+  migrate-users >"$invalid_migration_log" 2>&1; then
+  sed -n '1,160p' "$invalid_migration_log" >&2
+  rm -f "$invalid_migration_log"
+  echo "PRI-6 expected the username migration to reject divergent history" >&2
+  exit 1
+fi
+
+if ! grep -q "USERNAME migration blocked" "$invalid_migration_log"; then
+  sed -n '1,160p' "$invalid_migration_log" >&2
+  rm -f "$invalid_migration_log"
+  echo "PRI-6 did not observe the expected no-op preflight failure" >&2
+  exit 1
+fi
+rm -f "$invalid_migration_log"
+
+echo "[PRI-6] PASS: canonical username, storage constraint, restarts, and controlled historical no-op"

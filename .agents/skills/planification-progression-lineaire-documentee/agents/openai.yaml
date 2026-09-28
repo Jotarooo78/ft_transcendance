@@ -1,0 +1,4 @@
+interface:
+  display_name: "Planification de progression linéaire et documentée"
+  short_description: "Guider une action du départ à la preuve"
+  default_prompt: "Utilise $planification-progression-lineaire-documentee pour transformer cette action et ses sous-actions en parcours linéaires, pédagogiques, contextualisés et vérifiables."

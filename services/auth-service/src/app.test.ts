@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
 
-import { buildApp } from "./app.js";
+import { buildApp, normalizeUsername } from "./app.js";
 import {
   DuplicateEmailError,
   type AccountForLogin,
@@ -116,6 +116,35 @@ const validSignup = {
   username: "lea",
   displayName: "Léa",
 };
+
+test("username normalization implements the canonical contract", () => {
+  assert.equal(normalizeUsername(" Alice "), "alice");
+  assert.equal(normalizeUsername("ALICE_2"), "alice_2");
+  assert.equal(normalizeUsername("ab"), null);
+  assert.equal(normalizeUsername("alice-2"), null);
+  assert.equal(normalizeUsername(null), null);
+});
+
+test("signup provisions the canonical username", async () => {
+  const store = new InMemoryRegistrationStore();
+  const delivered: PendingProfileProvision[] = [];
+  const app = createTestApp(store, async (message) => {
+    delivered.push(message);
+  });
+
+  try {
+    const response = await app.inject({
+      method: "POST",
+      url: "/signup",
+      payload: { ...validSignup, username: " ALICE_2 " },
+    });
+
+    assert.equal(response.statusCode, 201);
+    assert.equal(delivered[0]?.username, "alice_2");
+  } finally {
+    await app.close();
+  }
+});
 
 test("signup activates the account only after profile provisioning succeeds", async () => {
   const store = new InMemoryRegistrationStore();

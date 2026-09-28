@@ -10,14 +10,20 @@ Le scénario prouve successivement :
 1. la construction de l'état courant depuis une base vide avec les migrations
    Users, la résolution de la baseline Auth déjà matérialisée par PRI-2, puis
    les migrations Auth suivantes ;
-2. `signup → login → /me` avec le même UUID ;
+2. `signup → login → /me` avec le même UUID, en partant d'un username saisi
+   avec des espaces et des majuscules puis stocké sous sa forme canonique ;
 3. la conservation du compte et du profil après redémarrage d'Auth et Users ;
 4. la conservation des mêmes données après redémarrage de PostgreSQL sans
    suppression du volume ;
 5. le refus contrôlé d'un email dupliqué, d'un champ obligatoire absent, d'un
-   utilisateur inexistant et d'un username dupliqué ;
-6. le passage de la fixture legacy PRI-2 vers le schéma courant sans perte des
-   trois lignes représentatives.
+   utilisateur inexistant, d'un format de username invalide et d'un username
+   dupliqué après normalisation ;
+6. le passage d'une fixture historique déjà canonique vers le schéma courant,
+   sans réécriture des trois usernames ;
+7. le refus explicite d'une fixture historique divergente par la précondition
+   de la migration no-op ;
+8. le rejet d'une écriture SQL directe non canonique par la contrainte
+   `profiles_username_canonical_check`.
 
 ## Exécution
 
@@ -35,11 +41,30 @@ les conteneurs, le réseau et le volume du projet `transcendence_pri6`.
 ## Oracles
 
 - HTTP : statuts, codes métier, forme exacte du DTO et stabilité de l'UUID ;
-- PostgreSQL : compte `active`, profil associé, outbox `delivered`, inbox
-  présente et état `profile_failed` pour le username dupliqué ;
+- PostgreSQL : compte `active`, profil canonique associé, outbox `delivered`,
+  inbox présente, contrainte de format et état `profile_failed` pour le
+  username dupliqué après normalisation ;
 - legacy : trois lignes dans `public.users`, `auth.accounts` et
-  `users.profiles`, valeurs préservées, comptes `active` et aucune commande de
-  provisionnement inventée.
+  `users.profiles`, valeurs canoniques préservées, comptes `active` et aucune
+  commande de provisionnement inventée ; la fixture divergente doit être
+  bloquée avant la pose de la contrainte.
+
+## Résultats observés — 28 septembre 2026
+
+| Critère | Preuve | Observé | Conclusion |
+| --- | --- | --- | --- |
+| Contrat Auth | typecheck et tests dans l'image | 6 tests réussis ; ` ALICE_2 ` est provisionné en `alice_2` | validé |
+| Contrat Users | typecheck et tests dans l'image | 10 tests réussis ; la frontière interne renormalise défensivement | validé |
+| Frontend | lint puis build Vite dans l'image | ESLint sans erreur et build de 36 modules | validé |
+| Contrainte PostgreSQL | migration et `username_format.sql` | valeur canonique acceptée, valeur divergente refusée par la contrainte nommée | validé |
+| Parcours réel | scénario HTTP initial puis deux redémarrages | saisie ` PRI6_USER `, stockage et lecture `pri6_user`, UUID stable | validé |
+| No-op historique | deux bases legacy jetables | fixture canonique préservée à 3/3/3 ; fixture divergente bloquée avec `USERNAME migration blocked` | validé |
+
+La sortie finale observée est :
+
+```text
+[PRI-6] PASS: canonical username, storage constraint, restarts, and controlled historical no-op
+```
 
 ## Résultats observés — 17 septembre 2026
 

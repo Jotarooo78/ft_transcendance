@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
 
-import { buildApp, type ProfileDto, type ProfileReader } from "./app.js";
+import {
+  buildApp,
+  normalizeUsername,
+  type ProfileDto,
+  type ProfileReader,
+} from "./app.js";
 import {
   type ProfileProvisionCommand,
   UsernameTakenError,
@@ -13,7 +18,10 @@ const jwtSecret = "test-only-user-service-secret-with-sufficient-length";
 const internalServiceToken =
   "test-only-internal-service-token-with-sufficient-length";
 
-function createProvisionCommand(userId = randomUUID()): ProfileProvisionCommand {
+function createProvisionCommand(
+  userId = randomUUID(),
+  username = "lea",
+): ProfileProvisionCommand {
   return {
     eventId: randomUUID(),
     type: profileProvisionType,
@@ -23,10 +31,18 @@ function createProvisionCommand(userId = randomUUID()): ProfileProvisionCommand 
     occurredAt: new Date().toISOString(),
     data: {
       displayName: "Léa",
-      username: "lea",
+      username,
     },
   };
 }
+
+test("username normalization implements the canonical contract", () => {
+  assert.equal(normalizeUsername(" Alice "), "alice");
+  assert.equal(normalizeUsername("ALICE_2"), "alice_2");
+  assert.equal(normalizeUsername("ab"), null);
+  assert.equal(normalizeUsername("alice-2"), null);
+  assert.equal(normalizeUsername(null), null);
+});
 
 async function createToken(
   readProfile: ProfileReader,
@@ -226,6 +242,35 @@ test("PUT /internal/profiles creates a profile and accepts an idempotent replay"
       userId: command.aggregateId,
     });
     assert.equal(receivedCommands.length, 2);
+  } finally {
+    await app.close();
+  }
+});
+
+test("PUT /internal/profiles normalizes the username at the Users boundary", async () => {
+  const receivedCommands: ProfileProvisionCommand[] = [];
+  const app = buildApp({
+    internalServiceToken,
+    jwtSecret,
+    logger: false,
+    provisionProfile: async (command) => {
+      receivedCommands.push(command);
+      return { status: "created" };
+    },
+    readProfile: async () => null,
+  });
+  const command = createProvisionCommand(randomUUID(), " ALICE_2 ");
+
+  try {
+    const response = await app.inject({
+      method: "PUT",
+      url: `/internal/profiles/${command.aggregateId}`,
+      headers: { authorization: `Bearer ${internalServiceToken}` },
+      payload: command,
+    });
+
+    assert.equal(response.statusCode, 201);
+    assert.equal(receivedCommands[0]?.data.username, "alice_2");
   } finally {
     await app.close();
   }

@@ -41,6 +41,15 @@ type BuildAppOptions = {
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const usernamePattern = /^[a-z0-9_]{3,30}$/;
 
+export function normalizeUsername(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalizedUsername = value.trim().toLowerCase();
+  return usernamePattern.test(normalizedUsername) ? normalizedUsername : null;
+}
+
 export function buildApp({
   jwtSecret,
   logger = true,
@@ -125,10 +134,7 @@ export function buildApp({
           : "";
       const password =
         typeof request.body.password === "string" ? request.body.password : "";
-      const username =
-        typeof request.body.username === "string"
-          ? request.body.username.trim().toLowerCase()
-          : "";
+      const username = normalizeUsername(request.body.username);
       const displayName =
         typeof request.body.displayName === "string"
           ? request.body.displayName.trim()
@@ -139,7 +145,7 @@ export function buildApp({
         normalizedEmail.length > 254 ||
         password.length < 8 ||
         password.length > 128 ||
-        !usernamePattern.test(username) ||
+        username === null ||
         displayName.length < 2 ||
         displayName.length > 100
       ) {
