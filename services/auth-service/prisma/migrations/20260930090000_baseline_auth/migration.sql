@@ -1,18 +1,18 @@
--- Existing accounts predate profile provisioning state and are already usable.
-ALTER TABLE "auth"."accounts"
-    ADD COLUMN "state" TEXT;
+CREATE TABLE "auth"."accounts" (
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+    "email" TEXT NOT NULL,
+    "password_hash" TEXT NOT NULL,
+    "state" TEXT NOT NULL DEFAULT 'pending_profile',
+    "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-UPDATE "auth"."accounts"
-SET "state" = 'active'
-WHERE "state" IS NULL;
+    CONSTRAINT "accounts_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "accounts_state_check"
+        CHECK ("state" IN ('pending_profile', 'active', 'profile_failed'))
+);
 
-ALTER TABLE "auth"."accounts"
-    ALTER COLUMN "state" SET NOT NULL,
-    ALTER COLUMN "state" SET DEFAULT 'pending_profile';
-
-ALTER TABLE "auth"."accounts"
-    ADD CONSTRAINT "accounts_state_check"
-    CHECK ("state" IN ('pending_profile', 'active', 'profile_failed'));
+CREATE UNIQUE INDEX "accounts_email_key"
+    ON "auth"."accounts"("email");
 
 CREATE TABLE "auth"."outbox_messages" (
     "id" UUID NOT NULL,
@@ -26,6 +26,7 @@ CREATE TABLE "auth"."outbox_messages" (
     "last_error" TEXT,
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "delivered_at" TIMESTAMPTZ(6),
+
     CONSTRAINT "outbox_messages_pkey" PRIMARY KEY ("id"),
     CONSTRAINT "outbox_messages_status_check"
         CHECK ("status" IN ('pending', 'delivered', 'failed')),

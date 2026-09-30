@@ -10,4 +10,39 @@ datasource db {
   schemas  = ["media"]
 }
 
-// The Media models will be added by the dedicated M1 modeling action.
+model Asset {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  uploaderUserId String?  @map("uploader_user_id") @db.Uuid
+  purpose        String
+  state          String   @default("pending")
+  storageKey     String   @unique @map("storage_key")
+  mimeType       String   @map("mime_type")
+  byteSize       BigInt?  @map("byte_size")
+  durationMs     BigInt?  @map("duration_ms")
+  checksumSha256 String?  @map("checksum_sha256")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  variants Variant[]
+
+  @@index([uploaderUserId], map: "assets_uploader_idx")
+  @@map("assets")
+  @@schema("media")
+}
+
+model Variant {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  assetId      String   @map("asset_id") @db.Uuid
+  renditionKey String   @map("rendition_key")
+  storageKey   String   @unique @map("storage_key")
+  mimeType     String   @map("mime_type")
+  bitrateKbps  Int?     @map("bitrate_kbps")
+  byteSize     BigInt   @map("byte_size")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([assetId, renditionKey], map: "variants_asset_rendition_key")
+  @@map("variants")
+  @@schema("media")
+}

@@ -1,5 +1,10 @@
 # PRI-2 — Migration incrémentale `public.users` vers Auth et Users
 
+> Document historique conservé pour expliquer l'ancien parcours. Ses scripts
+> ont été retirés lors du passage aux six baselines neuves. Ne pas exécuter
+> cette procédure ; utiliser [SCHEMA_DONNEES.md](SCHEMA_DONNEES.md) et
+> `tests/per/run.sh`.
+
 ## Résultat préparé
 
 La migration `20260910140000_split_auth_accounts_and_user_profiles` réalise

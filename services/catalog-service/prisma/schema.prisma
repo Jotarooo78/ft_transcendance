@@ -10,4 +10,141 @@ datasource db {
   schemas  = ["catalog"]
 }
 
-// The Catalog models will be added by the dedicated M1 modeling action.
+model Artist {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String
+  slug         String   @unique
+  bio          String?
+  imageAssetId String?  @map("image_asset_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  members        ArtistMember[]
+  trackCredits   TrackArtist[]
+  releaseCredits ReleaseArtist[]
+
+  @@map("artists")
+  @@schema("catalog")
+}
+
+model ArtistMember {
+  artistId  String   @map("artist_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  role      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  artist Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@id([artistId, userId])
+  @@index([userId], map: "artist_members_user_idx")
+  @@map("artist_members")
+  @@schema("catalog")
+}
+
+model Track {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title           String
+  audioAssetId    String?   @map("audio_asset_id") @db.Uuid
+  durationMs      BigInt?   @map("duration_ms")
+  explicit        Boolean   @default(false)
+  status          String    @default("draft")
+  publishedAt     DateTime? @map("published_at") @db.Timestamptz(6)
+  createdByUserId String?   @map("created_by_user_id") @db.Uuid
+  version         BigInt    @default(1)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  artists       TrackArtist[]
+  releaseTracks ReleaseTrack[]
+  genres        TrackGenre[]
+
+  @@map("tracks")
+  @@schema("catalog")
+}
+
+model TrackArtist {
+  trackId     String @map("track_id") @db.Uuid
+  artistId    String @map("artist_id") @db.Uuid
+  role        String
+  creditOrder Int    @map("credit_order")
+
+  track  Track  @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  artist Artist @relation(fields: [artistId], references: [id], onDelete: Restrict)
+
+  @@id([trackId, artistId, role])
+  @@unique([trackId, role, creditOrder], map: "track_artists_track_role_order_key")
+  @@index([artistId], map: "track_artists_artist_idx")
+  @@map("track_artists")
+  @@schema("catalog")
+}
+
+model Release {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title        String
+  releaseType  String    @map("release_type")
+  releaseDate  DateTime? @map("release_date") @db.Date
+  coverAssetId String?   @map("cover_asset_id") @db.Uuid
+  status       String    @default("draft")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  artists ReleaseArtist[]
+  tracks  ReleaseTrack[]
+
+  @@map("releases")
+  @@schema("catalog")
+}
+
+model ReleaseArtist {
+  releaseId   String @map("release_id") @db.Uuid
+  artistId    String @map("artist_id") @db.Uuid
+  creditOrder Int    @map("credit_order")
+
+  release Release @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  artist  Artist  @relation(fields: [artistId], references: [id], onDelete: Restrict)
+
+  @@id([releaseId, artistId])
+  @@unique([releaseId, creditOrder], map: "release_artists_release_order_key")
+  @@index([artistId], map: "release_artists_artist_idx")
+  @@map("release_artists")
+  @@schema("catalog")
+}
+
+model ReleaseTrack {
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  releaseId   String @map("release_id") @db.Uuid
+  trackId     String @map("track_id") @db.Uuid
+  discNumber  Int    @default(1) @map("disc_number")
+  trackNumber Int    @map("track_number")
+
+  release Release @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  track   Track   @relation(fields: [trackId], references: [id], onDelete: Restrict)
+
+  @@unique([releaseId, discNumber, trackNumber], map: "release_tracks_release_position_key")
+  @@index([trackId], map: "release_tracks_track_idx")
+  @@map("release_tracks")
+  @@schema("catalog")
+}
+
+model Genre {
+  id   String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name String @unique
+
+  tracks TrackGenre[]
+
+  @@map("genres")
+  @@schema("catalog")
+}
+
+model TrackGenre {
+  trackId String @map("track_id") @db.Uuid
+  genreId String @map("genre_id") @db.Uuid
+
+  track Track @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  genre Genre @relation(fields: [genreId], references: [id], onDelete: Restrict)
+
+  @@id([trackId, genreId])
+  @@index([genreId], map: "track_genres_genre_idx")
+  @@map("track_genres")
+  @@schema("catalog")
+}

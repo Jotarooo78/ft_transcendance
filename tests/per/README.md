@@ -1,35 +1,18 @@
-# PER — preuve des permissions PostgreSQL
+# PER — installation neuve et frontières PostgreSQL
 
-## Objectif
+`run.sh` reconstruit une database PostgreSQL jetable avec :
 
-Cette pile prouve quatre frontières :
+- six schémas propriétaires ;
+- six rôles de migration et six rôles runtime ;
+- les baselines Prisma Auth, Users, Catalog, Media, Library et Playback ;
+- les propriétaires et privilèges attendus ;
+- des essais DML autorisés, des refus interservices et des contraintes locales.
 
-1. `auth_runtime` accède uniquement aux opérations Auth autorisées ;
-2. `users_runtime` accède uniquement aux opérations Users autorisées ;
-3. `auth_migration` peut effectuer du DDL dans `auth`, mais pas dans `users` ;
-4. `users_migration` peut effectuer du DDL dans `users`, mais pas dans `auth`.
+Lancer depuis la racine du dépôt :
 
-La base PostgreSQL reste partagée. L’isolation repose sur les propriétaires de
-schémas et les privilèges, pas sur des bases physiques distinctes.
+```sh
+tests/per/run.sh
+```
 
-## Identités utilisées
-
-| Rôle | Usage |
-|---|---|
-| `per_admin` | bootstrap d’une base neuve uniquement |
-| `auth_migration` | propriétaire et migration du schéma `auth` |
-| `users_migration` | propriétaire et migration du schéma `users` |
-| `auth_runtime` | processus HTTP Auth |
-| `users_runtime` | processus HTTP Users |
-
-`per_admin` n’est jamais injecté dans un serveur HTTP.
-
-## Fichiers SQL attendus
-
-Le dossier `database/permissions` doit contenir :
-
-```text
-database/permissions/
-├── bootstrap-roles.sql
-├── assign-owners.sql
-└── apply-grants.sql
+Le script supprime seulement le projet Compose nommé `transcendence_per` et son
+volume jetable. En cas d'échec, il affiche l'état et les logs avant nettoyage.

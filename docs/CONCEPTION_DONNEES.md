@@ -1,5 +1,10 @@
 # Transcendence — Comprendre les données et avancer ensemble
 
+> [!IMPORTANT]
+> Ce document conserve le cours, les audits et les propositions historiques.
+> Pour reconstruire la base compatible avec le code actuel, utiliser d'abord
+> [SCHEMA_DONNEES.md](SCHEMA_DONNEES.md), vérifié le 30 septembre 2026.
+
 > **Document de travail — 9 septembre 2026.** L’architecture décrite est une proposition à discuter. Les rôles actuels sont confirmés par l’équipe ; les choix techniques et les autres attributions restent à valider.
 >
 > **Premier objectif : une inscription, une connexion et un profil qui fonctionnent ensemble.** Le modèle musical et les modules avancés donnent une direction pour la suite.

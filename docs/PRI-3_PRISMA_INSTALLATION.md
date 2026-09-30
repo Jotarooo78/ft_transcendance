@@ -1,5 +1,9 @@
 # PRI-3 — Clients Prisma, génération et migration
 
+> Document historique. Les six services possèdent maintenant leurs modèles et
+> leur baseline. Voir [SCHEMA_DONNEES.md](SCHEMA_DONNEES.md) et
+> [../services/PRISMA.md](../services/PRISMA.md).
+
 ## Résultat
 
 Les six domaines propriétaires retenus jusqu'à M1 disposent maintenant d'un

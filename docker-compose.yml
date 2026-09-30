@@ -40,8 +40,8 @@ services:
       USER_SERVICE_URL: http://user-service:4001
       INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
     depends_on:
-      db:
-        condition: service_healthy
+      apply-permissions:
+        condition: service_completed_successfully
     networks:
       - ft_network
     restart: unless-stopped
@@ -56,8 +56,8 @@ services:
     environment:
       INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
     depends_on:
-      db:
-        condition: service_healthy
+      apply-permissions:
+        condition: service_completed_successfully
     networks:
       - ft_network
     restart: unless-stopped
@@ -70,8 +70,8 @@ services:
     env_file:
       - .env
     depends_on:
-      db:
-        condition: service_healthy
+      apply-permissions:
+        condition: service_completed_successfully
     networks:
       - ft_network
     restart: unless-stopped
@@ -84,8 +84,8 @@ services:
     env_file:
       - .env
     depends_on:
-      db:
-        condition: service_healthy
+      apply-permissions:
+        condition: service_completed_successfully
     networks:
       - ft_network
     restart: unless-stopped
@@ -98,8 +98,8 @@ services:
     env_file:
       - .env
     depends_on:
-      db:
-        condition: service_healthy
+      apply-permissions:
+        condition: service_completed_successfully
     networks:
       - ft_network
     restart: unless-stopped
@@ -112,8 +112,8 @@ services:
     env_file:
       - .env
     depends_on:
-      db:
-        condition: service_healthy
+      apply-permissions:
+        condition: service_completed_successfully
     networks:
       - ft_network
     restart: unless-stopped
@@ -176,6 +176,18 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
+      AUTH_MIGRATION_PASSWORD: ${AUTH_MIGRATION_PASSWORD}
+      AUTH_RUNTIME_PASSWORD: ${AUTH_RUNTIME_PASSWORD}
+      USERS_MIGRATION_PASSWORD: ${USERS_MIGRATION_PASSWORD}
+      USERS_RUNTIME_PASSWORD: ${USERS_RUNTIME_PASSWORD}
+      CATALOG_MIGRATION_PASSWORD: ${CATALOG_MIGRATION_PASSWORD}
+      CATALOG_RUNTIME_PASSWORD: ${CATALOG_RUNTIME_PASSWORD}
+      MEDIA_MIGRATION_PASSWORD: ${MEDIA_MIGRATION_PASSWORD}
+      MEDIA_RUNTIME_PASSWORD: ${MEDIA_RUNTIME_PASSWORD}
+      LIBRARY_MIGRATION_PASSWORD: ${LIBRARY_MIGRATION_PASSWORD}
+      LIBRARY_RUNTIME_PASSWORD: ${LIBRARY_RUNTIME_PASSWORD}
+      PLAYBACK_MIGRATION_PASSWORD: ${PLAYBACK_MIGRATION_PASSWORD}
+      PLAYBACK_RUNTIME_PASSWORD: ${PLAYBACK_RUNTIME_PASSWORD}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -184,11 +196,122 @@ services:
       start_period: 10s
     volumes:
       - db_data:/var/lib/postgresql/data
+      - ./database/init/10-bootstrap-roles.sh:/docker-entrypoint-initdb.d/10-bootstrap-roles.sh:ro
+      - ./database/permissions:/permissions:ro
     expose:
       - "5432"
     networks:
       - ft_network
     restart: unless-stopped
+
+  migrate-auth:
+    build:
+      context: ./services/auth-service
+      target: build
+    env_file:
+      - .env
+    command: ["npm", "run", "prisma:migrate:deploy"]
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - ft_network
+
+  migrate-users:
+    build:
+      context: ./services/user-service
+      target: build
+    env_file:
+      - .env
+    command: ["npm", "run", "prisma:migrate:deploy"]
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - ft_network
+
+  migrate-catalog:
+    build:
+      context: ./services/catalog-service
+      target: build
+    env_file:
+      - .env
+    command: ["npm", "run", "prisma:migrate:deploy"]
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - ft_network
+
+  migrate-media:
+    build:
+      context: ./services/media-service
+      target: build
+    env_file:
+      - .env
+    command: ["npm", "run", "prisma:migrate:deploy"]
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - ft_network
+
+  migrate-library:
+    build:
+      context: ./services/library-service
+      target: build
+    env_file:
+      - .env
+    command: ["npm", "run", "prisma:migrate:deploy"]
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - ft_network
+
+  migrate-playback:
+    build:
+      context: ./services/playback-service
+      target: build
+    env_file:
+      - .env
+    command: ["npm", "run", "prisma:migrate:deploy"]
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - ft_network
+
+  apply-permissions:
+    image: docker.io/library/postgres:16-alpine
+    environment:
+      PGHOST: db
+      PGUSER: ${DB_USER}
+      PGPASSWORD: ${DB_PASSWORD}
+      PGDATABASE: ${DB_NAME}
+    volumes:
+      - ./database/permissions:/permissions:ro
+    command:
+      - sh
+      - -ec
+      - |
+        psql --set ON_ERROR_STOP=1 --file /permissions/assign-owners.sql
+        psql --set ON_ERROR_STOP=1 --file /permissions/apply-grants.sql
+    depends_on:
+      migrate-auth:
+        condition: service_completed_successfully
+      migrate-users:
+        condition: service_completed_successfully
+      migrate-catalog:
+        condition: service_completed_successfully
+      migrate-media:
+        condition: service_completed_successfully
+      migrate-library:
+        condition: service_completed_successfully
+      migrate-playback:
+        condition: service_completed_successfully
+    networks:
+      - ft_network
 
 networks:
   ft_network:

@@ -1,5 +1,9 @@
 # PRI-6 — Preuve de parcours sur base neuve et après redémarrage
 
+> Document historique du parcours Auth/Users précédent. Le scénario associé a
+> été retiré avec les migrations incrémentales. La preuve active des six
+> schémas, rôles, contraintes et permissions est `tests/per/run.sh`.
+
 ## Principe
 
 Le test utilise un projet Docker Compose et un volume réservés à PRI-6. Il ne

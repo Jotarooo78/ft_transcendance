@@ -1,5 +1,9 @@
 # PRI-1 — Mapping Prisma, SQL et contrats Auth/Users
 
+> Document historique. La référence actuelle est
+> [SCHEMA_DONNEES.md](SCHEMA_DONNEES.md) ; les baselines ont remplacé le
+> parcours incrémental PRI-1/PRI-2.
+
 ## Périmètre et statut des sources
 
 Ce document couvre uniquement `PRI-1` : définir les modèles Prisma minimaux et

@@ -10,4 +10,46 @@ datasource db {
   schemas  = ["library"]
 }
 
-// The Library models will be added by the dedicated M1 modeling action.
+model Playlist {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerUserId String   @map("owner_user_id") @db.Uuid
+  name        String
+  description String?
+  visibility  String   @default("private")
+  version     BigInt   @default(1)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  items PlaylistItem[]
+
+  @@index([ownerUserId, updatedAt, id], map: "playlists_owner_idx")
+  @@map("playlists")
+  @@schema("library")
+}
+
+model PlaylistItem {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  playlistId    String   @map("playlist_id") @db.Uuid
+  trackId       String   @map("track_id") @db.Uuid
+  position      Int
+  addedByUserId String?  @map("added_by_user_id") @db.Uuid
+  addedAt       DateTime @default(now()) @map("added_at") @db.Timestamptz(6)
+
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+
+  @@unique([playlistId, position], map: "playlist_items_playlist_position_key")
+  @@index([trackId], map: "playlist_items_track_idx")
+  @@map("playlist_items")
+  @@schema("library")
+}
+
+model TrackFavorite {
+  userId    String   @map("user_id") @db.Uuid
+  trackId   String   @map("track_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@id([userId, trackId])
+  @@index([trackId], map: "favorites_track_idx")
+  @@map("track_favorites")
+  @@schema("library")
+}

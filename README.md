@@ -20,9 +20,11 @@ Chaque domaine propriétaire est déployé dans son propre conteneur :
 | `playback-service` | 4005         | Sessions et progression d'écoute          |
 
 Les clients et commandes Prisma sont documentés dans
-[services/PRISMA.md](services/PRISMA.md). Les modèles M1 ne sont pas encore
-figés : les nouveaux schémas Prisma matérialisent seulement leurs frontières de
-propriété.
+[services/PRISMA.md](services/PRISMA.md). Les six baselines matérialisent les
+22 tables métier M1 et leurs cardinalités locales.
+
+Le schéma PostgreSQL, ses cardinalités et la procédure de reconstruction sont décrits dans
+[docs/SCHEMA_DONNEES.md](docs/SCHEMA_DONNEES.md).
 
 Le rôle de chaque fichier présent dans ces dossiers est résumé dans
 [docs/STRUCTURE_SERVICES.md](docs/STRUCTURE_SERVICES.md).

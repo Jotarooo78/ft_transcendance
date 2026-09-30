@@ -10,4 +10,35 @@ datasource db {
   schemas  = ["playback"]
 }
 
-// The Playback models will be added by the dedicated M1 modeling action.
+model Session {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId              String?   @map("user_id") @db.Uuid
+  trackId             String    @map("track_id") @db.Uuid
+  trackDurationMs     BigInt    @map("track_duration_ms")
+  startedAt           DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  endedAt             DateTime? @map("ended_at") @db.Timestamptz(6)
+  listenedMs          BigInt    @default(0) @map("listened_ms")
+  lastSequence        Int       @default(0) @map("last_sequence")
+  qualified           Boolean   @default(false)
+  countingRuleVersion Int       @default(1) @map("counting_rule_version")
+
+  events Event[]
+
+  @@index([userId, startedAt, id], map: "listening_history_idx")
+  @@map("sessions")
+  @@schema("playback")
+}
+
+model Event {
+  sessionId       String   @map("session_id") @db.Uuid
+  sequence        Int
+  listenedMsTotal BigInt   @map("listened_ms_total")
+  positionMs      BigInt   @map("position_ms")
+  receivedAt      DateTime @default(now()) @map("received_at") @db.Timestamptz(6)
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@id([sessionId, sequence])
+  @@map("events")
+  @@schema("playback")
+}
