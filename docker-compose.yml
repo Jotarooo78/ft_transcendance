@@ -55,6 +55,9 @@ services:
       - .env
     environment:
       INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
+      AVATAR_STORAGE_DIR: /data/avatars
+    volumes:
+      - avatar_data:/data/avatars
     depends_on:
       apply-permissions:
         condition: service_completed_successfully
@@ -321,3 +324,4 @@ volumes:
   db_data:
   prometheus_data:
   grafana_data:
+  avatar_data:

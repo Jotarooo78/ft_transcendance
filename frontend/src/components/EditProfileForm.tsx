@@ -58,10 +58,10 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
       return;
     }
 
-    const maximumSize = 5 * 1024 * 1024;
+    const maximumSize = 2 * 1024 * 1024;
 
     if (file.size > maximumSize) {
-      setErrorMessage("Avatar must not exceed 5 MB.");
+      setErrorMessage("Avatar must not exceed 2 MB.");
 
       event.target.value = "";
       return;
@@ -140,7 +140,7 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
           />
         </label>
 
-        <p className="field-help">PNG, JPEG or WebP. Maximum size: 5 MB.</p>
+        <p className="field-help">PNG, JPEG or WebP. Maximum size: 2 MB.</p>
       </div>
 
       <label htmlFor="profile-display-name">

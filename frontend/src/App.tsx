@@ -14,7 +14,7 @@ import { loadPlaylists, savePlaylists } from "./storage/playlistsStorage";
 import { loadFriendIds, saveFriendIds } from "./storage/friendsStorage";
 
 import { clearAccessToken, onSessionCleared } from "./services/session";
-import { updateMyProfile } from "./services/users";
+import { updateMyProfile, uploadMyAvatar } from "./services/users";
 
 import "./App.css";
 
@@ -132,15 +132,16 @@ function App() {
       bio: bio === "" ? null : bio,
     });
 
+    let avatarUrl = profile.avatarUrl;
+
+    if (avatarFile !== null) {
+      const avatarProfile = await uploadMyAvatar(avatarFile);
+      avatarUrl = avatarProfile.avatarUrl;
+    }
+
     setCurrentUser((currentUser) => {
       if (currentUser === null) {
         return null;
-      }
-
-      let avatarUrl = profile.avatarUrl;
-
-      if (avatarFile !== null) {
-        avatarUrl = URL.createObjectURL(avatarFile);
       }
 
       return {
