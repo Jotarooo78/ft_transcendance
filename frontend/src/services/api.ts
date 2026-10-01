@@ -2,7 +2,7 @@ import { clearAccessToken, getAccessToken } from "./session";
 
 export async function authenticatedFetch(
   path: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<Response> {
   const token = getAccessToken();
 

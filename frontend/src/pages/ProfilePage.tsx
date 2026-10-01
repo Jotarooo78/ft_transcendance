@@ -13,7 +13,7 @@ type ProfilePageProps = {
     username: string,
     bio: string,
     avatarFile: File | null,
-  ) => void;
+  ) => Promise<void>;
 
   onRemoveFriend: (userId: string) => void;
 };
@@ -29,13 +29,13 @@ function ProfilePage({
 
   const [isEditing, setIsEditing] = useState(false);
 
-  function handleSave(
+  async function handleSave(
     displayName: string,
     username: string,
     bio: string,
     avatarFile: File | null,
   ) {
-    onUpdateProfile(displayName, username, bio, avatarFile);
+    await onUpdateProfile(displayName, username, bio, avatarFile);
     setIsEditing(false);
   }
 

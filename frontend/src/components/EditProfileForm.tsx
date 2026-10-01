@@ -15,7 +15,7 @@ type EditProfileFormProps = {
     username: string,
     bio: string,
     avatarSource: File | null,
-  ) => void;
+  ) => Promise<void>;
   onCancel: () => void;
 };
 
@@ -31,6 +31,8 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
   const [bio, setBio] = useState(user.bio ?? "");
 
   const [errorMessage, setErrorMessage] = useState("");
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
@@ -75,7 +77,7 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
     setAvatarPreviewUrl(previewUrl);
   }
 
-  function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
+  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
 
     setErrorMessage("");
@@ -99,7 +101,24 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
       return;
     }
 
-    onSave(trimmedDisplayName, normalizedUsername, trimmedBio, avatarFile);
+    setIsSubmitting(true);
+
+    try {
+      await onSave(
+        trimmedDisplayName,
+        normalizedUsername,
+        trimmedBio,
+        avatarFile,
+      );
+    } catch (error) {
+      if (error instanceof Error) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage("An unexpected error occurred.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -179,15 +198,22 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
       )}
 
       <div className="edit-profile-actions">
-        <button type="button" className="cancel-edit-button" onClick={onCancel}>
+        <button
+          type="button"
+          className="cancel-edit-button"
+          onClick={onCancel}
+          disabled={isSubmitting}
+        >
           Cancel
         </button>
 
         <button
           type="submit"
-          disabled={displayName.trim() === "" || username.trim() === ""}
+          disabled={
+            isSubmitting || displayName.trim() === "" || username.trim() === ""
+          }
         >
-          Save changes
+          {isSubmitting ? "Saving..." : "Save changes"}
         </button>
       </div>
     </form>

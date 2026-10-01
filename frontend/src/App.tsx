@@ -14,6 +14,7 @@ import { loadPlaylists, savePlaylists } from "./storage/playlistsStorage";
 import { loadFriendIds, saveFriendIds } from "./storage/friendsStorage";
 
 import { clearAccessToken, onSessionCleared } from "./services/session";
+import { updateMyProfile } from "./services/users";
 
 import "./App.css";
 
@@ -25,7 +26,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState<PublicPage>("register");
 
   const [currentUser, setCurrentUser] = useState<AuthenticatedUser | null>(
-    null
+    null,
   );
 
   const [privatePage, setPrivatePage] = useState<PrivatePage>("profile");
@@ -82,7 +83,7 @@ function App() {
           ...playlist,
           trackIds: [...playlist.trackIds, trackId],
         };
-      })
+      }),
     );
   }
 
@@ -94,57 +95,60 @@ function App() {
               ...playlist,
               trackIds: playlist.trackIds.filter((id) => id !== trackId),
             }
-          : playlist
-      )
+          : playlist,
+      ),
     );
   }
 
   function handleDeletePlaylist(playlistId: string) {
     setPlaylists((currentPlaylists) =>
-      currentPlaylists.filter((playlist) => playlist.id !== playlistId)
+      currentPlaylists.filter((playlist) => playlist.id !== playlistId),
     );
   }
 
   function handleUpdatePlaylist(
     playlistId: string,
     name: string,
-    description: string
+    description: string,
   ) {
     setPlaylists((currentPlaylists) =>
       currentPlaylists.map((playlist) =>
         playlist.id === playlistId
           ? { ...playlist, name, description }
-          : playlist
-      )
+          : playlist,
+      ),
     );
   }
 
-  function handleUpdateProfile(
+  async function handleUpdateProfile(
     displayName: string,
     username: string,
     bio: string,
-    avatarFile: File | null
-  ) {
+    avatarFile: File | null,
+  ): Promise<void> {
+    const profile = await updateMyProfile({
+      displayName,
+      username,
+      bio: bio === "" ? null : bio,
+    });
+
     setCurrentUser((currentUser) => {
       if (currentUser === null) {
         return null;
       }
 
-      let avatarUrl = currentUser.avatarUrl;
+      let avatarUrl = profile.avatarUrl;
 
       if (avatarFile !== null) {
-        if (avatarUrl?.startsWith("blob:")) {
-          URL.revokeObjectURL(avatarUrl);
-        }
-
         avatarUrl = URL.createObjectURL(avatarFile);
       }
 
       return {
         ...currentUser,
-        displayName,
-        username,
-        bio,
+        id: profile.userId,
+        displayName: profile.displayName,
+        username: profile.username,
+        bio: profile.bio,
         avatarUrl,
       };
     });
@@ -162,7 +166,7 @@ function App() {
 
   function handleRemoveFriend(userId: string) {
     setFriendIds((currentFriendIds) =>
-      currentFriendIds.filter((friendId) => friendId !== userId)
+      currentFriendIds.filter((friendId) => friendId !== userId),
     );
   }
 

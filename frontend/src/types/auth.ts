@@ -36,6 +36,12 @@ export type ProfileResponse = {
   avatarUrl: string | null;
 };
 
+export type UpdateProfileRequest = {
+  displayName: string;
+  username: string;
+  bio: string | null;
+};
+
 export type LoginRequest = {
   email: string;
   password: string;
