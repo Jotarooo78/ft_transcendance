@@ -1,3 +1,4 @@
+import { getAvatarSource } from "../avatar";
 import type { PublicUser } from "../types/auth";
 
 type UserCardProps = {
@@ -13,7 +14,7 @@ function UserCard({
   onAddFriend,
   onRemoveFriend,
 }: UserCardProps) {
-  const avatarSource = user.avatarUrl ?? "/images/default-avatar.svg";
+  const avatarSource = getAvatarSource(user.avatarUrl);
 
   return (
     <article className="user-card">

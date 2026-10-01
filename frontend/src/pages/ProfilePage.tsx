@@ -1,3 +1,4 @@
+import { getAvatarSource } from "../avatar";
 import { useState } from "react";
 
 import type { AuthenticatedUser, PublicUser } from "../types/auth";
@@ -11,7 +12,7 @@ type ProfilePageProps = {
     displayName: string,
     username: string,
     bio: string,
-    avatarFile: File | null
+    avatarFile: File | null,
   ) => void;
 
   onRemoveFriend: (userId: string) => void;
@@ -23,7 +24,7 @@ function ProfilePage({
   onUpdateProfile,
   onRemoveFriend,
 }: ProfilePageProps) {
-  const avatarSource = user.avatarUrl ?? "/images/default-avatar.svg";
+  const avatarSource = getAvatarSource(user.avatarUrl);
   const profileBio = user.bio?.trim();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -32,7 +33,7 @@ function ProfilePage({
     displayName: string,
     username: string,
     bio: string,
-    avatarFile: File | null
+    avatarFile: File | null,
   ) {
     onUpdateProfile(displayName, username, bio, avatarFile);
     setIsEditing(false);
@@ -108,14 +109,13 @@ function ProfilePage({
         ) : (
           <div className="friend-list">
             {friends.map((friend) => {
-              const friendavatarSource =
-                friend.avatarUrl ?? "/images/default-avatar.svg";
+              const friendAvatarSource = getAvatarSource(friend.avatarUrl);
 
               return (
                 <article className="friend-card" key={friend.id}>
                   <img
                     className="friend-avatar"
-                    src={friendavatarSource}
+                    src={friendAvatarSource}
                     alt={`${friend.username}'s avatar`}
                   />
 

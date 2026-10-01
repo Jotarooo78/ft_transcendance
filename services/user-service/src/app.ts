@@ -50,7 +50,7 @@ type BuildAppOptions = {
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-const usernamePattern = /^[a-z0-9_]{3,30}$/;
+const usernamePattern = /^[a-z0-9_]{3,24}$/;
 
 export function normalizeUsername(value: unknown): string | null {
   if (typeof value !== "string") {
@@ -89,8 +89,8 @@ function parseProfileProvisionCommand(
     Number.isNaN(Date.parse(body.occurredAt)) ||
     typeof displayName !== "string" ||
     displayName !== displayName.trim() ||
-    displayName.length < 2 ||
-    displayName.length > 100 ||
+    displayName.length < 1 ||
+    displayName.length > 60 ||
     username === null
   ) {
     return null;

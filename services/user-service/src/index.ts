@@ -15,8 +15,6 @@ import {
 
 const jwtSecret = process.env.JWT_SECRET;
 const internalServiceToken = process.env.INTERNAL_SERVICE_TOKEN;
-const defaultAvatarUrl =
-  process.env.DEFAULT_AVATAR_URL ?? "/api/users/avatars/default-avatar.png";
 const avatarStorageDir = process.env.AVATAR_STORAGE_DIR ?? "/tmp/user-service-avatars";
 const maxAvatarBytes = 2 * 1024 * 1024;
 const onlineWindowSeconds = 120;
@@ -40,15 +38,6 @@ const readProfile: ProfileReader = (userId) =>
       bio: true,
       avatarUrl: true,
     },
-  }).then((profile) => {
-    if (!profile) {
-      return null;
-    }
-
-    return {
-      ...profile,
-      avatarUrl: profile.avatarUrl ?? defaultAvatarUrl,
-    };
   });
 
 const provisionProfile: ProfileProvisioner = async (command) => {
@@ -192,18 +181,20 @@ app.get("/profile/:userId", async (request, reply) => {
     return reply.code(404).send({ error: "profile not found" });
   }
 
-  return {
-    ...profile,
-    avatarUrl: profile.avatarUrl ?? defaultAvatarUrl,
-  };
+  return profile;
 });
 
 app.put("/me/profile", { onRequest: authenticate }, async (request, reply) => {
   const userId = request.authenticatedUserId;
-  const body = request.body as { displayName?: unknown; username?: unknown };
+  const body = request.body as {
+    displayName?: unknown;
+    username?: unknown;
+    bio?: unknown;
+  };
 
   const displayName = typeof body.displayName === "string" ? body.displayName.trim() : "";
   const usernameRaw = typeof body.username === "string" ? body.username.trim().toLowerCase() : "";
+  const bio = typeof body.bio === "string" ? body.bio.trim() : body.bio;
 
   if (!userId) {
     return reply.code(401).send({ error: "unauthorized" });
@@ -217,30 +208,36 @@ app.put("/me/profile", { onRequest: authenticate }, async (request, reply) => {
     return reply.code(400).send({ error: "username must match ^[a-z0-9_]{3,24}$" });
   }
 
+  if (bio !== null && (typeof bio !== "string" || bio.length > 160)) {
+    return reply.code(400).send({ error: "bio must be null or contain no more than 160 chars" });
+  }
+
+  const storedBio = bio === "" ? null : bio;
+
   try {
     const profile = await prisma.profile.upsert({
       where: { userId },
       update: {
         displayName,
         username: usernameRaw,
+        bio: storedBio,
       },
       create: {
         userId,
         displayName,
         username: usernameRaw,
+        bio: storedBio,
       },
       select: {
         userId: true,
         displayName: true,
         username: true,
+        bio: true,
         avatarUrl: true,
       },
     });
 
-    return {
-      ...profile,
-      avatarUrl: profile.avatarUrl ?? defaultAvatarUrl,
-    };
+    return profile;
   } catch (error: unknown) {
     if (typeof error === "object" && error && "code" in error && error.code === "P2002") {
       return reply.code(409).send({ error: "username already in use" });
@@ -296,10 +293,7 @@ app.post("/me/avatar", { onRequest: authenticate }, async (request, reply) => {
     },
   });
 
-  return {
-    ...profile,
-    avatarUrl: profile.avatarUrl ?? defaultAvatarUrl,
-  };
+  return profile;
 });
 
 app.get("/avatars/:fileName", async (request, reply) => {
@@ -448,7 +442,7 @@ app.get("/friends", { onRequest: authenticate }, async (request, reply) => {
       userId: profile.userId,
       displayName: profile.displayName,
       username: profile.username,
-      avatarUrl: profile.avatarUrl ?? defaultAvatarUrl,
+      avatarUrl: profile.avatarUrl,
       onlineStatus: isOnline ? "online" : "offline",
       lastSeenAt: presence?.lastSeenAt.toISOString() ?? null,
     };

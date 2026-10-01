@@ -39,7 +39,7 @@ type BuildAppOptions = {
 };
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const usernamePattern = /^[a-z0-9_]{3,30}$/;
+const usernamePattern = /^[a-z0-9_]{3,24}$/;
 
 export function normalizeUsername(value: unknown): string | null {
   if (typeof value !== "string") {
@@ -146,8 +146,8 @@ export function buildApp({
         password.length < 8 ||
         password.length > 128 ||
         username === null ||
-        displayName.length < 2 ||
-        displayName.length > 100
+        displayName.length < 1 ||
+        displayName.length > 60
       ) {
         return reply.code(400).send({
           error:

@@ -10,7 +10,7 @@ import type {
 import { setAccessToken } from "./session";
 
 export async function registerUser(
-  request: RegisterRequest
+  request: RegisterRequest,
 ): Promise<RegisterResponse> {
   const response = await fetch("/api/auth/signup", {
     method: "POST",
@@ -30,7 +30,7 @@ export async function registerUser(
 }
 
 export async function requestLogin(
-  request: LoginRequest
+  request: LoginRequest,
 ): Promise<LoginResponse> {
   const response = await fetch("/api/auth/login", {
     method: "POST",
@@ -65,27 +65,8 @@ export async function getMyProfile(token: string): Promise<ProfileResponse> {
   return data;
 }
 
-// export async function loginUser(
-//   request: LoginRequest
-// ): Promise<AuthenticatedUser> {
-//   await new Promise((resolve) => {
-//     setTimeout(resolve, 1000);
-//   });
-
-//   const normalizedEmail = request.email.trim().toLowerCase();
-
-//   const credentialsAreValid =
-//     normalizedEmail === mockUser.email && request.password === "password1234";
-
-//   if (!credentialsAreValid) {
-//     throw new Error("Invalid email or password.");
-//   }
-
-//   return mockUser;
-// }
-
 export async function loginUser(
-  request: LoginRequest
+  request: LoginRequest,
 ): Promise<AuthenticatedUser> {
   const email = request.email.trim().toLowerCase();
 
@@ -96,7 +77,7 @@ export async function loginUser(
 
   if (!("token" in result)) {
     throw new Error(
-      `Your registration is still in progress. Try again in ${result.retryAfterSeconds} seconds.`
+      `Your registration is still in progress. Try again in ${result.retryAfterSeconds} seconds.`,
     );
   }
 

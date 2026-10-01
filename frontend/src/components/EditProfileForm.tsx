@@ -1,3 +1,4 @@
+import { getAvatarSource } from "../avatar";
 import { useState, type ChangeEvent, type SubmitEvent } from "react";
 
 import type { AuthenticatedUser } from "../types/auth";
@@ -13,7 +14,7 @@ type EditProfileFormProps = {
     displayName: string,
     username: string,
     bio: string,
-    avatarSource: File | null
+    avatarSource: File | null,
   ) => void;
   onCancel: () => void;
 };
@@ -31,12 +32,10 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
 
   const [errorMessage, setErrorMessage] = useState("");
 
-  const defaultAvatarUrl = "/images/default-avatar.svg";
-
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState(
-    user.avatarUrl ?? defaultAvatarUrl
+    getAvatarSource(user.avatarUrl),
   );
 
   function handleAvatarChange(event: ChangeEvent<HTMLInputElement>) {
@@ -85,8 +84,8 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
     const normalizedUsername = normalizeUsername(username);
     const trimmedBio = bio.trim();
 
-    if (trimmedDisplayName.length < 2 || trimmedDisplayName.length > 100) {
-      setErrorMessage("Display name must contain 2 to 100 characters.");
+    if (trimmedDisplayName.length < 1 || trimmedDisplayName.length > 60) {
+      setErrorMessage("Display name must contain 1 to 60 characters.");
       return;
     }
 
@@ -131,8 +130,8 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
           id="profile-display-name"
           type="text"
           required
-          minLength={2}
-          maxLength={100}
+          minLength={1}
+          maxLength={60}
           autoComplete="name"
           value={displayName}
           onChange={(event) => {
@@ -148,7 +147,7 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
           type="text"
           required
           minLength={3}
-          maxLength={30}
+          maxLength={24}
           autoComplete="username"
           value={username}
           onChange={(event) => {

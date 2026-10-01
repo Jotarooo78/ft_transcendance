@@ -49,8 +49,8 @@ function RegisterForm() {
       return;
     }
 
-    if (displayName.length < 2 || displayName.length > 100) {
-      setErrorMessage("Display name must contain 2 to 100 characters.");
+    if (displayName.length < 1 || displayName.length > 60) {
+      setErrorMessage("Display name must contain 1 to 60 characters.");
       return;
     }
 
@@ -96,7 +96,7 @@ function RegisterForm() {
             type="text"
             required
             minLength={3}
-            maxLength={30}
+            maxLength={24}
             autoComplete="username"
             aria-describedby="register-username-help"
             value={form.username}
@@ -110,7 +110,7 @@ function RegisterForm() {
         </label>
 
         <p id="register-username-help">
-          Use 3 to 30 letters (a-z), numbers or underscores.
+          Use 3 to 24 letters (a-z), numbers or underscores.
         </p>
 
         <label>
@@ -118,8 +118,8 @@ function RegisterForm() {
           <input
             type="text"
             required
-            minLength={2}
-            maxLength={100}
+            minLength={1}
+            maxLength={60}
             autoComplete="nickname"
             aria-describedby="register-display-name-help"
             value={form.displayName}
