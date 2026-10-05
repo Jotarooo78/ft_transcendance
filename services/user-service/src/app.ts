@@ -39,12 +39,25 @@ export type ProfileDto = {
 
 export type ProfileReader = (userId: string) => Promise<ProfileDto | null>;
 
+export type ProfileUpdater = (
+  userId: string,
+  values: Pick<ProfileDto, "displayName" | "username" | "bio">,
+) => Promise<ProfileDto>;
+
+export class UsernameConflictError extends Error {
+  constructor() {
+    super("username already in use");
+    this.name = "UsernameConflictError";
+  }
+}
+
 type BuildAppOptions = {
   internalServiceToken?: string;
   jwtSecret: string;
   logger?: boolean;
   provisionProfile?: ProfileProvisioner;
   readProfile: ProfileReader;
+  profileUpdater: ProfileUpdater;
 };
 
 const uuidPattern =
@@ -127,6 +140,7 @@ export function buildApp({
   logger = true,
   provisionProfile,
   readProfile,
+  profileUpdater,
 }: BuildAppOptions): FastifyInstance {
   if ((internalServiceToken === undefined) !== (provisionProfile === undefined)) {
     throw new Error(
@@ -267,6 +281,54 @@ export function buildApp({
         bio: profile.bio,
         avatarUrl: profile.avatarUrl,
       } satisfies ProfileDto;
+    },
+  );
+
+  app.put<{ Body: unknown }>(
+    "/me/profile",
+    { onRequest: authenticate },
+    async (request, reply) => {
+      const body = isRecord(request.body) ? request.body : {};
+      const displayName =
+        typeof body.displayName === "string" ? body.displayName.trim() : "";
+      const username = normalizeUsername(body.username);
+      const bio = typeof body.bio === "string" ? body.bio.trim() : body.bio;
+
+      if (!displayName || displayName.length > 60) {
+        return reply.code(400).send({
+          error: "displayName must be between 1 and 60 chars",
+        });
+      }
+      if (username === null) {
+        return reply.code(400).send({
+          error: "username must match ^[a-z0-9_]{3,24}$",
+        });
+      }
+      if (bio !== null && (typeof bio !== "string" || bio.length > 160)) {
+        return reply.code(400).send({
+          error: "bio must be null or contain no more than 160 chars",
+        });
+      }
+
+      try {
+        const profile = await profileUpdater(request.authenticatedUserId!, {
+          displayName,
+          username,
+          bio: bio === "" ? null : bio,
+        });
+        return {
+          userId: profile.userId,
+          displayName: profile.displayName,
+          username: profile.username,
+          bio: profile.bio,
+          avatarUrl: profile.avatarUrl,
+        } satisfies ProfileDto;
+      } catch (error) {
+        if (error instanceof UsernameConflictError) {
+          return reply.code(409).send({ error: error.message });
+        }
+        throw error;
+      }
     },
   );
 

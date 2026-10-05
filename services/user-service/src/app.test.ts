@@ -7,6 +7,8 @@ import {
   normalizeUsername,
   type ProfileDto,
   type ProfileReader,
+  type ProfileUpdater,
+  UsernameConflictError,
 } from "./app.js";
 import {
   type ProfileProvisionCommand,
@@ -17,6 +19,10 @@ import {
 const jwtSecret = "test-only-user-service-secret-with-sufficient-length";
 const internalServiceToken =
   "test-only-internal-service-token-with-sufficient-length";
+
+const unexpectedProfileUpdate: ProfileUpdater = async () => {
+  assert.fail("profile updater must not be called");
+};
 
 function createProvisionCommand(
   userId = randomUUID(),
@@ -48,12 +54,182 @@ async function createToken(
   readProfile: ProfileReader,
   subject: unknown,
   additionalClaims: Record<string, unknown> = {},
+  profileUpdater: ProfileUpdater = unexpectedProfileUpdate,
 ) {
-  const app = buildApp({ jwtSecret, logger: false, readProfile });
+  const app = buildApp({ jwtSecret, logger: false, readProfile, profileUpdater });
   await app.ready();
   const token = app.jwt.sign({ ...additionalClaims, sub: subject });
 
   return { app, token };
+}
+
+test("PUT /me/profile returns exactly the DTO confirmed by the updater", async () => {
+  const userId = randomUUID();
+  const payload = { displayName: "Léa", username: "lea", bio: null };
+  const confirmedProfile = {
+    userId,
+    displayName: "Confirmed name",
+    username: "confirmed_username",
+    bio: "Confirmed bio",
+    avatarUrl: "/avatars/existing.png",
+  };
+  const calls: unknown[] = [];
+  const { app, token } = await createToken(async () => null, userId, {},
+    async (id, values) => {
+      calls.push({ id, values });
+      return { ...confirmedProfile, email: "private@example.invalid", createdAt: "private" };
+    },
+  );
+  try {
+    const response = await app.inject({
+      method: "PUT", url: "/me/profile",
+      headers: { authorization: `Bearer ${token}` }, payload,
+    });
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.json(), confirmedProfile);
+    assert.deepEqual(calls, [{ id: userId, values: payload }]);
+  } finally {
+    await app.close();
+  }
+});
+
+for (const [label, payload, expected] of [
+  ["normalization", { displayName: " Léa ", username: " LEA_2 ", bio: " Hello " },
+    { displayName: "Léa", username: "lea_2", bio: "Hello" }],
+  ["empty bio", { displayName: "Léa", username: "lea", bio: "   " },
+    { displayName: "Léa", username: "lea", bio: null }],
+  ["maximum lengths", { displayName: "a".repeat(60), username: "a".repeat(24), bio: "b".repeat(160) },
+    { displayName: "a".repeat(60), username: "a".repeat(24), bio: "b".repeat(160) }],
+] as const) {
+  test(`PUT /me/profile accepts ${label}`, async () => {
+    const userId = randomUUID();
+    const calls: unknown[] = [];
+    const { app, token } = await createToken(async () => null, userId, {},
+      async (id, values) => {
+        calls.push({ id, values });
+        return { userId: id, ...values, avatarUrl: null };
+      },
+    );
+    try {
+      const response = await app.inject({
+        method: "PUT", url: "/me/profile",
+        headers: { authorization: `Bearer ${token}` }, payload,
+      });
+      assert.equal(response.statusCode, 200);
+      assert.deepEqual(calls, [{ id: userId, values: expected }]);
+      assert.deepEqual(response.json(), { userId, ...expected, avatarUrl: null });
+    } finally {
+      await app.close();
+    }
+  });
+}
+
+const validUpdate = { displayName: "Léa", username: "lea", bio: null };
+const invalidUpdates = [
+  ["empty display name", { ...validUpdate, displayName: " " }, "displayName must be between 1 and 60 chars"],
+  ["long display name", { ...validUpdate, displayName: "a".repeat(61) }, "displayName must be between 1 and 60 chars"],
+  ["non-string display name", { ...validUpdate, displayName: 42 }, "displayName must be between 1 and 60 chars"],
+  ["short username", { ...validUpdate, username: "ab" }, "username must match ^[a-z0-9_]{3,24}$"],
+  ["long username", { ...validUpdate, username: "a".repeat(25) }, "username must match ^[a-z0-9_]{3,24}$"],
+  ["invalid username format", { ...validUpdate, username: "lea-2" }, "username must match ^[a-z0-9_]{3,24}$"],
+  ["non-string username", { ...validUpdate, username: 42 }, "username must match ^[a-z0-9_]{3,24}$"],
+  ["long bio", { ...validUpdate, bio: "b".repeat(161) }, "bio must be null or contain no more than 160 chars"],
+  ["non-string bio", { ...validUpdate, bio: 42 }, "bio must be null or contain no more than 160 chars"],
+  ["missing bio", { displayName: "Léa", username: "lea" }, "bio must be null or contain no more than 160 chars"],
+  ["empty body", {}, "displayName must be between 1 and 60 chars"],
+  ["array body", [], "displayName must be between 1 and 60 chars"],
+] as const;
+
+for (const [label, payload, error] of invalidUpdates) {
+  test(`PUT /me/profile rejects ${label} before calling the updater`, async () => {
+    let calls = 0;
+    const { app, token } = await createToken(async () => null, randomUUID(), {},
+      async () => { calls++; throw new Error("unexpected update"); },
+    );
+    try {
+      const response = await app.inject({
+        method: "PUT", url: "/me/profile",
+        headers: { authorization: `Bearer ${token}` }, payload,
+      });
+      assert.equal(response.statusCode, 400);
+      assert.deepEqual(response.json(), { error });
+      assert.equal(calls, 0);
+    } finally {
+      await app.close();
+    }
+  });
+}
+
+for (const { label, subject, withToken } of [
+  { label: "a missing subject", subject: undefined, withToken: true },
+  { label: "a non-UUID subject", subject: "invalid-uuid", withToken: true },
+  { label: "a non-string subject", subject: 42, withToken: true },
+  { label: "a missing token", subject: randomUUID(), withToken: false },
+]) {
+  test(`PUT /me/profile rejects ${label}`, async () => {
+    let calls = 0;
+    const { app, token } = await createToken(async () => null, subject, {},
+      async () => { calls++; throw new Error("unexpected update"); },
+    );
+    try {
+      const response = await app.inject({
+        method: "PUT", url: "/me/profile", payload: validUpdate,
+        headers: withToken ? { authorization: `Bearer ${token}` } : {},
+      });
+      assert.equal(response.statusCode, 401);
+      assert.deepEqual(response.json(), { error: "unauthorized" });
+      assert.equal(calls, 0);
+    } finally {
+      await app.close();
+    }
+  });
+}
+
+test("PUT /me/profile uses only the JWT sub for identity", async () => {
+  const userId = randomUUID();
+  const otherId = randomUUID();
+  const calls: unknown[] = [];
+  const { app, token } = await createToken(async () => null, userId, { userId: otherId },
+    async (id, values) => {
+      calls.push({ id, values });
+      return { userId: id, ...values, avatarUrl: null };
+    },
+  );
+  try {
+    const response = await app.inject({
+      method: "PUT", url: `/me/profile?userId=${otherId}`,
+      headers: { authorization: `Bearer ${token}`, "x-user-id": otherId },
+      payload: { ...validUpdate, userId: otherId, sub: otherId },
+    });
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(calls, [{ id: userId, values: validUpdate }]);
+    assert.deepEqual(response.json(), { userId, ...validUpdate, avatarUrl: null });
+  } finally {
+    await app.close();
+  }
+});
+
+for (const conflict of [true, false]) {
+  test(`PUT /me/profile maps ${conflict ? "a username conflict to 409" : "an unexpected failure to a generic 500"}`, async () => {
+    let calls = 0;
+    const { app, token } = await createToken(async () => null, randomUUID(), {},
+      async () => {
+        calls++;
+        throw conflict ? new UsernameConflictError() : new Error("private database details");
+      },
+    );
+    try {
+      const response = await app.inject({
+        method: "PUT", url: "/me/profile",
+        headers: { authorization: `Bearer ${token}` }, payload: validUpdate,
+      });
+      assert.equal(response.statusCode, conflict ? 409 : 500);
+      assert.deepEqual(response.json(), { error: conflict ? "username already in use" : "internal server error" });
+      assert.equal(calls, 1);
+    } finally {
+      await app.close();
+    }
+  });
 }
 
 test("GET /me returns exactly the allowed profile DTO", async () => {
@@ -216,6 +392,7 @@ test("GET /me rejects a request without a token", async () => {
   const app = buildApp({
     jwtSecret,
     logger: false,
+    profileUpdater: unexpectedProfileUpdate,
     readProfile: async () => {
       readCount += 1;
       return null;
@@ -240,6 +417,7 @@ test("PUT /internal/profiles creates a profile and accepts an idempotent replay"
     internalServiceToken,
     jwtSecret,
     logger: false,
+    profileUpdater: unexpectedProfileUpdate,
     provisionProfile: async (command) => {
       receivedCommands.push(command);
       if (processedEvents.has(command.eventId)) {
@@ -288,6 +466,7 @@ test("PUT /internal/profiles normalizes the username at the Users boundary", asy
     internalServiceToken,
     jwtSecret,
     logger: false,
+    profileUpdater: unexpectedProfileUpdate,
     provisionProfile: async (command) => {
       receivedCommands.push(command);
       return { status: "created" };
@@ -317,6 +496,7 @@ test("PUT /internal/profiles rejects a request without the internal credential",
     internalServiceToken,
     jwtSecret,
     logger: false,
+    profileUpdater: unexpectedProfileUpdate,
     provisionProfile: async () => {
       provisionCount += 1;
       return { status: "created" };
@@ -345,6 +525,7 @@ test("PUT /internal/profiles exposes a username conflict without retrying it", a
     internalServiceToken,
     jwtSecret,
     logger: false,
+    profileUpdater: unexpectedProfileUpdate,
     provisionProfile: async () => {
       throw new UsernameTakenError();
     },

@@ -4,7 +4,12 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { randomUUID } from "node:crypto";
 
-import { buildApp, type ProfileReader } from "./app.js";
+import {
+  buildApp,
+  type ProfileReader,
+  type ProfileUpdater,
+  UsernameConflictError,
+} from "./app.js";
 import { disconnectPrisma, prisma } from "./database/prisma.js";
 import { Prisma } from "./generated/prisma/client.js";
 import {
@@ -123,11 +128,37 @@ const provisionProfile: ProfileProvisioner = async (command) => {
   }
 };
 
+const profileUpdater: ProfileUpdater = async (userId, values) => {
+  try {
+    return await prisma.profile.upsert({
+      where: { userId },
+      update: values,
+      create: { userId, ...values },
+      select: {
+        userId: true,
+        displayName: true,
+        username: true,
+        bio: true,
+        avatarUrl: true,
+      },
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      throw new UsernameConflictError();
+    }
+    throw error;
+  }
+};
+
 const app = buildApp({
   internalServiceToken,
   jwtSecret,
   provisionProfile,
   readProfile,
+  profileUpdater,
 });
 
 const uuidPattern =
@@ -182,69 +213,6 @@ app.get("/profile/:userId", async (request, reply) => {
   }
 
   return profile;
-});
-
-app.put("/me/profile", { onRequest: authenticate }, async (request, reply) => {
-  const userId = request.authenticatedUserId;
-  const body = request.body as {
-    displayName?: unknown;
-    username?: unknown;
-    bio?: unknown;
-  };
-
-  const displayName = typeof body.displayName === "string" ? body.displayName.trim() : "";
-  const usernameRaw = typeof body.username === "string" ? body.username.trim().toLowerCase() : "";
-  const bio = typeof body.bio === "string" ? body.bio.trim() : body.bio;
-
-  if (!userId) {
-    return reply.code(401).send({ error: "unauthorized" });
-  }
-
-  if (!displayName || displayName.length > 60) {
-    return reply.code(400).send({ error: "displayName must be between 1 and 60 chars" });
-  }
-
-  if (!/^[a-z0-9_]{3,24}$/.test(usernameRaw)) {
-    return reply.code(400).send({ error: "username must match ^[a-z0-9_]{3,24}$" });
-  }
-
-  if (bio !== null && (typeof bio !== "string" || bio.length > 160)) {
-    return reply.code(400).send({ error: "bio must be null or contain no more than 160 chars" });
-  }
-
-  const storedBio = bio === "" ? null : bio;
-
-  try {
-    const profile = await prisma.profile.upsert({
-      where: { userId },
-      update: {
-        displayName,
-        username: usernameRaw,
-        bio: storedBio,
-      },
-      create: {
-        userId,
-        displayName,
-        username: usernameRaw,
-        bio: storedBio,
-      },
-      select: {
-        userId: true,
-        displayName: true,
-        username: true,
-        bio: true,
-        avatarUrl: true,
-      },
-    });
-
-    return profile;
-  } catch (error: unknown) {
-    if (typeof error === "object" && error && "code" in error && error.code === "P2002") {
-      return reply.code(409).send({ error: "username already in use" });
-    }
-
-    throw error;
-  }
 });
 
 app.post("/me/avatar", { onRequest: authenticate }, async (request, reply) => {
