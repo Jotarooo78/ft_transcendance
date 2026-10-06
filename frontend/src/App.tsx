@@ -10,10 +10,18 @@ import UsersPage from "./pages/UsersPage";
 import type { AuthenticatedUser, PublicUser } from "./types/auth";
 import type { Playlist } from "./types/music";
 import { loadPlaylists, savePlaylists } from "./storage/playlistsStorage";
-import { loadFriendIds, saveFriendIds } from "./storage/friendsStorage";
 
 import { clearAccessToken, onSessionCleared } from "./services/session";
-import { updateMyProfile, uploadMyAvatar, getUsers } from "./services/users";
+import {
+  addFriend,
+  getFriends,
+  getUsers,
+  removeFriend,
+  updateMyProfile,
+  uploadMyAvatar,
+  markPresenceOffline,
+  sendPresenceHeartbeat,
+} from "./services/users";
 
 import "./App.css";
 
@@ -34,17 +42,13 @@ function App() {
 
   const [playlists, setPlaylists] = useState<Playlist[]>(loadPlaylists);
 
-  const [friendIds, setFriendIds] = useState<string[]>(loadFriendIds);
+  const [friends, setFriends] = useState<PublicUser[]>([]);
 
-  const friends = users.filter((user) => friendIds.includes(user.id));
+  const friendIds = friends.map((friend) => friend.id);
 
   useEffect(() => {
     savePlaylists(playlists);
   }, [playlists]);
-
-  useEffect(() => {
-    saveFriendIds(friendIds);
-  }, [friendIds]);
 
   useEffect(() => {
     const unsubscribe = onSessionCleared(() => {
@@ -59,17 +63,22 @@ function App() {
   useEffect(() => {
     if (currentUser === null) {
       setUsers([]);
+      setFriends([]);
       return;
     }
 
     let isCancelled = false;
 
-    async function loadUsers() {
+    async function loadUserData() {
       try {
-        const loadedUsers = await getUsers();
+        const [loadedUsers, loadedFriends] = await Promise.all([
+          getUsers(),
+          getFriends(),
+        ]);
 
         if (!isCancelled) {
           setUsers(loadedUsers);
+          setFriends(loadedFriends);
         }
       } catch (error) {
         if (error instanceof Error) {
@@ -78,10 +87,66 @@ function App() {
       }
     }
 
-    void loadUsers();
+    void loadUserData();
 
     return () => {
       isCancelled = true;
+    };
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (currentUser === null) {
+      return;
+    }
+
+    async function sendHeartbeat() {
+      try {
+        await sendPresenceHeartbeat();
+      } catch (error) {
+        if (error instanceof Error) {
+          console.error(error.message);
+        }
+      }
+    }
+
+    void sendHeartbeat();
+
+    const intervalId = window.setInterval(() => {
+      void sendHeartbeat();
+    }, 60_000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (currentUser === null) {
+      return;
+    }
+
+    async function refreshUserData() {
+      try {
+        const [loadedUsers, loadedFriends] = await Promise.all([
+          getUsers(),
+          getFriends(),
+        ]);
+
+        setUsers(loadedUsers);
+        setFriends(loadedFriends);
+      } catch (error) {
+        if (error instanceof Error) {
+          console.error(error.message);
+        }
+      }
+    }
+
+    const intervalId = window.setInterval(() => {
+      void refreshUserData();
+    }, 30_000);
+
+    return () => {
+      window.clearInterval(intervalId);
     };
   }, [currentUser]);
 
@@ -90,8 +155,12 @@ function App() {
     setPrivatePage("profile");
   }
 
-  function handleLogout() {
-    clearAccessToken();
+  async function handleLogout(): Promise<void> {
+    try {
+      await markPresenceOffline();
+    } finally {
+      clearAccessToken();
+    }
   }
 
   function handleCreatePlaylist(playlist: Playlist) {
@@ -185,20 +254,19 @@ function App() {
     });
   }
 
-  function handleAddFriend(userId: string) {
-    setFriendIds((currentFriendIds) => {
-      if (currentFriendIds.includes(userId)) {
-        return currentFriendIds;
-      }
-
-      return [...currentFriendIds, userId];
-    });
+  async function refreshFriends(): Promise<void> {
+    const loadedFriends = await getFriends();
+    setFriends(loadedFriends);
   }
 
-  function handleRemoveFriend(userId: string) {
-    setFriendIds((currentFriendIds) =>
-      currentFriendIds.filter((friendId) => friendId !== userId),
-    );
+  async function handleAddFriend(userId: string): Promise<void> {
+    await addFriend(userId);
+    await refreshFriends();
+  }
+
+  async function handleRemoveFriend(userId: string): Promise<void> {
+    await removeFriend(userId);
+    await refreshFriends();
   }
 
   if (currentUser !== null) {
@@ -271,7 +339,9 @@ function App() {
             <button
               type="button"
               className="navigation-button"
-              onClick={handleLogout}
+              onClick={() => {
+                void handleLogout();
+              }}
             >
               Log out
             </button>
