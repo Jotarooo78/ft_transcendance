@@ -29,6 +29,14 @@ type PublicPage = "register" | "login";
 
 type PrivatePage = "profile" | "catalog" | "playlists" | "users";
 
+function getErrorMessage(error: unknown, fallbackMessage: string): string {
+  if (error instanceof Error) {
+    return error.name === "SyntaxError" ? fallbackMessage : error.message;
+  }
+
+  return fallbackMessage;
+}
+
 function App() {
   const [currentPage, setCurrentPage] = useState<PublicPage>("register");
 
@@ -46,6 +54,8 @@ function App() {
 
   const friendIds = friends.map((friend) => friend.id);
 
+  const [errorMessage, setErrorMessage] = useState("");
+
   useEffect(() => {
     savePlaylists(playlists);
   }, [playlists]);
@@ -53,8 +63,11 @@ function App() {
   useEffect(() => {
     const unsubscribe = onSessionCleared(() => {
       setCurrentUser(null);
+      setUsers([]);
+      setFriends([]);
       setCurrentPage("login");
       setPrivatePage("profile");
+      setErrorMessage("");
     });
 
     return unsubscribe;
@@ -62,8 +75,6 @@ function App() {
 
   useEffect(() => {
     if (currentUser === null) {
-      setUsers([]);
-      setFriends([]);
       return;
     }
 
@@ -79,10 +90,13 @@ function App() {
         if (!isCancelled) {
           setUsers(loadedUsers);
           setFriends(loadedFriends);
+          setErrorMessage("");
         }
       } catch (error) {
-        if (error instanceof Error) {
-          console.error(error.message);
+        if (!isCancelled) {
+          setErrorMessage(
+            getErrorMessage(error, "Unable to load users and friends."),
+          );
         }
       }
     }
@@ -102,10 +116,11 @@ function App() {
     async function sendHeartbeat() {
       try {
         await sendPresenceHeartbeat();
+        setErrorMessage("");
       } catch (error) {
-        if (error instanceof Error) {
-          console.error(error.message);
-        }
+        setErrorMessage(
+          getErrorMessage(error, "Unable to update your online status."),
+        );
       }
     }
 
@@ -134,10 +149,11 @@ function App() {
 
         setUsers(loadedUsers);
         setFriends(loadedFriends);
+        setErrorMessage("");
       } catch (error) {
-        if (error instanceof Error) {
-          console.error(error.message);
-        }
+        setErrorMessage(
+          getErrorMessage(error, "Unable to refresh users and friends."),
+        );
       }
     }
 
@@ -151,6 +167,7 @@ function App() {
   }, [currentUser]);
 
   function handleLoginSuccess(user: AuthenticatedUser) {
+    setErrorMessage("");
     setCurrentUser(user);
     setPrivatePage("profile");
   }
@@ -158,6 +175,9 @@ function App() {
   async function handleLogout(): Promise<void> {
     try {
       await markPresenceOffline();
+    } catch {
+      // Heartbeats stop after logout, so the backend will eventually mark the
+      // user offline even if this best-effort request cannot be delivered.
     } finally {
       clearAccessToken();
     }
@@ -260,13 +280,25 @@ function App() {
   }
 
   async function handleAddFriend(userId: string): Promise<void> {
-    await addFriend(userId);
-    await refreshFriends();
+    setErrorMessage("");
+
+    try {
+      await addFriend(userId);
+      await refreshFriends();
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, "Unable to add this friend."));
+    }
   }
 
   async function handleRemoveFriend(userId: string): Promise<void> {
-    await removeFriend(userId);
-    await refreshFriends();
+    setErrorMessage("");
+
+    try {
+      await removeFriend(userId);
+      await refreshFriends();
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, "Unable to remove this friend."));
+    }
   }
 
   if (currentUser !== null) {
@@ -347,6 +379,12 @@ function App() {
             </button>
           </nav>
         </header>
+
+        {errorMessage && (
+          <p className="message error-message" role="alert">
+            {errorMessage}
+          </p>
+        )}
 
         {privatePage === "profile" && (
           <ProfilePage
