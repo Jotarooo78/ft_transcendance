@@ -1,8 +1,11 @@
 import type {
-  ProfileResponse,
-  UpdateProfileRequest,
   AvatarUploadResponse,
+  ProfileResponse,
+  PublicUser,
+  UpdateProfileRequest,
+  UserDirectoryResponse,
 } from "../types/auth";
+
 import { authenticatedFetch } from "./api";
 
 export async function updateMyProfile(
@@ -44,4 +47,29 @@ export async function uploadMyAvatar(
   }
 
   return data;
+}
+
+export async function getUsers(): Promise<PublicUser[]> {
+  const response = await authenticatedFetch("/api/users/profiles");
+
+  const data = (await response.json()) as
+    | UserDirectoryResponse
+    | { error?: string };
+
+  if (!response.ok) {
+    throw new Error(
+      "error" in data && data.error ? data.error : "Unable to load users.",
+    );
+  }
+
+  const directory = data as UserDirectoryResponse;
+
+  return directory.users.map((user) => ({
+    id: user.userId,
+    displayName: user.displayName,
+    username: user.username,
+    bio: user.bio,
+    avatarUrl: user.avatarUrl,
+    isOnline: user.onlineStatus === "online",
+  }));
 }

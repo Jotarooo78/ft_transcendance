@@ -7,14 +7,13 @@ import CatalogPage from "./pages/CatalogPage";
 import PlaylistsPage from "./pages/PlaylistsPage";
 import UsersPage from "./pages/UsersPage";
 
-import { mockUsers } from "./data/users";
-import type { AuthenticatedUser } from "./types/auth";
+import type { AuthenticatedUser, PublicUser } from "./types/auth";
 import type { Playlist } from "./types/music";
 import { loadPlaylists, savePlaylists } from "./storage/playlistsStorage";
 import { loadFriendIds, saveFriendIds } from "./storage/friendsStorage";
 
 import { clearAccessToken, onSessionCleared } from "./services/session";
-import { updateMyProfile, uploadMyAvatar } from "./services/users";
+import { updateMyProfile, uploadMyAvatar, getUsers } from "./services/users";
 
 import "./App.css";
 
@@ -29,13 +28,15 @@ function App() {
     null,
   );
 
+  const [users, setUsers] = useState<PublicUser[]>([]);
+
   const [privatePage, setPrivatePage] = useState<PrivatePage>("profile");
 
   const [playlists, setPlaylists] = useState<Playlist[]>(loadPlaylists);
 
   const [friendIds, setFriendIds] = useState<string[]>(loadFriendIds);
 
-  const friends = mockUsers.filter((user) => friendIds.includes(user.id));
+  const friends = users.filter((user) => friendIds.includes(user.id));
 
   useEffect(() => {
     savePlaylists(playlists);
@@ -54,6 +55,35 @@ function App() {
 
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    if (currentUser === null) {
+      setUsers([]);
+      return;
+    }
+
+    let isCancelled = false;
+
+    async function loadUsers() {
+      try {
+        const loadedUsers = await getUsers();
+
+        if (!isCancelled) {
+          setUsers(loadedUsers);
+        }
+      } catch (error) {
+        if (error instanceof Error) {
+          console.error(error.message);
+        }
+      }
+    }
+
+    void loadUsers();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [currentUser]);
 
   function handleLoginSuccess(user: AuthenticatedUser) {
     setCurrentUser(user);
@@ -276,7 +306,7 @@ function App() {
 
         {privatePage === "users" && (
           <UsersPage
-            users={mockUsers}
+            users={users}
             friendIds={friendIds}
             onAddFriend={handleAddFriend}
             onRemoveFriend={handleRemoveFriend}
