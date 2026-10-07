@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import AudioPlayer from "../components/AudioPlayer";
 import TrackCard from "../components/TrackCard";
+import TrackDetails from "../components/TrackDetails";
 import { getTracks, type CatalogList } from "../services/catalog";
 import type { Playlist, Track } from "../types/music";
 
@@ -14,6 +15,8 @@ const TRACKS_PER_PAGE = 2;
 
 function CatalogPage({ playlists, onAddTrackToPlaylist }: CatalogPageProps) {
   const [currentPage, setCurrentPage] = useState(1);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const detailTrigger = useRef<HTMLButtonElement | null>(null);
 
   const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
 
@@ -150,6 +153,11 @@ function CatalogPage({ playlists, onAddTrackToPlaylist }: CatalogPageProps) {
           </div>
         </section>
 
+        {detailId && <TrackDetails key={detailId} id={detailId} onClose={() => {
+          setDetailId(null);
+          detailTrigger.current?.focus();
+        }} />}
+
         <section className="catalog-section" aria-labelledby="catalog-title">
           <h2 id="catalog-title">Available tracks</h2>
 
@@ -202,6 +210,11 @@ function CatalogPage({ playlists, onAddTrackToPlaylist }: CatalogPageProps) {
                       isSelected={selectedTrack?.id === track.id}
                       onPlay={handlePlay}
                     />
+
+                    <button type="button" aria-label={`Details for ${track.title}`} onClick={event => {
+                      detailTrigger.current = event.currentTarget;
+                      setDetailId(track.id);
+                    }}>Details</button>
 
                     <button
                       type="button"

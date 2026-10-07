@@ -24,3 +24,12 @@ export async function getTracks(query: CatalogQuery, signal?: AbortSignal): Prom
   }
   return data;
 }
+
+export async function getTrack(id: string, signal?: AbortSignal): Promise<Track> {
+  const response = await fetch(`/api/catalog/tracks/${encodeURIComponent(id)}`, { signal });
+  if (response.status === 404) throw new Error("This track is no longer available.");
+  if (!response.ok) throw new Error(`Unable to load track (${response.status}). Please retry.`);
+  const track: unknown = await response.json();
+  if (!isTrack(track) || track.id !== id) throw new Error("Invalid track response. Please retry.");
+  return track;
+}

@@ -86,4 +86,15 @@ Les critères de compréhension restent personnels.
   zéro résultat. Script ponctuel /tmp/music-cat7-browser.mjs ; le scénario
   durable complet sera ajouté en CAT-10.
 - Documentation Notion des cinq fichiers liée à CAT-7.
-- Synchronisation à effectuer avant CAT-8.
+- Synchronisation CAT-7 : a9dfd7e publié, aucun nouveau commit ni conflit.
+
+## CAT-8 — Détail dans l’interface
+
+- Route dédiée appelée par getTrack ; panneau distinct remonté par UUID,
+  annulation, retry et erreurs locales. Région non modale accessible au clavier,
+  Escape ferme puis restaure le focus au bouton d’ouverture.
+- Lint/build réussis. Chromium : détail réel, durée six secondes, focus ;
+  erreur 404 simulée sans perte de liste puis retry vers le vrai serveur.
+  Script ponctuel /tmp/music-cat8-browser.mjs, à intégrer en CAT-10.
+- Notes client/page réutilisées et TrackDetails documenté dans Notion.
+- Synchronisation à effectuer avant CAT-9.
