@@ -120,4 +120,21 @@ Les critères de compréhension restent personnels.
 - Succès réels et identités API comparés au rendu ; erreurs 404/réseau simulées
   suivies de retry réel ; réponse ancienne retardée, nouveau résultat conservé.
 - Documentation Notion des tests/config/package/lockfile liée à CAT-10.
-- Synchronisation à effectuer avant CAT-11.
+- Synchronisation CAT-10 : 366d74a publié, aucun nouveau commit ni conflit.
+
+## CAT-11 — Deux campagnes Catalogue complètes
+
+- Runner gardé créé et syntaxe bash -n validée. Deux exécutions complètes de
+  tests/music/run.sh catalog réussies, base neuve puis nettoyage à chaque fois.
+- Quatre tests Catalogue, lint/build frontend, six migrations/permissions,
+  double seed/SQL, HTTPS/tri, redémarrages et Chromium passent sur chaque run.
+  Chromium : 1 test en 5,6 s puis 6,4 s. Journaux locaux :
+  /tmp/music-cat11-run1.log et /tmp/music-cat11-run2.log.
+- Outils : Node 22.23.2, npm 10.9.8, Docker 29.1.3, Compose 2.40.3,
+  Playwright 1.63.0. Base Git 366d74a, runner et README alors modifiés,
+  explicitement signalés par la campagne ; les résultats ne prétendent pas
+  concerner un commit qui n’existait pas encore.
+- Après le second nettoyage, zéro conteneur, volume ou réseau portant le
+  label com.docker.compose.project=transcendence_music.
+- Promesse CAT prouvée ; audio, Library et Playback restent à réaliser.
+- Synchronisation à effectuer avant MED-1.

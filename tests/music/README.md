@@ -29,7 +29,7 @@ sans diffuser de credentials. Une erreur de migration précède toute correction
 de route ; une erreur de connexion appelle un contrôle des permissions/URL.
 
 Le seed est disponible depuis CAT-3 : `run --rm --no-deps catalog-service npm run seed:demo`.
-Le runner complet reste à produire en CAT-11. Aucun démarrage
+Le runner Catalogue est disponible depuis CAT-11. Aucun démarrage
 de service ne doit installer automatiquement des données métier.
 
 Depuis CAT-6 : `up -d --build --wait nginx`, puis
@@ -55,3 +55,31 @@ puis `npm test --prefix tests/music -- --grep catalog` exécutent le navigateur.
 Le scénario utilise de vraies réponses de succès ; les refus simulés sont
 identifiés et suivis d’un retour au vrai serveur. Une réponse réelle retardée
 vérifie qu’une ancienne recherche ne remplace pas la plus récente.
+
+## Campagne reproductible
+
+```sh
+tests/music/run.sh catalog
+```
+
+Pré requis : Node 22, npm, Docker/Compose accessibles, bibliothèques système de
+Chromium comme pour PCE. Le script installe la version Playwright verrouillée.
+Les noms du projet, des volumes et du réseau, la base et le seul port 3443
+sont contrôlés avant tout nettoyage. Seules les ressources transcendence_music
+sont supprimées ; les projets PCE et développement ne sont pas ciblés.
+
+Ordre des phases : garde/configuration → nettoyage initial → construction →
+tests Catalogue → lint/build frontend → navigateur → migrations/permissions/
+readiness → double seed avec SQL → HTTPS → fixtures de tri → redémarrage
+Catalogue et vérification → redémarrage PostgreSQL et vérification → Chromium.
+Le trap nettoie aussi après échec ; le PASS final exige la campagne et son
+nettoyage réussis. La révision et l’état modifié éventuel sont affichés.
+
+En cas d’échec, partir du nom de phase : syntaxe/configuration, premier test
+échoué, service non prêt, assertion SQL/HTTP précise ou attente navigateur.
+Les logs applicatifs complets ne sont pas déversés pour éviter d’exposer des
+tokens. Rejouer une phase isolément si nécessaire, puis la campagne corrigée.
+
+La campagne Catalogue ne prouve pas encore les octets audio, les playlists
+persistées ou les sessions d’écoute ; leurs phases seront ajoutées après
+implémentation. `docs/music/EXECUTION.md` conserve les résultats observés.
