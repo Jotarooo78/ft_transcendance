@@ -34,7 +34,9 @@ Ne pas lancer deux campagnes simultanément sur ce même projet.
 Le Compose ne lit pas le `.env` de développement et ne monte aucun volume externe.
 Ses identifiants sont fixes et réservés au test. Les services Auth et Users
 utilisent leurs rôles runtime ; les migrations et l’application des permissions
-utilisent des rôles distincts. Le port HTTPS est publié uniquement sur la boucle
+utilisent des rôles distincts. Le client de permissions monte son répertoire
+PostgreSQL inutilisé en mémoire temporaire (`tmpfs`), pour éviter le volume
+anonyme implicite de l’image. Le port HTTPS est publié uniquement sur la boucle
 locale `127.0.0.1`. Le certificat est autosigné et sa vérification est désactivée
 uniquement pour les clients de cette preuve.
 

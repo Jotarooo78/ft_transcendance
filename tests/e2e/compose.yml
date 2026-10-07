@@ -96,6 +96,10 @@ services:
 
   apply-permissions:
     image: docker.io/library/postgres:16-alpine
+    # psql needs no local database. Override the image's VOLUME so this client
+    # does not create an unlabelled anonymous data volume beside our two targets.
+    tmpfs:
+      - /var/lib/postgresql/data
     environment:
       PGHOST: db
       PGUSER: e2e_admin
