@@ -417,3 +417,21 @@ Les critères de compréhension restent personnels.
   conflit réel après PATCH externe, puis suppression et GET 404 confirmés.
   Une autre playlist reste sélectionnée et le lecteur disparaît au succès.
 - Preuve locale /tmp/music-lib12-browser.mjs ; notes Notion mises à jour.
+- Synchronisation LIB-12 : 48a9155 publié, aucun apport distant ni conflit.
+
+## LIB-13 — Autorisations et concurrence PostgreSQL
+
+- Scénario HTTPS avec comptes A/B réels, chaque route privée sans JWT puis
+  avec token invalide/expiré/sujet non UUID ; refus suivis d’une relecture A.
+- Bornes Unicode, propriétaire/visibilité forgés, draft/absent, occurrences
+  répétées, retrait exact, item étranger, PATCH atomique et versions périmées.
+- Deux POST simultanés avec version 4 donnent exactement 200/409 ; version 5,
+  positions 2/3 et UUID distincts contrôlés par HTTP puis indépendamment SQL.
+- Panne Catalogue : ajout 503 sans mutation, lecture/création/édition/suppression
+  locales fonctionnent. Après reprise, Library puis DB redémarrés sans seed :
+  mêmes playlists/items/versions relus après nouvelle authentification.
+- Suppression finale des seules playlists de preuve par API ; SQL confirme
+  cascades et maintien du morceau/média partagés. Tous ces contrôles passent.
+- Client de test corrigé pour donner Content-Length aux corps DELETE.
+  Fichier temporaire de preuve sans token ; notes Notion remplies et liées.
+- Compose Library était déjà raccordé en LIB-8 ; aucune adaptation nécessaire.

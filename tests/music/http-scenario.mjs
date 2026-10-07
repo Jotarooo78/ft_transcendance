@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import https from 'node:https';
-import { createHash } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
+import { readFile, writeFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 
 export const base = new URL(process.env.MUSIC_BASE_URL ?? 'https://127.0.0.1:3443');
@@ -134,10 +135,140 @@ async function media(edge = false) {
   }
 }
 
+const libraryStatePath = '/tmp/transcendence-music-library-state.json';
+const testPassword = 'MusicTestOnly_123!';
+async function jsonRequest(path, method, body, token) {
+  const encoded = body === undefined ? undefined : JSON.stringify(body);
+  return request(path, { method, headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(encoded === undefined ? {} : { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(encoded) }) }, body: encoded });
+}
+async function loginFixture(user) {
+  const response = await jsonRequest('/api/auth/login', 'POST', { email: user.email, password: testPassword });
+  assert.equal(response.status, 200, 'fixture login');
+  const token = response.json().token; assert.equal(typeof token, 'string'); return token;
+}
+async function createFixtureUser(suffix) {
+  const username = `lib_${Date.now().toString(36)}_${suffix}`;
+  const email = `${username}@example.test`;
+  const response = await jsonRequest('/api/auth/signup', 'POST', { username, email, displayName: 'Library HTTP', password: testPassword });
+  assert.equal(response.status, 201, 'fixture signup');
+  return { username, email, id: response.json().userId };
+}
+async function libraryCall(token, suffix, method = 'GET', body, status = 200) {
+  const response = await jsonRequest(`/api/library/playlists${suffix}`, method, body, token);
+  assert.equal(response.status, status, `Library ${method} ${suffix}`);
+  assert.equal(response.headers['cache-control'], 'no-store');
+  return status === 204 ? undefined : response.json();
+}
+function signedTestToken(claims) {
+  const payload = [ { alg: 'HS256', typ: 'JWT' }, claims ].map(value => Buffer.from(JSON.stringify(value)).toString('base64url')).join('.');
+  return payload + '.' + createHmac('sha256', 'e2e_test_only_jwt_secret_with_sufficient_length').update(payload).digest('base64url');
+}
+async function library() {
+  await waitReady('library');
+  const a = await createFixtureUser('a'), b = await createFixtureUser('b');
+  const ta = await loginFixture(a), tb = await loginFixture(b);
+  let p = await libraryCall(ta, '', 'POST', { name: '  HTTP library A  ' }, 201);
+  assert.equal(p.name, 'HTTP library A'); assert.equal(p.description, ''); assert.equal(p.version, 1); assert.deepEqual(p.items, []);
+  const sameA = async () => assert.deepEqual(await libraryCall(ta, `/${p.id}`), p);
+  for (const body of [{ name: '' }, { name: ' '.repeat(3) }, { name: 'x'.repeat(101) }, { name: 'ok', description: 'x'.repeat(2001) },
+    { name: 'ok', ownerUserId: a.id }, { name: 'ok', visibility: 'public' }, { name: 'ok', version: 99 }, { name: 123 }]) {
+    await libraryCall(ta, '', 'POST', body, 400); await sameA();
+  }
+  const boundary = await libraryCall(ta, '', 'POST', { name: '🎵'.repeat(100), description: 'd'.repeat(2000) }, 201);
+  await libraryCall(ta, `/${boundary.id}`, 'DELETE', { expectedVersion: 1 }, 204);
+  const missing = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+  for (const trackId of [missing, '20000000-0000-4000-8000-000000000099']) {
+    await libraryCall(ta, `/${p.id}/items`, 'POST', { trackId, expectedVersion: p.version }, 404); await sameA();
+  }
+  for (const body of [{ trackId: trackIds[0], expectedVersion: 0 }, { trackId: 'bad', expectedVersion: 1 },
+    { trackId: trackIds[0], expectedVersion: 1, ownerUserId: b.id }]) {
+    await libraryCall(ta, `/${p.id}/items`, 'POST', body, 400); await sameA();
+  }
+  p = await libraryCall(ta, `/${p.id}/items`, 'POST', { trackId: trackIds[0], expectedVersion: 1 });
+  p = await libraryCall(ta, `/${p.id}/items`, 'POST', { trackId: trackIds[0], expectedVersion: 2 });
+  assert.equal(p.version, 3); assert.equal(p.items.length, 2); assert.notEqual(p.items[0].id, p.items[1].id);
+  assert.deepEqual(p.items.map(item => item.position), [1, 2]);
+  const initial = structuredClone(p), removed = p.items[0].id;
+  const routes = [ ['', 'GET', undefined], ['', 'POST', { name: 'unauthorized' }], [`/${p.id}`, 'GET', undefined],
+    [`/${p.id}/items`, 'POST', { trackId: trackIds[0], expectedVersion: 3 }],
+    [`/${p.id}/items/${removed}`, 'DELETE', { expectedVersion: 3 }],
+    [`/${p.id}`, 'PATCH', { name: 'forbidden', expectedVersion: 3 }], [`/${p.id}`, 'DELETE', { expectedVersion: 3 }] ];
+  for (const token of [undefined, 'invalid.jwt.token', signedTestToken({ sub: a.id, exp: 1 }),
+    signedTestToken({ sub: 'not-a-uuid', exp: Math.floor(Date.now()/1000)+60 })]) {
+    for (const [path, method, body] of routes) { await libraryCall(token, path, method, body, 401); await sameA(); }
+  }
+  assert.deepEqual((await libraryCall(tb, '')).items, []);
+  for (const [path, method, body] of routes.slice(2)) { await libraryCall(tb, path, method, body, 404); await sameA(); }
+  await libraryCall(tb, '', 'POST', { name: 'forged', ownerUserId: a.id }, 400); await sameA();
+  let pb = await libraryCall(tb, '', 'POST', { name: 'HTTP library B' }, 201);
+  pb = await libraryCall(tb, `/${pb.id}/items`, 'POST', { trackId: trackIds[1], expectedVersion: 1 });
+  await libraryCall(ta, `/${p.id}/items/${pb.items[0].id}`, 'DELETE', { expectedVersion: 3 }, 404); await sameA();
+  p = await libraryCall(ta, `/${p.id}/items/${removed}`, 'DELETE', { expectedVersion: 3 });
+  assert.deepEqual(p.items, [initial.items[1]]); assert.equal(p.version, 4);
+  await libraryCall(ta, `/${p.id}/items/${removed}`, 'DELETE', { expectedVersion: 3 }, 409); await sameA();
+  await libraryCall(ta, `/${p.id}/items/${removed}`, 'DELETE', { expectedVersion: 4 }, 404); await sameA();
+  // Real simultaneous requests exercise PostgreSQL row locks, not injected writers.
+  const concurrent = await Promise.all([0, 1].map(() => jsonRequest(`/api/library/playlists/${p.id}/items`, 'POST',
+    { trackId: trackIds[0], expectedVersion: 4 }, ta)));
+  assert.deepEqual(concurrent.map(r => r.status).sort(), [200, 409]);
+  p = await libraryCall(ta, `/${p.id}`); assert.equal(p.version, 5);
+  assert.deepEqual(p.items.map(item => item.position), [2, 3]); assert.equal(new Set(p.items.map(item => item.id)).size, 2);
+  for (const body of [{ name: '', description: 'must not write', expectedVersion: 5 }, { description: 'x'.repeat(2001), expectedVersion: 5 },
+    { ownerUserId: b.id, expectedVersion: 5 }, { visibility: 'public', expectedVersion: 5 }]) {
+    await libraryCall(ta, `/${p.id}`, 'PATCH', body, 400); await sameA();
+  }
+  await libraryCall(ta, `/${p.id}`, 'PATCH', { name: 'stale', expectedVersion: 4 }, 409); await sameA();
+  await libraryCall(ta, `/${p.id}`, 'DELETE', { expectedVersion: 4 }, 409); await sameA();
+  p = await libraryCall(ta, `/${p.id}`, 'PATCH', { name: '  Persisted A  ', description: '  preserved  ', expectedVersion: 5 });
+  assert.equal(p.version, 6); assert.equal(p.name, 'Persisted A'); assert.equal(p.description, 'preserved');
+  let deleted = await libraryCall(ta, '', 'POST', { name: 'Cascade fixture' }, 201);
+  deleted = await libraryCall(ta, `/${deleted.id}/items`, 'POST', { trackId: trackIds[2], expectedVersion: 1 });
+  await libraryCall(ta, `/${deleted.id}`, 'DELETE', { expectedVersion: 2 }, 204);
+  await libraryCall(ta, `/${deleted.id}`, 'DELETE', { expectedVersion: 2 }, 404);
+  await libraryCall(ta, `/${deleted.id}`, 'GET', undefined, 404);
+  for (const query of ['?page=0', '?pageSize=101', '?page=1.2', '?ownerUserId='+b.id]) await libraryCall(ta, query, 'GET', undefined, 400);
+  await libraryCall(ta, '/bad', 'GET', undefined, 400);
+  await sameA(); assert.deepEqual((await libraryCall(ta, '?page=1&pageSize=1')).items, [p]);
+  assert.deepEqual((await libraryCall(ta, '?page=2&pageSize=1')).items, []);
+  assert.equal((await request('/api/library/metrics')).status, 403);
+  await writeFile(libraryStatePath, JSON.stringify({ a, b, p, pb, removed, deleted, boundaryId: boundary.id }), { mode: 0o600 });
+}
+async function libraryVerify(mode) {
+  await waitReady('library');
+  const state = JSON.parse(await readFile(libraryStatePath, 'utf8'));
+  const { a, b, p, pb } = state, ta = await loginFixture(a), tb = await loginFixture(b);
+  assert.deepEqual(await libraryCall(ta, `/${p.id}`), p);
+  assert.deepEqual(await libraryCall(tb, `/${pb.id}`), pb);
+  for (const [token, expected] of [[ta, p], [tb, pb]]) {
+    const list = await libraryCall(token, ''); assert.equal(list.total, 1); assert.deepEqual(list.items, [expected]);
+  }
+  await libraryCall(tb, `/${p.id}`, 'GET', undefined, 404);
+  await libraryCall(ta, `/${state.deleted.id}`, 'GET', undefined, 404);
+  if (mode === 'library-unavailable') {
+    await libraryCall(ta, `/${p.id}/items`, 'POST', { trackId: trackIds[0], expectedVersion: p.version }, 503);
+    assert.deepEqual(await libraryCall(ta, `/${p.id}`), p);
+    // Creation, edit and deletion remain local while Catalogue is stopped.
+    const temp = await libraryCall(ta, '', 'POST', { name: 'No catalogue required' }, 201);
+    await libraryCall(ta, `/${temp.id}`, 'PATCH', { description: 'local', expectedVersion: 1 });
+    await libraryCall(ta, `/${temp.id}`, 'DELETE', { expectedVersion: 2 }, 204);
+  } else {
+    assert.equal((await request(`/api/catalog/tracks/${trackIds[2]}`)).status, 200);
+    assert.equal((await request('/api/media/assets/30000000-0000-4000-8000-000000000003/audio', { method: 'HEAD' })).status, 200);
+  }
+  if (mode === 'library-cleanup') {
+    await libraryCall(ta, `/${p.id}`, 'DELETE', { expectedVersion: p.version }, 204);
+    await libraryCall(tb, `/${pb.id}`, 'DELETE', { expectedVersion: pb.version }, 204);
+    await libraryCall(ta, `/${p.id}`, 'GET', undefined, 404); await libraryCall(tb, `/${pb.id}`, 'GET', undefined, 404);
+  }
+}
+
 const mode = process.argv[2];
 if (mode === 'catalog' || mode === 'catalog-verify') await catalog();
 else if (mode === 'catalog-edge') await catalogEdge();
 else if (mode === 'media' || mode === 'media-verify') await media(mode === 'media');
+else if (mode === 'library') await library();
+else if (['library-verify', 'library-unavailable', 'library-cleanup'].includes(mode)) await libraryVerify(mode);
 else if (mode === 'media-unavailable') {
   const r=await request('/api/media/assets/30000000-0000-4000-8000-000000000001/audio');
   assert.equal(r.status,503); assert.deepEqual(r.json(),{error:'media_unavailable'});
