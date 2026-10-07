@@ -514,3 +514,16 @@ Les critères de compréhension restent personnels.
   compteurs inchangés, ordre des progressions et horloge arrière.
 - Notes Notion amendées et liées. Une fermeture brutale reste au mieux et
   aucune clôture automatique de session abandonnée n’est ajoutée.
+- Synchronisation ECO-5 : 6580ee3 publié, aucun apport distant ni conflit.
+
+## ECO-6 — Historique privé paginé
+
+- GET sessions filtre le JWT, valide pagination/taille/décalage et refuse les
+  paramètres supplémentaires. Liste/count RepeatableRead, ordre date desc/UUID.
+- Dernière position via l’événement lastSequence, zéro sans événement ;
+  conversion BigInt contrôlée, aucune qualification exposée ni dépendance
+  Catalogue pour relire les faits.
+- Build Docker et huit tests passent : comptes A/B, ouvert/clos, page vide,
+  invalides, position enregistrée et panne SQL. Contrat précise le décalage
+  Int32 ; vraie pagination PostgreSQL prévue ECO-11.
+- Documentation Notion des fichiers amendée et liée.

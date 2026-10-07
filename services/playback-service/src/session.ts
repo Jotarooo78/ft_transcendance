@@ -31,3 +31,19 @@ export function progressInput(value: unknown): Progress | null {
   if ((body.sequence as number) < 1 || (body.sequence as number) > 2147483647) return null;
   return body as Progress;
 }
+
+export type PageQuery = { page: number; pageSize: number };
+export type SessionPage = PageQuery & { total: number; items: Session[] };
+export function pageQuery(query: Record<string, unknown>): PageQuery | null {
+  if (Object.keys(query).some(key => !["page", "pageSize"].includes(key))) return null;
+  const positive = (value: unknown, fallback: number) => value === undefined ? fallback :
+    typeof value === "string" && /^[1-9]\d*$/.test(value) && Number.isSafeInteger(Number(value)) ? Number(value) : NaN;
+  const page = positive(query.page, 1), pageSize = positive(query.pageSize, 20);
+  const skip = (page - 1) * pageSize;
+  return Number.isFinite(page) && Number.isFinite(pageSize) && pageSize <= 100 && Number.isSafeInteger(skip) && skip <= 2147483647 ? { page, pageSize } : null;
+}
+export function toHistorySession(row: SessionRow & { events: Array<{ sequence: number; positionMs: bigint }> }): Session {
+  const latest = row.events.find(event => event.sequence === row.lastSequence);
+  if (row.lastSequence > 0 && !latest) throw new Error("Missing latest event");
+  return toSession(row, latest?.positionMs ?? 0n);
+}

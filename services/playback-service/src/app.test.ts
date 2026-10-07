@@ -3,12 +3,44 @@ import { test } from "node:test";
 import { createServer } from "node:http";
 import { buildApp } from "./app.js";
 import { catalogReader } from "./catalog.js";
-import { PlaybackError, progressInput, toSession, type SessionRow } from "./session.js";
+import { pageQuery, PlaybackError, progressInput, toHistorySession, toSession, type SessionRow } from "./session.js";
 import { recordClose, recordProgress, type EventRow, type SessionTransaction } from "./progress.js";
 
 const owner = "40000000-0000-4000-8000-000000000001", trackId = "20000000-0000-4000-8000-000000000001";
 const id = "70000000-0000-4000-8000-000000000001";
 const row = { id, trackId, trackDurationMs: 6000n, startedAt: new Date("2026-01-01T00:00:00Z"), endedAt: null, listenedMs: 0n, lastSequence: 0 };
+
+test("history validates bounded pagination and uses only the verified subject without Catalogue", async t => {
+  const closed = toHistorySession({ ...row, endedAt: new Date(row.startedAt.getTime() + 3000), listenedMs: 2000n, lastSequence: 2,
+    events: [{ sequence: 2, positionMs: 5000n }] });
+  let reads = 0, outage = false;
+  const app = buildApp({ jwtSecret: "test-only-playback-secret", ready: async () => {},
+    readTrackDuration: async () => { throw new Error("No Catalogue for history"); }, createSession: async () => toSession(row),
+    readSessions: async (subject, query) => {
+      reads++; if (outage) throw new Error("DB down");
+      const items = subject === owner ? [closed, toSession({ ...row, id: trackId })] : [];
+      return { ...query, total: items.length, items: items.slice((query.page - 1) * query.pageSize, query.page * query.pageSize) };
+    },
+  });
+  t.after(() => app.close()); await app.ready();
+  const headers = { authorization: `Bearer ${app.jwt.sign({ sub: owner })}` };
+  assert.equal((await app.inject({ url: "/sessions" })).statusCode, 401);
+  for (const query of ["page=0", "pageSize=101", "page=1.2", "page=9007199254740991", "userId="+owner, "page=1&page=2"]) {
+    assert.equal((await app.inject({ url: "/sessions?"+query, headers })).statusCode, 400);
+  }
+  assert.equal(reads, 0); assert.deepEqual(pageQuery({}), { page: 1, pageSize: 20 });
+  const first = await app.inject({ url: "/sessions?page=1&pageSize=1", headers });
+  assert.equal(first.statusCode, 200); assert.equal(first.headers["cache-control"], "no-store");
+  assert.deepEqual(first.json(), { page: 1, pageSize: 1, total: 2, items: [closed] });
+  const second = (await app.inject({ url: "/sessions?page=2&pageSize=1", headers })).json();
+  assert.equal(second.items[0].positionMs, 0); assert.equal(second.items[0].endedAt, null);
+  assert.deepEqual((await app.inject({ url: "/sessions?page=3&pageSize=1", headers })).json().items, []);
+  const other = await app.inject({ url: "/sessions", headers: { authorization: `Bearer ${app.jwt.sign({ sub: trackId })}` } });
+  assert.deepEqual(other.json().items, []); assert.equal(other.json().total, 0);
+  assert.equal(first.json().items[0].qualified, undefined); assert.equal(first.json().items[0].countingRuleVersion, undefined);
+  outage = true; assert.equal((await app.inject({ url: "/sessions", headers })).statusCode, 503);
+  assert.throws(() => toHistorySession({ ...row, lastSequence: 1, events: [] }));
+});
 
 function memoryTransaction(initial: SessionRow = row) {
   let state = structuredClone(initial), summaries = 0, closures = 0;

@@ -77,6 +77,7 @@ un doublon identique déjà écrit reste confirmable.
 
 GET /api/playback/sessions accepte page (défaut 1), pageSize (défaut 20,
 maximum 100), et aucun autre paramètre. Retour {items,page,pageSize,total},
+avec décalage (page-1)*pageSize au plus 2147483647 pour le stockage.
 ordre startedAt décroissant puis UUID croissant, count/liste dans une même
 lecture cohérente. Seules les sessions du JWT sont lisibles. Historique vide
 ou page au-delà de la fin : 200. Catalogue n’est pas requis pour cette lecture ;

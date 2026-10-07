@@ -1,7 +1,7 @@
 import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 import jwt from "@fastify/jwt";
 import client from "prom-client";
-import { openInput, PlaybackError, progressInput, uuidPattern, type Progress, type Session } from "./session.js";
+import { openInput, pageQuery, PlaybackError, progressInput, uuidPattern, type PageQuery, type Progress, type Session, type SessionPage } from "./session.js";
 
 declare module "fastify" { interface FastifyRequest { authenticatedUserId?: string } }
 declare module "@fastify/jwt" {
@@ -11,6 +11,7 @@ type Options = { jwtSecret: string; readTrackDuration: (trackId: string) => Prom
   createSession: (owner: string, trackId: string, duration: number) => Promise<Session>;
   progressSession?: (owner: string, id: string, input: Progress) => Promise<Session>;
   closeSession?: (owner: string, id: string) => Promise<Session>;
+  readSessions?: (owner: string, query: PageQuery) => Promise<SessionPage>;
   ready: () => Promise<void>; close?: () => Promise<void>; logger?: boolean };
 
 export function buildApp(options: Options) {
@@ -69,6 +70,14 @@ export function buildApp(options: Options) {
       if (error instanceof PlaybackError) return reply.code(error.status).send({ error: error.code });
       return reply.code(503).send({ error: "playback_unavailable" });
     }
+  });
+  app.get<{ Querystring: Record<string, unknown> }>("/sessions", { onRequest: authenticate }, async (request, reply) => {
+    const query = pageQuery(request.query);
+    if (!query) return reply.code(400).send({ error: "invalid_request" });
+    try {
+      if (!options.readSessions) throw new Error("Missing history reader");
+      return await options.readSessions(request.authenticatedUserId!, query);
+    } catch { return reply.code(503).send({ error: "playback_unavailable" }); }
   });
   app.addHook("onClose", async () => { registry.clear(); await options.close?.(); });
   return app;
