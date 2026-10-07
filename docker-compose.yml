@@ -105,6 +105,9 @@ services:
       - "4004"
     env_file:
       - .env
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      CATALOG_SERVICE_URL: http://catalog-service:4002
     depends_on:
       apply-permissions:
         condition: service_completed_successfully

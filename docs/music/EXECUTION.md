@@ -331,6 +331,24 @@ Les critères de compréhension restent personnels.
 - playlist valide, app protège la route, mutations écrit atomiquement, index
   branche et app.test vérifie les comportements avec stockage contrôlé.
   Amendements Notion préparés, modèles externes encore en attente.
+- Synchronisation LIB-7 : f92237d publié, aucun apport distant ni conflit.
+
+## LIB-8 — Lectures serveur dans l’interface
+
+- HTTPS Library et métriques privées ; service isolé avec JWT, connexion
+  runtime propre, Catalogue HTTP et readiness, sans environnement de développement.
+- Client GET paginé et DTO items/version ; useLibrary rattache les résultats
+  au compte/token/tentative, annule les anciens appels et vide à la déconnexion.
+- App ne charge/enregistre plus les playlists locales. Le type historique et
+  les fichiers restent intacts ; PrivatePlaylist représente le serveur.
+- Mutations locales supprimées et contrôles provisoirement désactivés avant
+  LIB-9 à LIB-12. Un 401 tardif ne peut plus vider un token plus récent.
+- Compose, lint/build passent. Chromium réel : A retrouve une playlist créée
+  via l’API, B ne la voit pas ; réponse A retardée ignorée, données localStorage
+  témoins inchangées et création UI désactivée. Anonyme 401, métriques 403.
+- Script /tmp/music-lib8-browser.mjs ; preuve durable prévue LIB-14.
+- Documentation des nouveaux fichiers et amendements préparée ; notes Notion
+  créées mais application du modèle toujours en attente externe.
 - Synchronisation LIB-6 : ecd91d2 publié, aucun apport distant ni conflit.
 
 ## LIB-7 — Suppression locale d’une playlist

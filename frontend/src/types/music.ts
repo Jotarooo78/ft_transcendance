@@ -17,3 +17,13 @@ export type Playlist = {
   description: string;
   trackIds: string[];
 };
+
+// Server representation; the legacy Playlist type remains for unused local files.
+export type PlaylistItem = { id: string; trackId: string; position: number };
+export type PrivatePlaylist = {
+  id: string;
+  name: string;
+  description: string;
+  version: number;
+  items: PlaylistItem[];
+};

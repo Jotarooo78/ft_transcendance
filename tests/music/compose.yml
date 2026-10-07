@@ -159,6 +159,23 @@ services:
       timeout: 3s
       retries: 30
 
+  library-service:
+    build: ../../services/library-service
+    environment:
+      LIBRARY_DATABASE_URL: postgresql://library_runtime:e2e_library_runtime_test_only@db:5432/transcendence_music?schema=library
+      JWT_SECRET: e2e_test_only_jwt_secret_with_sufficient_length
+      CATALOG_SERVICE_URL: http://catalog-service:4002
+    depends_on:
+      apply-permissions:
+        condition: service_completed_successfully
+      catalog-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4004/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
   auth-service:
     build: ../../services/auth-service
     environment:
@@ -210,6 +227,8 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
+      library-service:
+        condition: service_healthy
       media-service:
         condition: service_healthy
       catalog-service:

@@ -4,16 +4,15 @@ import AudioPlayer from "../components/AudioPlayer";
 import TrackCard from "../components/TrackCard";
 import TrackDetails from "../components/TrackDetails";
 import { getTracks, type CatalogList } from "../services/catalog";
-import type { Playlist, Track } from "../types/music";
+import type { PrivatePlaylist as Playlist, Track } from "../types/music";
 
 type CatalogPageProps = {
   playlists: Playlist[];
-  onAddTrackToPlaylist: (playlistId: string, trackId: string) => void;
 };
 
 const TRACKS_PER_PAGE = 2;
 
-function CatalogPage({ playlists, onAddTrackToPlaylist }: CatalogPageProps) {
+function CatalogPage({ playlists }: CatalogPageProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [detailId, setDetailId] = useState<string | null>(null);
   const detailTrigger = useRef<HTMLButtonElement | null>(null);
@@ -61,25 +60,6 @@ function CatalogPage({ playlists, onAddTrackToPlaylist }: CatalogPageProps) {
 
   function handleClosePlayer() {
     setSelectedTrack(null);
-  }
-
-  function handleAddToPlaylist(track: Track) {
-    const playlist = playlists.find(
-      (currentPlaylist) => currentPlaylist.id === selectedPlaylistId,
-    );
-
-    if (!playlist) {
-      setMessage("Create a playlist before adding a track.");
-      return;
-    }
-
-    if (playlist.trackIds.includes(track.id)) {
-      setMessage(`${track.title} is already in ${playlist.name}.`);
-      return;
-    }
-
-    onAddTrackToPlaylist(playlist.id, track.id);
-    setMessage(`${track.title} was added to ${playlist.name}.`);
   }
 
   return (
@@ -219,8 +199,7 @@ function CatalogPage({ playlists, onAddTrackToPlaylist }: CatalogPageProps) {
                     <button
                       type="button"
                       className="track-action-button add-track-button"
-                      onClick={() => handleAddToPlaylist(track)}
-                      disabled={playlists.length === 0}
+                      disabled
                       aria-label={`Add ${track.title} to playlist`}
                       title="Add to playlist"
                     >
