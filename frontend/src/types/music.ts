@@ -4,9 +4,11 @@ export type Track = {
   artistName: string;
   albumTitle: string;
   genre: string;
-  durationSeconds: number;
-  audioUrl: string; // /audio/xxx.mp3
-  mimeType: string; // mpeg
+  durationSeconds: number | null;
+  durationMs?: number | null;
+  audioAssetId?: string | null;
+  audioUrl: string | null;
+  mimeType?: string;
 };
 
 export type Playlist = {

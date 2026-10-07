@@ -15,7 +15,7 @@ function AudioPlayer({ track, onClose }: AudioPlayerProps) {
       </div>
 
       <audio key={track.id} controls autoPlay preload="metadata">
-        <source src={track.audioUrl} type={track.mimeType} />
+        <source src={track.audioUrl ?? undefined} type={track.mimeType} />
         Your browser does not support audio playback.
       </audio>
 

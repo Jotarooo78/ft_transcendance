@@ -73,4 +73,17 @@ Les critères de compréhension restent personnels.
   isolés. Liste/détail HTTPS concordent avec SQL, total 3 ; métriques 403 ;
   nginx -t réussi dans le conteneur de test.
 - Documentation Notion du routage et de Compose liée à CAT-6.
-- Synchronisation à effectuer avant CAT-7.
+- Synchronisation CAT-6 : d6e760d publié, aucun nouveau commit ni conflit.
+
+## CAT-7 — Liste réelle dans l’interface
+
+- Client Catalogue validant les réponses, annulation et clé de requête pour
+  ignorer les réponses périmées ; page 1 après recherche/genre/tri.
+- Chargement/erreur/vide distincts et retry ; durée inconnue représentée sans
+  valeur fictive. Playlists locales conservées jusqu’à LIB.
+- Lint/build frontend réussis, frontend de test rechargé. Contrôle Chromium
+  réel : inscription/connexion, Aube/Brise puis Clair, recherche absente donnant
+  zéro résultat. Script ponctuel /tmp/music-cat7-browser.mjs ; le scénario
+  durable complet sera ajouté en CAT-10.
+- Documentation Notion des cinq fichiers liée à CAT-7.
+- Synchronisation à effectuer avant CAT-8.

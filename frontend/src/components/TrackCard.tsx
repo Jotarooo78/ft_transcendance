@@ -6,10 +6,11 @@ type TrackCardProps = {
   onPlay: (track: Track) => void;
 };
 
-function formatDuration(durationSeconds: number): string {
+function formatDuration(durationSeconds: number | null): string {
+  if (durationSeconds === null) return "Unknown";
   const minutes = Math.floor(durationSeconds / 60);
 
-  const seconds = durationSeconds % 60;
+  const seconds = Math.floor(durationSeconds % 60);
 
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
@@ -43,6 +44,7 @@ function TrackCard({ track, isSelected, onPlay }: TrackCardProps) {
       <button
         type="button"
         aria-pressed={isSelected}
+        disabled={!track.audioUrl}
         onClick={() => {
           onPlay(track);
         }}

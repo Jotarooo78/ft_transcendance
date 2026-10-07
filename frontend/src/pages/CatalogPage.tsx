@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import AudioPlayer from "../components/AudioPlayer";
 import TrackCard from "../components/TrackCard";
-import { mockTracks } from "../data/tracks";
+import { getTracks, type CatalogList } from "../services/catalog";
 import type { Playlist, Track } from "../types/music";
 
 type CatalogPageProps = {
@@ -31,44 +31,26 @@ function CatalogPage({ playlists, onAddTrackToPlaylist }: CatalogPageProps) {
 
   const [message, setMessage] = useState("");
 
-  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const [retry, setRetry] = useState(0);
+  const requestKey = JSON.stringify([currentPage, searchQuery, selectedGenre, sortOption, retry]);
+  const [result, setResult] = useState<{ key: string; data?: CatalogList; error?: string }>({ key: "" });
+  const loading = result.key !== requestKey;
+  const data = loading ? undefined : result.data;
+  const genres = result.data?.genres ?? [];
+  const totalPages = Math.ceil((data?.total ?? 0) / TRACKS_PER_PAGE);
+  const paginatedTracks = data?.items ?? [];
 
-  const filteredTracks = mockTracks.filter((track) => {
-    const matchesSearch =
-      normalizedQuery === "" ||
-      track.title.toLowerCase().includes(normalizedQuery) ||
-      track.artistName.toLowerCase().includes(normalizedQuery) ||
-      track.albumTitle.toLowerCase().includes(normalizedQuery) ||
-      track.genre.toLowerCase().includes(normalizedQuery);
-
-    const matchesGenre =
-      selectedGenre === "all" || track.genre === selectedGenre;
-
-    return matchesSearch && matchesGenre;
-  });
-
-  const sortedTracks = [...filteredTracks].sort((firstTrack, secondTrack) => {
-    if (sortOption === "artist") {
-      return firstTrack.artistName.localeCompare(secondTrack.artistName);
-    }
-
-    if (sortOption === "duration") {
-      return firstTrack.durationSeconds - secondTrack.durationSeconds;
-    }
-
-    return firstTrack.title.localeCompare(secondTrack.title);
-  });
-
-  const genres = [...new Set(mockTracks.map((track) => track.genre))];
-
-  const totalPages = Math.ceil(sortedTracks.length / TRACKS_PER_PAGE);
-
-  const firstTrackIndex = (currentPage - 1) * TRACKS_PER_PAGE;
-
-  const paginatedTracks = sortedTracks.slice(
-    firstTrackIndex,
-    firstTrackIndex + TRACKS_PER_PAGE,
-  );
+  useEffect(() => {
+    const controller = new AbortController();
+    void getTracks({ page: currentPage, pageSize: TRACKS_PER_PAGE, q: searchQuery,
+      genre: selectedGenre === "all" ? "" : selectedGenre, sort: sortOption }, controller.signal)
+      .then(data => { if (!controller.signal.aborted) setResult({ key: requestKey, data }); })
+      .catch(error => {
+        if (!controller.signal.aborted) setResult({ key: requestKey,
+          error: error instanceof Error ? error.message : "Unable to load catalogue." });
+      });
+    return () => controller.abort();
+  }, [currentPage, searchQuery, selectedGenre, sortOption, retry, requestKey]);
 
   function handlePlay(track: Track) {
     setSelectedTrack(track);
@@ -119,6 +101,7 @@ function CatalogPage({ playlists, onAddTrackToPlaylist }: CatalogPageProps) {
             <input
               id="track-search"
               type="search"
+              maxLength={200}
               value={searchQuery}
               onChange={(event) => {
                 setSearchQuery(event.target.value);
@@ -156,6 +139,7 @@ function CatalogPage({ playlists, onAddTrackToPlaylist }: CatalogPageProps) {
                 value={sortOption}
                 onChange={(event) => {
                   setSortOption(event.target.value as SortOption);
+                  setCurrentPage(1);
                 }}
               >
                 <option value="title">Title</option>
@@ -201,10 +185,12 @@ function CatalogPage({ playlists, onAddTrackToPlaylist }: CatalogPageProps) {
           </div>
 
           <p className="search-result-count" aria-live="polite">
-            {sortedTracks.length} track(s) found
+            {loading ? "Loading catalogue…" : `${data?.total ?? 0} track(s) found`}
           </p>
 
-          {sortedTracks.length === 0 ? (
+          {loading ? <p role="status">Loading tracks…</p> : result.error ? (
+            <div role="alert"><p>{result.error}</p><button type="button" onClick={() => setRetry(n => n + 1)}>Retry catalogue</button></div>
+          ) : paginatedTracks.length === 0 ? (
             <p className="empty-search-message">No tracks match your search.</p>
           ) : (
             <>
