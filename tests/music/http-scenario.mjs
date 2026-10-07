@@ -263,11 +263,103 @@ async function libraryVerify(mode) {
   }
 }
 
+const playbackStatePath = '/tmp/transcendence-music-playback-state.json';
+async function playbackCall(token, suffix = '', method = 'GET', body, status = 200) {
+  const response = await jsonRequest(`/api/playback/sessions${suffix}`, method, body, token);
+  assert.equal(response.status, status, `Playback ${method} ${suffix}: ${response.bytes}`);
+  assert.equal(response.headers['cache-control'], 'no-store');
+  return response.json();
+}
+async function playback() {
+  await waitReady('playback');
+  const a = await createFixtureUser('eco_a'), b = await createFixtureUser('eco_b');
+  const ta = await loginFixture(a), tb = await loginFixture(b);
+  const history = () => playbackCall(ta);
+  for (const token of [undefined, 'invalid', signedTestToken({ sub: a.id, exp: 1 }), signedTestToken({ sub: 'invalid' })]) {
+    await playbackCall(token, '', 'GET', undefined, 401);
+    await playbackCall(token, '', 'POST', { trackId: trackIds[0] }, 401);
+  }
+  for (const body of [{}, { trackId: 'invalid' }, { trackId: trackIds[0], userId: b.id }, { trackId: trackIds[0], trackDurationMs: 1 }]) {
+    await playbackCall(ta, '', 'POST', body, 400);
+  }
+  for (const suffix of ['098', '099']) await playbackCall(ta, '', 'POST', { trackId: `20000000-0000-4000-8000-000000000${suffix}` }, 404);
+  assert.equal((await history()).total, 0);
+  let session = await playbackCall(ta, '', 'POST', { trackId: trackIds[0] }, 201);
+  assert.equal(session.trackDurationMs, 6000); assert.equal(session.listenedMs, 0);
+  assert.equal(session.lastSequence, 0); assert.equal(session.positionMs, 0); assert.equal(session.endedAt, null);
+  assert.deepEqual(Object.keys(session).sort(), ['id','trackId','trackDurationMs','startedAt','endedAt','listenedMs','lastSequence','positionMs'].sort());
+  const progress = `/${session.id}/progress`, close = `/${session.id}/close`;
+  const first = { sequence: 1, positionMs: 2000, listenedMsTotal: 100 };
+  await delay(120);
+  session = await playbackCall(ta, progress, 'PUT', first);
+  assert.equal(session.listenedMs, 100); assert.equal(session.positionMs, 2000);
+  const unchanged = async () => assert.deepEqual((await history()).items, [session]);
+  assert.deepEqual(await playbackCall(ta, progress, 'PUT', first), session);
+  for (const [body, status] of [
+    [{ ...first, positionMs: 2001 }, 409], [{ ...first, sequence: 3 }, 409],
+    [{ sequence: 2, positionMs: 0, listenedMsTotal: 99 }, 409],
+    [{ sequence: 2, positionMs: 6001, listenedMsTotal: 101 }, 400],
+    [{ sequence: 2, positionMs: -1, listenedMsTotal: 101 }, 400],
+    [{ sequence: 2, positionMs: 1.5, listenedMsTotal: 101 }, 400],
+    [{ sequence: 2, positionMs: 0, listenedMsTotal: Number.MAX_SAFE_INTEGER + 1 }, 400],
+    [{ ...first, sequence: 0 }, 400], [{ ...first, userId: b.id }, 400],
+  ]) { await playbackCall(ta, progress, 'PUT', body, status); await unchanged(); }
+  for (const token of [tb, 'invalid']) {
+    const status = token === tb ? 404 : 401;
+    await playbackCall(token, progress, 'PUT', { ...first, sequence: 2 }, status);
+    await playbackCall(token, close, 'POST', {}, status); await unchanged();
+  }
+  assert.deepEqual((await playbackCall(tb)).items, []);
+  await playbackCall(tb, `?userId=${a.id}`, 'GET', undefined, 400);
+  const second = { sequence: 2, positionMs: 500, listenedMsTotal: 150 };
+  await delay(70);
+  const concurrent = await Promise.all([1, 2].map(() => playbackCall(ta, progress, 'PUT', second)));
+  assert.deepEqual(concurrent[0], concurrent[1]); session = concurrent[0]; assert.equal(session.listenedMs, 150);
+  // Competing contents for the same next sequence: exactly one wins the row lock.
+  const variants = [750, 900].map(positionMs => ({ sequence: 3, positionMs, listenedMsTotal: 175 }));
+  await delay(40);
+  const race = await Promise.all(variants.map(body => jsonRequest(`/api/playback/sessions${progress}`, 'PUT', body, ta)));
+  assert.deepEqual(race.map(r => r.status).sort(), [200, 409]);
+  const winner = race.findIndex(r => r.status === 200); session = race[winner].json();
+  assert.equal(session.listenedMs, 175);
+  assert.deepEqual(await playbackCall(ta, progress, 'PUT', first), session);
+  await playbackCall(ta, close, 'POST', { endedAt: '2020-01-01' }, 400); await unchanged();
+  session = await playbackCall(ta, close, 'POST', {});
+  assert.ok(Date.parse(session.endedAt) >= Date.parse(session.startedAt));
+  assert.deepEqual(await playbackCall(ta, close, 'POST', {}), session);
+  assert.deepEqual(await playbackCall(ta, progress, 'PUT', second), session);
+  await playbackCall(ta, progress, 'PUT', { sequence: 4, positionMs: 1000, listenedMsTotal: 200 }, 409); await unchanged();
+  // Excessive declarations are stored but credited only within real server time.
+  let capped = await playbackCall(ta, '', 'POST', { trackId: trackIds[1] }, 201);
+  const excessive = { sequence: 1, positionMs: 6000, listenedMsTotal: 999999 };
+  capped = await playbackCall(ta, `/${capped.id}/progress`, 'PUT', excessive);
+  assert.ok(capped.listenedMs < 6000); assert.ok(capped.listenedMs <= Date.now() - Date.parse(capped.startedAt));
+  assert.deepEqual(await playbackCall(ta, `/${capped.id}/progress`, 'PUT', excessive), capped);
+  const page1 = await playbackCall(ta, '?page=1&pageSize=1'), page2 = await playbackCall(ta, '?page=2&pageSize=1');
+  assert.equal(page1.total, 2); assert.equal(page2.total, 2);
+  assert.deepEqual(page1.items, [capped]); assert.deepEqual(page2.items, [session]);
+  assert.deepEqual((await playbackCall(ta, '?page=3&pageSize=1')).items, []);
+  for (const query of ['page=0', 'pageSize=101', 'page=1&page=2', 'unknown=1']) await playbackCall(ta, `?${query}`, 'GET', undefined, 400);
+  await writeFile(playbackStatePath, JSON.stringify({ a, b, sessions: [capped, session], events: {
+    [session.id]: [first, second, variants[winner]], [capped.id]: [excessive],
+  } }), { mode: 0o600 });
+}
+async function playbackVerify() {
+  await waitReady('playback'); await waitReady('auth');
+  const f = JSON.parse(await readFile(playbackStatePath, 'utf8'));
+  const ta = await loginFixture(f.a), tb = await loginFixture(f.b);
+  assert.deepEqual((await playbackCall(ta)).items, f.sessions);
+  assert.equal((await playbackCall(ta)).total, 2);
+  assert.deepEqual((await playbackCall(tb)).items, []);
+}
+
 const mode = process.argv[2];
 if (mode === 'catalog' || mode === 'catalog-verify') await catalog();
 else if (mode === 'catalog-edge') await catalogEdge();
 else if (mode === 'media' || mode === 'media-verify') await media(mode === 'media');
 else if (mode === 'library') await library();
+else if (mode === 'playback') await playback();
+else if (mode === 'playback-verify') await playbackVerify();
 else if (['library-verify', 'library-unavailable', 'library-cleanup'].includes(mode)) await libraryVerify(mode);
 else if (mode === 'media-unavailable') {
   const r=await request('/api/media/assets/30000000-0000-4000-8000-000000000001/audio');

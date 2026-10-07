@@ -582,3 +582,29 @@ Les critères de compréhension restent personnels.
   rattaché au compte dans App. Lecteur disponible pour un morceau valide.
 - Dix tests frontend, lint/build passent ; frontend isolé reconstruit sain.
   Preuve navigateur complète prévue ECO-12. Trois notes actualisées et liées.
+- Reprise : mêmes dix tests, lint/build Docker réussis. git-sync sans commit
+  vide confirme `7e5fed2` sur origin/feat/music-journeys, aucun apport ni conflit.
+
+## ECO-11 — Événements réels et oracle SQL
+
+- `http-scenario.mjs playback` ouvre deux sessions du compte A via HTTPS,
+  éprouve JWT/validation/droits, bornes, ordre, doublons exacts/divergents,
+  deux renvois identiques concurrents et deux contenus concurrents (200/409).
+  Les refus sont suivis d'une relecture inchangée. Position arrière acceptée,
+  total décroissant refusé ; déclaration excessive conservée mais plafonnée.
+- `assert-playback.sql` compare les identités, états et événements exacts du
+  fichier de preuve `/tmp/transcendence-music-playback-state.json` (sans token),
+  recalcule indépendamment le crédit à partir des dates SQL et vérifie les
+  privilèges : playback_runtime ne peut lire aucun autre schéma métier.
+  `qualified=false` et counting_rule_version=1 restent inchangés.
+- Exécution HTTPS réussie, oracle SQL réussi avant puis après redémarrages.
+  Playback puis PostgreSQL redémarrés séparément ; `playback-verify` retrouve
+  mêmes IDs/valeurs et historique vide de B, sans réinstaller les fixtures.
+- Commande SQL : `docker compose -p transcendence_music --env-file /dev/null
+  -f tests/music/compose.yml exec -T db psql -U e2e_admin -d transcendence_music
+  -v ON_ERROR_STOP=1 -v fixture="$(cat /tmp/transcendence-music-playback-state.json)"
+  -f /dev/stdin < tests/music/assert-playback.sql` (sur une seule ligne).
+- Dépendances : pile musicale prête et seed Catalogue ; Node 22 et psql Docker.
+  Sortie PASS ou code non nul. Le scénario conserve les deux comptes/sessions
+  jusqu'au nettoyage de la campagne ; aucune horloge de fixture modifiée.
+  La preuve de son décodé et des gestes du lecteur reste ECO-12.
