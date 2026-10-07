@@ -37,3 +37,13 @@ export async function getPlaylist(id: string, signal?: AbortSignal): Promise<Pri
   if (!isPlaylist(playlist)) throw new Error("Invalid playlist response.");
   return playlist;
 }
+
+export async function createPlaylist(name: string, description: string): Promise<PrivatePlaylist> {
+  const response = await authenticatedFetch("/api/library/playlists", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, description }),
+  });
+  if (!response.ok) throw new Error(response.status === 400 ? "Check the playlist name and description." : "Unable to create playlist. Please try again.");
+  const playlist: unknown = await response.json();
+  if (!isPlaylist(playlist)) throw new Error("Invalid playlist response.");
+  return playlist;
+}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getPlaylists } from "../services/library";
+import { createPlaylist, getPlaylists } from "../services/library";
 import { getAccessToken, onSessionCleared } from "../services/session";
 import type { PrivatePlaylist } from "../types/music";
 
@@ -21,6 +21,12 @@ export function useLibrary(ownerId: string | null) {
     return () => controller.abort();
   }, [ownerId, token, key]);
   const current = ownerId !== null && result.key === key;
+  async function create(name: string, description: string) {
+    const playlist = await createPlaylist(name, description);
+    if (!token || token !== getAccessToken()) throw new Error("The signed-in account changed.");
+    setResult(previous => previous.key === key ? { ...previous, items: [playlist, ...previous.items] } : previous);
+    return playlist;
+  }
   return { playlists: current ? result.items : [], loading: ownerId !== null && !current,
-    error: current ? result.error : undefined, reload: () => setRetry(value => value + 1) };
+    error: current ? result.error : undefined, reload: () => setRetry(value => value + 1), create };
 }

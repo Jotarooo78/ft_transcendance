@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type SubmitEvent } from "react";
 import type { PrivatePlaylist } from "../types/music";
 
 type Props = {
@@ -6,20 +6,36 @@ type Props = {
   loading: boolean;
   error?: string;
   onRetry: () => void;
+  onCreate: (name: string, description: string) => Promise<PrivatePlaylist>;
 };
 
-export default function PlaylistsPage({ playlists, loading, error, onRetry }: Props) {
+export default function PlaylistsPage({ playlists, loading, error, onRetry, onCreate }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
   const selected = playlists.find(playlist => playlist.id === selectedId) ?? playlists[0];
+  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (creating || name.trim() === "") return;
+    setCreating(true); setCreateError("");
+    try {
+      const playlist = await onCreate(name.trim(), description.trim());
+      setSelectedId(playlist.id); setName(""); setDescription("");
+    } catch (error) { setCreateError(error instanceof Error ? error.message : "Unable to create playlist."); }
+    finally { setCreating(false); }
+  }
   return <main className="playlists-page">
     <header><p className="page-label">Your library</p><h1>Playlists</h1><p>Your private playlists.</p></header>
     <section className="playlist-section" aria-labelledby="create-playlist-title">
       <h2 id="create-playlist-title">Create a playlist</h2>
-      <fieldset disabled>
-        <label>Name<input type="text" /></label>
-        <label>Description<input type="text" /></label>
-        <button type="button">Create playlist</button>
-      </fieldset>
+      <form className="playlist-form" onSubmit={handleSubmit}>
+        <label>Name<input type="text" value={name} onChange={event => setName(event.target.value)} required disabled={creating} /></label>
+        <label>Description<input type="text" value={description} onChange={event => setDescription(event.target.value)} disabled={creating} /></label>
+        <button type="submit" disabled={creating || loading || !!error || name.trim() === ""}>{creating ? "Creating…" : "Create playlist"}</button>
+        {createError && <p role="alert">{createError}</p>}
+      </form>
     </section>
     <section className="playlist-section" aria-labelledby="my-playlists-title">
       <h2 id="my-playlists-title">My playlists</h2>

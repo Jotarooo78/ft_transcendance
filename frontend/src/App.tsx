@@ -352,6 +352,7 @@ function App() {
             loading={library.loading}
             error={library.error}
             onRetry={library.reload}
+            onCreate={library.create}
           />
         )}
 

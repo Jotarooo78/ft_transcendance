@@ -331,6 +331,18 @@ Les critères de compréhension restent personnels.
 - playlist valide, app protège la route, mutations écrit atomiquement, index
   branche et app.test vérifie les comportements avec stockage contrôlé.
   Amendements Notion préparés, modèles externes encore en attente.
+- Synchronisation LIB-6 : ecd91d2 publié, aucun apport distant ni conflit.
+
+## LIB-7 — Suppression locale d’une playlist
+
+- DELETE avec contrôle propriétaire/version sous verrou ; réponse 204 après
+  suppression, répétition 404. La FK existante cascade vers ses seuls items.
+  Aucun appel destructeur ni lecture à Catalogue/Media.
+- Build et huit tests Library passent : identité, propriété, version,
+  ressource absente, succès et répétition. Cascade SQL réelle prévue LIB-13.
+- app valide et répond ; mutations réutilise le verrou générique et supprime ;
+  index branche ; app.test vérifie les refus et l’absence d’appel Catalogue.
+  Amendements Notion préparés, modèles externes encore en attente.
 - Synchronisation LIB-7 : f92237d publié, aucun apport distant ni conflit.
 
 ## LIB-8 — Lectures serveur dans l’interface
@@ -349,15 +361,17 @@ Les critères de compréhension restent personnels.
 - Script /tmp/music-lib8-browser.mjs ; preuve durable prévue LIB-14.
 - Documentation des nouveaux fichiers et amendements préparée ; notes Notion
   créées mais application du modèle toujours en attente externe.
-- Synchronisation LIB-6 : ecd91d2 publié, aucun apport distant ni conflit.
+- Synchronisation LIB-8 : 540c6b7 publié, aucun apport distant ni conflit.
 
-## LIB-7 — Suppression locale d’une playlist
+## LIB-9 — Création depuis le formulaire
 
-- DELETE avec contrôle propriétaire/version sous verrou ; réponse 204 après
-  suppression, répétition 404. La FK existante cascade vers ses seuls items.
-  Aucun appel destructeur ni lecture à Catalogue/Media.
-- Build et huit tests Library passent : identité, propriété, version,
-  ressource absente, succès et répétition. Cascade SQL réelle prévue LIB-13.
-- app valide et répond ; mutations réutilise le verrou générique et supprime ;
-  index branche ; app.test vérifie les refus et l’absence d’appel Catalogue.
-  Amendements Notion préparés, modèles externes encore en attente.
+- Formulaire async nom/description sans UUID local ni morceau obligatoire.
+  Attend le DTO serveur avant sélection et vidage ; attente/erreur locales,
+  saisie préservée sur échec, bouton désactivé pendant la demande.
+- Client POST sans retry implicite ; hook confirme seulement pour le token
+  encore courant et App transmet ce chemin au formulaire.
+- Lint/build et Chromium passent : panne réseau simulée conserve les champs,
+  puis vraie création 201 avec items vides/version 1 et relecture du même UUID.
+- Script local /tmp/music-lib9-browser.mjs ; preuve durable prévue LIB-14.
+- Ordre des sections LIB-6/7/8 du suivi rectifié. Amendements Notion préparés,
+  modèles de documentation toujours en attente externe.
