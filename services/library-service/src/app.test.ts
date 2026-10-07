@@ -1,11 +1,36 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { buildApp } from "./app.js";
-import { pageQuery, toPlaylist } from "./playlist.js";
+import { createInput, pageQuery, toPlaylist } from "./playlist.js";
 
 const owner = "40000000-0000-4000-8000-000000000001", other = "40000000-0000-4000-8000-000000000002";
 const id = "50000000-0000-4000-8000-000000000001";
 const playlist = { id, name: "Private", description: "", version: 1, items: [] };
+
+test("create empty private playlist uses authenticated owner and validates the entire body", async t => {
+  let writes = 0; let failure = false; let saved: typeof playlist | null = null;
+  const app = buildApp({ jwtSecret: "test-only-library-secret", ready: async () => {},
+    readPlaylists: async () => ({ page: 1, pageSize: 20, total: saved ? 1 : 0, items: saved ? [saved] : [] }),
+    readPlaylist: async (subject, value) => subject === owner && value === id ? saved : null,
+    createPlaylist: async (subject, input) => { writes++; assert.equal(subject, owner);
+      if (failure) throw new Error("private SQL"); saved = { ...playlist, ...input }; return saved; },
+  });
+  t.after(() => app.close()); await app.ready();
+  const headers = { authorization: `Bearer ${app.jwt.sign({ sub: owner })}` };
+  assert.equal((await app.inject({ method: "POST", url: "/playlists", payload: { name: "Unauthenticated" } })).statusCode, 401);
+  for (const payload of [{}, [], {name:""}, {name:"   "}, {name:"x".repeat(101)}, {name:"ok",description:"x".repeat(2001)},
+    {name:"ok",description:null}, {name:"ok",ownerUserId:other}, {name:"ok",visibility:"public"}, {name:"ok",version:5}]) {
+    assert.equal((await app.inject({method:"POST",url:"/playlists",headers,payload})).statusCode,400);
+  }
+  assert.equal(writes,0);
+  const result = await app.inject({ method:"POST",url:"/playlists",headers,payload:{name:"  Empty playlist  ",description:"  Notes  "} });
+  assert.equal(result.statusCode,201); assert.deepEqual(result.json(),{...playlist,name:"Empty playlist",description:"Notes"});
+  assert.deepEqual((await app.inject({url:`/playlists/${id}`,headers})).json(),result.json());
+  assert.deepEqual(createInput({name:"🎵".repeat(100)}),{name:"🎵".repeat(100),description:""});
+  failure = true;
+  const outage = await app.inject({ method:"POST",url:"/playlists",headers,payload:{name:"Later"} });
+  assert.equal(outage.statusCode,503); assert.deepEqual(outage.json(),{error:"library_unavailable"});
+});
 
 test("JWT verification precedes storage and ownership scopes every read", async t => {
   let calls = 0; let failure = false;

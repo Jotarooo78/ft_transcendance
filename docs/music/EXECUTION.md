@@ -273,3 +273,17 @@ Les critères de compréhension restent personnels.
   la preuve PostgreSQL réelle reste LIB-13.
 - Six notes Notion par fichier créées ; leurs modèles sont encore en attente.
   La documentation préparée et les liens seront finalisés avant le bilan.
+- Synchronisation LIB-2 : 61a39dd publié, aucun apport distant ni conflit.
+
+## LIB-3 — Création d’une playlist vide
+
+- POST authentifié, name/description uniquement ; propriétaire JWT, visibilité
+  private et version 1 imposés par le serveur, réponse 201 avec items vides.
+- Validation intégrale avec trim et limites en caractères Unicode ; un champ
+  illicite ou une description invalide bloque toute écriture.
+- Build et trois tests Library passent : 401 sans écriture, identités forgées,
+  noms/descriptions invalides, création/relecture, trim et panne contrôlée.
+  Lecteurs/writer injectés ; les preuves SQL restent LIB-13.
+- Rôles des fichiers : app route/identité ; playlist validation/DTO ; index
+  création Prisma ; app.test refus et confirmation. Amendements Notion
+  préparés, application des modèles LIB-1/2 toujours en attente externe.

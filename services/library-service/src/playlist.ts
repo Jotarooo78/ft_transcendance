@@ -3,6 +3,18 @@ export type PlaylistItem = { id: string; trackId: string; position: number };
 export type Playlist = { id: string; name: string; description: string; version: number; items: PlaylistItem[] };
 export type PageQuery = { page: number; pageSize: number };
 export type PlaylistPage = PageQuery & { items: Playlist[]; total: number };
+export type PlaylistInput = { name: string; description: string };
+
+export function createInput(value: unknown): PlaylistInput | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const body = value as Record<string, unknown>;
+  if (Object.keys(body).some(key => !["name", "description"].includes(key)) || typeof body.name !== "string") return null;
+  const name = body.name.trim();
+  if ([...name].length < 1 || [...name].length > 100) return null;
+  if (body.description !== undefined && typeof body.description !== "string") return null;
+  const description = (body.description as string | undefined)?.trim() ?? "";
+  return [...description].length <= 2000 ? { name, description } : null;
+}
 
 export function toPlaylist(row: { id: string; name: string; description: string | null; version: bigint; items: PlaylistItem[] }): Playlist {
   if (row.version < 1n || row.version > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error("Unsupported playlist version");

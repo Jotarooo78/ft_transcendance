@@ -1,7 +1,7 @@
 import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 import jwt from "@fastify/jwt";
 import client from "prom-client";
-import { pageQuery, uuidPattern, type PageQuery, type Playlist, type PlaylistPage } from "./playlist.js";
+import { createInput, pageQuery, uuidPattern, type PageQuery, type Playlist, type PlaylistInput, type PlaylistPage } from "./playlist.js";
 
 declare module "fastify" { interface FastifyRequest { authenticatedUserId?: string } }
 declare module "@fastify/jwt" {
@@ -11,6 +11,7 @@ type Options = {
   jwtSecret: string;
   readPlaylists: (owner: string, query: PageQuery) => Promise<PlaylistPage>;
   readPlaylist: (owner: string, id: string) => Promise<Playlist | null>;
+  createPlaylist?: (owner: string, input: PlaylistInput) => Promise<Playlist>;
   ready: () => Promise<void>; close?: () => Promise<void>; logger?: boolean;
 };
 
@@ -48,6 +49,14 @@ export function buildApp(options: Options) {
       const playlist = await options.readPlaylist(request.authenticatedUserId!, request.params.id.toLowerCase());
       if (!playlist) return reply.code(404).send({ error: "playlist_not_found" });
       return playlist;
+    } catch { return reply.code(503).send({ error: "library_unavailable" }); }
+  });
+  app.post("/playlists", { onRequest: authenticate }, async (request, reply) => {
+    const input = createInput(request.body);
+    if (!input) return reply.code(400).send({ error: "invalid_request" });
+    try {
+      if (!options.createPlaylist) throw new Error("Missing playlist writer");
+      return reply.code(201).send(await options.createPlaylist(request.authenticatedUserId!, input));
     } catch { return reply.code(503).send({ error: "library_unavailable" }); }
   });
   app.addHook("onClose", async () => { registry.clear(); await options.close?.(); });

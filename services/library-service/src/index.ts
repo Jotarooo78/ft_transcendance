@@ -7,6 +7,9 @@ const app = buildApp({
   logger: true,
   ready: async () => { await prisma.$queryRaw`SELECT 1`; },
   close: disconnectPrisma,
+  createPlaylist: async (ownerUserId, input) => toPlaylist(await prisma.playlist.create({
+    data: { ...input, ownerUserId, visibility: "private", version: 1n }, include: { items: true },
+  })),
   readPlaylist: async (ownerUserId, id) => {
     const row = await prisma.playlist.findFirst({ where: { id, ownerUserId, visibility: "private" },
       include: { items: { orderBy: { position: "asc" } } } });
