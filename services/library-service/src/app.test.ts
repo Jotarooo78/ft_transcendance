@@ -9,6 +9,38 @@ const owner = "40000000-0000-4000-8000-000000000001", other = "40000000-0000-400
 const id = "50000000-0000-4000-8000-000000000001";
 const playlist = { id, name: "Private", description: "", version: 1, items: [] };
 
+test("remove targets one occurrence, checks version and never requires Catalogue", async t => {
+  const item1="60000000-0000-4000-8000-000000000001",item2="60000000-0000-4000-8000-000000000002";
+  const foreignItem="60000000-0000-4000-8000-000000000003";
+  let state: Playlist={...playlist,items:[{id:item1,trackId:"same",position:1},{id:item2,trackId:"same",position:2}]};
+  let lookups=0, writes=0;
+  const app=buildApp({jwtSecret:"test-only-library-secret",ready:async()=>{},
+    readPlaylists:async()=>({page:1,pageSize:20,total:1,items:[state]}),readPlaylist:async()=>state,
+    isTrackPublished:async()=>{lookups++;throw new Error("Catalogue down");},
+    removeItem:async(subject,playlistId,itemId,version)=>{
+      assert.equal(playlistId,id);
+      if(subject!==owner)throw new PlaylistError(404,"playlist_not_found");
+      if(version!==state.version)throw new PlaylistError(409,"version_conflict");
+      if(!state.items.some(item=>item.id===itemId))throw new PlaylistError(404,"item_not_found");
+      writes++;state={...state,version:state.version+1,items:state.items.filter(item=>item.id!==itemId)};return state;
+    },
+  });
+  t.after(()=>app.close());await app.ready();
+  const headers={authorization:`Bearer ${app.jwt.sign({sub:owner})}`};
+  const url=`/playlists/${id}/items/${item1}`,payload={expectedVersion:1};
+  assert.equal((await app.inject({method:"DELETE",url,payload})).statusCode,401);
+  assert.equal((await app.inject({method:"DELETE",url,headers:{authorization:`Bearer ${app.jwt.sign({sub:other})}`},payload})).statusCode,404);
+  assert.equal((await app.inject({method:"DELETE",url:`/playlists/${id}/items/${foreignItem}`,headers,payload})).statusCode,404);
+  assert.equal((await app.inject({method:"DELETE",url,headers,payload:{expectedVersion:2}})).statusCode,409);
+  assert.equal(writes,0);
+  const removed=await app.inject({method:"DELETE",url,headers,payload});
+  assert.equal(removed.statusCode,200);assert.equal(removed.json().version,2);
+  assert.deepEqual(removed.json().items,[{id:item2,trackId:"same",position:2}]);
+  assert.equal((await app.inject({method:"DELETE",url,headers,payload})).statusCode,409);
+  assert.equal((await app.inject({method:"DELETE",url,headers,payload:{expectedVersion:2}})).statusCode,404);
+  assert.equal(writes,1);assert.equal(lookups,0);
+});
+
 test("adding an occurrence checks owner, version and Catalogue before writing", async t => {
   const trackId = "20000000-0000-4000-8000-000000000001";
   let state: Playlist = { ...playlist, items: [] }; let lookups = 0, writes = 0;

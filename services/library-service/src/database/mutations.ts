@@ -26,3 +26,13 @@ export async function addItem(owner: string, id: string, trackId: string, expect
       include: { items: { orderBy: { position: "asc" } } } }));
   });
 }
+
+export async function removeItem(owner: string, id: string, itemId: string, expectedVersion: number): Promise<Playlist> {
+  return withPlaylist(owner, id, expectedVersion, async (tx, version) => {
+    if (version >= BigInt(Number.MAX_SAFE_INTEGER)) throw new PlaylistError(409, "playlist_limit");
+    const removed = await tx.playlistItem.deleteMany({ where: { id: itemId, playlistId: id } });
+    if (removed.count !== 1) throw new PlaylistError(404, "item_not_found");
+    return toPlaylist(await tx.playlist.update({ where: { id }, data: { version: { increment: 1 } },
+      include: { items: { orderBy: { position: "asc" } } } }));
+  });
+}

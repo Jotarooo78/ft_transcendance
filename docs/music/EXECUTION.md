@@ -304,3 +304,17 @@ Les critères de compréhension restent personnels.
   app.test distingue contrôles injectés et HTTP réel.
 - Deux nouvelles notes Notion créées, documentation/amendements préparés ;
   les modèles Notion restent en attente, suivis pour finalisation globale.
+- Synchronisation LIB-4 : 3ec82ee publié, aucun apport distant ni conflit.
+
+## LIB-5 — Retrait ciblé d’une occurrence
+
+- DELETE item avec expectedVersion ; verrou/propriétaire/version réutilisés,
+  suppression par itemId ET playlistId, incrément seulement après retrait.
+  Les autres occurrences et leurs positions restent inchangées.
+- Aucun appel Catalogue requis ; répétition avec version ancienne 409,
+  avec version courante mais item absent 404, sans seconde mutation.
+- Build et six tests Library passent, dont retrait précis sur doublons,
+  compte/occurrence étrangers, version périmée et Catalogue indisponible.
+- app valide et route ; mutations exécute la transaction locale ; playlist
+  valide expectedVersion ; index branche ; app.test exerce les refus.
+  Amendements Notion préparés, modèles externes toujours en attente.

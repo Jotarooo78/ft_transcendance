@@ -8,6 +8,13 @@ export class PlaylistError extends Error {
   constructor(public readonly status: number, public readonly code: string) { super(code); }
 }
 
+export function versionInput(value: unknown): number | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const body = value as Record<string, unknown>;
+  return Object.keys(body).length === 1 && typeof body.expectedVersion === "number" &&
+    Number.isSafeInteger(body.expectedVersion) && body.expectedVersion > 0 ? body.expectedVersion : null;
+}
+
 export function addItemInput(value: unknown): { trackId: string; expectedVersion: number } | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const body = value as Record<string, unknown>;

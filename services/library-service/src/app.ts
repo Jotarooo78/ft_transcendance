@@ -1,7 +1,7 @@
 import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 import jwt from "@fastify/jwt";
 import client from "prom-client";
-import { addItemInput, createInput, pageQuery, PlaylistError, uuidPattern, type PageQuery, type Playlist, type PlaylistInput, type PlaylistPage } from "./playlist.js";
+import { addItemInput, createInput, pageQuery, PlaylistError, uuidPattern, versionInput, type PageQuery, type Playlist, type PlaylistInput, type PlaylistPage } from "./playlist.js";
 
 declare module "fastify" { interface FastifyRequest { authenticatedUserId?: string } }
 declare module "@fastify/jwt" {
@@ -14,6 +14,7 @@ type Options = {
   createPlaylist?: (owner: string, input: PlaylistInput) => Promise<Playlist>;
   isTrackPublished?: (trackId: string) => Promise<boolean>;
   addItem?: (owner: string, id: string, trackId: string, expectedVersion: number) => Promise<Playlist>;
+  removeItem?: (owner: string, id: string, itemId: string, expectedVersion: number) => Promise<Playlist>;
   ready: () => Promise<void>; close?: () => Promise<void>; logger?: boolean;
 };
 
@@ -72,6 +73,19 @@ export function buildApp(options: Options) {
       if (!options.isTrackPublished || !options.addItem) throw new Error("Missing add dependencies");
       if (!await options.isTrackPublished(input.trackId)) throw new PlaylistError(404, "track_not_found");
       return await options.addItem(owner, id, input.trackId, input.expectedVersion);
+    } catch (error) {
+      if (error instanceof PlaylistError) return reply.code(error.status).send({ error: error.code });
+      return reply.code(503).send({ error: "library_unavailable" });
+    }
+  });
+  app.delete<{ Params: { id: string; itemId: string } }>("/playlists/:id/items/:itemId", { onRequest: authenticate }, async (request, reply) => {
+    const expectedVersion = versionInput(request.body);
+    if (expectedVersion === null || !uuidPattern.test(request.params.id) || !uuidPattern.test(request.params.itemId)) {
+      return reply.code(400).send({ error: "invalid_request" });
+    }
+    try {
+      if (!options.removeItem) throw new Error("Missing removal writer");
+      return await options.removeItem(request.authenticatedUserId!, request.params.id.toLowerCase(), request.params.itemId.toLowerCase(), expectedVersion);
     } catch (error) {
       if (error instanceof PlaylistError) return reply.code(error.status).send({ error: error.code });
       return reply.code(503).send({ error: "library_unavailable" });
