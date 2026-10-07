@@ -19,5 +19,16 @@ Les critères de compréhension restent personnels.
   visibilité, erreurs, recherche littérale et conversion des BigInt.
 - Contrôle : correspondance manuelle des champs avec leurs sources ; validation
   syntaxique des deux exemples JSON. Aucune route Catalogue n'existe encore.
-- Synchronisation : commit/pull/push à effectuer avant CAT-2 ; le rapport
-  suivant consignera le résultat et les éventuels apports distants.
+- Synchronisation : commit `6e4b54b` publié sur `origin/feat/music-journeys`.
+  Pull initial de origin/main : aucun nouveau commit, aucun conflit.
+  Authentification rétablie par ange_ssh ; changements personnels préservés.
+
+## CAT-2 — Base isolée
+
+- Configuration et guide créés dans tests/music ; six migrations et permissions
+  réutilisées, Catalogue connecté par catalog_runtime, healthcheck /ready.
+- Preuves : compose config --quiet et garde Python sur la configuration résolue
+  réussis ; up --build --wait catalog-service réussi, six migrations/permissions
+  terminées et GET /ready interne répond 200 ready. Routes musicales non produites.
+- Documentation Notion liée à CAT-2 pour compose.yml et README.
+- Synchronisation CAT-2 à effectuer avant CAT-3.

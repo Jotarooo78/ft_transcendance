@@ -20,7 +20,7 @@ expose sous `/api/catalog`. Les routes techniques existantes restent séparées.
 | --- | --- | --- |
 | id | string UUID | `tracks.id` |
 | title | string | `tracks.title` |
-| artistName | string | noms des artistes crédités, primary avant featured, puis `credit_order` et UUID ; joindre par `, ` ; vide sans crédit |
+| artistName | string | noms des artistes crédités primary/featured uniquement, primary avant featured, puis `credit_order` et UUID ; joindre par `, ` ; vide sans crédit |
 | albumTitle | string | titre de la première sortie publiée, ordre par date puis UUID (dates absentes en dernier) ; vide sans sortie publiée |
 | genre | string | premier nom de genre par ordre lexical puis UUID ; vide sans genre |
 | durationMs | number ou null | `tracks.duration_ms`, conversion BigInt en entier JSON sûr, millisecondes |
@@ -90,7 +90,7 @@ Exemple proposé de réponse 200 :
 | Statut | Situation | Corps |
 | --- | --- | --- |
 | 400 | UUID ou paramètres invalides | `{"error":"invalid_request"}` |
-| 404 | morceau absent, draft ou retired | `{"error":"track_not_found"}` |
+| 404 | morceau absent, draft ou withdrawn | `{"error":"track_not_found"}` |
 | 503 | lecture SQL indisponible ou données non représentables | `{"error":"catalog_unavailable"}` |
 
 Les erreurs ne contiennent ni SQL ni détail de connexion. Le client distingue
