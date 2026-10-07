@@ -1,10 +1,11 @@
 import jwt from "@fastify/jwt";
+import multipart from "@fastify/multipart";
 import Fastify, {
   type FastifyInstance,
   type FastifyReply,
   type FastifyRequest,
 } from "fastify";
-import { timingSafeEqual } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 import client from "prom-client";
 
 import {
@@ -44,6 +45,12 @@ export type ProfileUpdater = (
   values: Pick<ProfileDto, "displayName" | "username" | "bio">,
 ) => Promise<ProfileDto>;
 
+export type AvatarWriter = (userId: string, fileName: string, bytes: Buffer) => Promise<ProfileDto>;
+export type AvatarReader = (fileName: string) => Promise<Buffer | null>;
+export const maxAvatarBytes = 2 * 1024 * 1024;
+const avatarTypes = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" } as const;
+const avatarFilePattern = /^[0-9a-f-]{36}-[0-9a-f-]{36}\.(png|jpg|webp)$/i;
+
 export class UsernameConflictError extends Error {
   constructor() {
     super("username already in use");
@@ -58,6 +65,8 @@ type BuildAppOptions = {
   provisionProfile?: ProfileProvisioner;
   readProfile: ProfileReader;
   profileUpdater: ProfileUpdater;
+  writeAvatar?: AvatarWriter;
+  readAvatar?: AvatarReader;
 };
 
 const uuidPattern =
@@ -141,7 +150,12 @@ export function buildApp({
   provisionProfile,
   readProfile,
   profileUpdater,
+  writeAvatar,
+  readAvatar,
 }: BuildAppOptions): FastifyInstance {
+  if ((writeAvatar === undefined) !== (readAvatar === undefined)) {
+    throw new Error("writeAvatar and readAvatar must be configured together");
+  }
   if ((internalServiceToken === undefined) !== (provisionProfile === undefined)) {
     throw new Error(
       "internalServiceToken and provisionProfile must be configured together",
@@ -165,6 +179,8 @@ export function buildApp({
   });
 
   app.register(jwt, { secret: jwtSecret });
+  app.register(multipart, { limits: { fileSize: maxAvatarBytes, files: 1 } });
+  app.decorateRequest("authenticatedUserId", "");
 
   app.addHook("onRequest", async (request) => {
     request.requestStart = process.hrtime.bigint();
@@ -332,7 +348,48 @@ export function buildApp({
     },
   );
 
+  if (writeAvatar && readAvatar) {
+    app.post("/me/avatar", { onRequest: authenticate }, async (request, reply) => {
+      if (!request.isMultipart()) {
+        return reply.code(400).send({ error: "avatar file is required" });
+      }
+      const file = await request.file();
+      if (!file || file.fieldname !== "avatar") {
+        return reply.code(400).send({ error: "avatar field is required" });
+      }
+      const extension = avatarTypes[file.mimetype as keyof typeof avatarTypes];
+      if (!extension) {
+        return reply.code(415).send({ error: "unsupported avatar mime type" });
+      }
+      const bytes = await file.toBuffer();
+      const userId = request.authenticatedUserId!;
+      const fileName = `${userId}-${randomUUID()}.${extension}`;
+      const profile = await writeAvatar(userId, fileName, bytes);
+      return {
+        userId: profile.userId, displayName: profile.displayName,
+        username: profile.username, bio: profile.bio, avatarUrl: profile.avatarUrl,
+      } satisfies ProfileDto;
+    });
+
+    app.get<{ Params: { fileName: string } }>("/avatars/:fileName", async (request, reply) => {
+      const fileName = request.params.fileName;
+      if (!avatarFilePattern.test(fileName)) {
+        return reply.code(400).send({ error: "invalid file name" });
+      }
+      const bytes = await readAvatar(fileName);
+      if (bytes === null) {
+        return reply.code(404).send({ error: "avatar not found" });
+      }
+      const extension = fileName.split(".").pop();
+      const contentType = extension === "png" ? "image/png" : extension === "jpg" ? "image/jpeg" : "image/webp";
+      return reply.type(contentType).send(bytes);
+    });
+  }
+
   app.setErrorHandler((error, request, reply) => {
+    if (error instanceof app.multipartErrors.RequestFileTooLargeError) {
+      return reply.code(413).send({ error: "avatar must not exceed 2 MiB" });
+    }
     request.log.error({ err: error }, "unhandled error");
     if (!reply.sent) {
       reply.code(500).send({ error: "internal server error" });

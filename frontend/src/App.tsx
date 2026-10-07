@@ -132,13 +132,6 @@ function App() {
       bio: bio === "" ? null : bio,
     });
 
-    let avatarUrl = profile.avatarUrl;
-
-    if (avatarFile !== null) {
-      const avatarProfile = await uploadMyAvatar(avatarFile);
-      avatarUrl = avatarProfile.avatarUrl;
-    }
-
     setCurrentUser((currentUser) => {
       if (currentUser === null) {
         return null;
@@ -150,9 +143,20 @@ function App() {
         displayName: profile.displayName,
         username: profile.username,
         bio: profile.bio,
-        avatarUrl,
+        avatarUrl: profile.avatarUrl,
       };
     });
+
+    if (avatarFile !== null) {
+      try {
+        const avatarProfile = await uploadMyAvatar(avatarFile);
+        setCurrentUser((user) => user === null ? null : {
+          ...user, avatarUrl: avatarProfile.avatarUrl,
+        });
+      } catch {
+        throw new Error("Texte sauvegardé, avatar non envoyé. Réessayez l’envoi de l’avatar.");
+      }
+    }
   }
 
   function handleAddFriend(userId: string) {

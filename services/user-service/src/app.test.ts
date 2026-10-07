@@ -9,6 +9,7 @@ import {
   type ProfileReader,
   type ProfileUpdater,
   UsernameConflictError,
+  maxAvatarBytes,
 } from "./app.js";
 import {
   type ProfileProvisionCommand,
@@ -549,4 +550,121 @@ test("PUT /internal/profiles exposes a username conflict without retrying it", a
   } finally {
     await app.close();
   }
+});
+
+function avatarMultipart(bytes: Buffer, mime = "image/png", field = "avatar") {
+  const boundary = "pce-test-boundary";
+  return {
+    headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
+    payload: Buffer.concat([
+      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${field}"; filename="image.png"\r\nContent-Type: ${mime}\r\n\r\n`),
+      bytes, Buffer.from(`\r\n--${boundary}--\r\n`),
+    ]),
+  };
+}
+
+async function avatarApp() {
+  const userId = randomUUID();
+  const files = new Map<string, Buffer>();
+  const writes: string[] = [];
+  const reads: string[] = [];
+  const profile: ProfileDto = { userId, displayName: "Léa", username: "lea", bio: "Bio", avatarUrl: null };
+  const app = buildApp({
+    jwtSecret, logger: false,
+    readProfile: async () => profile, profileUpdater: unexpectedProfileUpdate,
+    writeAvatar: async (id, fileName, bytes) => {
+      assert.equal(id, userId);
+      writes.push(fileName);
+      files.set(fileName, bytes);
+      profile.avatarUrl = `/api/users/avatars/${fileName}`;
+      return { ...profile, privateField: "excluded" };
+    },
+    readAvatar: async (fileName) => {
+      reads.push(fileName);
+      return files.get(fileName) ?? null;
+    },
+  });
+  await app.ready();
+  const token = app.jwt.sign({ sub: userId });
+  return { app, token, files, writes, reads, profile };
+}
+
+for (const mime of ["image/png", "image/jpeg", "image/webp"]) {
+  test(`avatar accepts ${mime} and serves exactly the uploaded bytes`, async () => {
+    const { app, token, profile } = await avatarApp();
+    const bytes = Buffer.from([137, 80, 78, 71, 0, 1, 2, 255]);
+    try {
+      const body = avatarMultipart(bytes, mime);
+      const uploaded = await app.inject({ method: "POST", url: "/me/avatar", ...body,
+        headers: { ...body.headers, authorization: `Bearer ${token}` } });
+      assert.equal(uploaded.statusCode, 200);
+      assert.deepEqual(uploaded.json(), profile);
+      const fetched = await app.inject({ method: "GET", url: profile.avatarUrl!.replace("/api/users", "") });
+      assert.equal(fetched.statusCode, 200);
+      assert.equal(fetched.headers["content-type"], mime);
+      assert.deepEqual(fetched.rawPayload, bytes);
+    } finally { await app.close(); }
+  });
+}
+
+for (const [label, field, mime, size, status] of [
+  ["wrong field", "photo", "image/png", 1, 400],
+  ["forbidden MIME", "avatar", "text/plain", 1, 415],
+  ["over limit", "avatar", "image/png", maxAvatarBytes + 1, 413],
+  ["exact size limit", "avatar", "image/png", maxAvatarBytes, 200],
+] as const) {
+  test(`avatar handles ${label} with status ${status}`, async () => {
+    const { app, token, writes, files } = await avatarApp();
+    try {
+      const body = avatarMultipart(Buffer.alloc(size), mime, field);
+      const response = await app.inject({ method: "POST", url: "/me/avatar", ...body,
+        headers: { ...body.headers, authorization: `Bearer ${token}` } });
+      assert.equal(response.statusCode, status);
+      if (status !== 200) assert.deepEqual(writes, []);
+      else assert.equal([...files.values()][0]!.length, size);
+    } finally { await app.close(); }
+  });
+}
+
+for (const subject of [undefined, "not-a-uuid"]) {
+  test(`avatar requires an authenticated UUID (${String(subject)})`, async () => {
+    const { app, writes } = await avatarApp();
+    try {
+      const body = avatarMultipart(Buffer.from("test"));
+      const response = await app.inject({ method: "POST", url: "/me/avatar", ...body,
+        headers: { ...body.headers, ...(subject ? { authorization: `Bearer ${app.jwt.sign({ sub: subject })}` } : {}) } });
+      assert.equal(response.statusCode, 401);
+      assert.deepEqual(writes, []);
+    } finally { await app.close(); }
+  });
+}
+
+test("avatar rejects a missing file", async () => {
+  const { app, token, writes } = await avatarApp();
+  try {
+    const response = await app.inject({ method: "POST", url: "/me/avatar",
+      headers: { authorization: `Bearer ${token}` }, payload: {} });
+    assert.equal(response.statusCode, 400);
+    assert.deepEqual(writes, []);
+  } finally { await app.close(); }
+});
+
+for (const name of ["..%2Fsecret.png", "..", "secret.png", "%5Csecret.png"]) {
+  test(`avatar rejects unsafe filename ${name} before storage access`, async () => {
+    const { app, reads } = await avatarApp();
+    try {
+      const response = await app.inject({ method: "GET", url: `/avatars/${name}` });
+      // The HTTP client normalizes the literal parent segment before routing.
+      assert.equal(response.statusCode, name === ".." ? 404 : 400);
+      assert.deepEqual(reads, []);
+    } finally { await app.close(); }
+  });
+}
+
+test("avatar returns 404 for an absent authorized filename", async () => {
+  const { app } = await avatarApp();
+  try {
+    const response = await app.inject({ method: "GET", url: `/avatars/${randomUUID()}-${randomUUID()}.png` });
+    assert.equal(response.statusCode, 404);
+  } finally { await app.close(); }
 });

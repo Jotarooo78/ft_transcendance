@@ -1,13 +1,13 @@
-import multipart from "@fastify/multipart";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { basename, join } from "node:path";
-import { randomUUID } from "node:crypto";
+import { join } from "node:path";
 
 import {
   buildApp,
   type ProfileReader,
   type ProfileUpdater,
+  type AvatarWriter,
+  type AvatarReader,
   UsernameConflictError,
 } from "./app.js";
 import { disconnectPrisma, prisma } from "./database/prisma.js";
@@ -21,9 +21,7 @@ import {
 const jwtSecret = process.env.JWT_SECRET;
 const internalServiceToken = process.env.INTERNAL_SERVICE_TOKEN;
 const avatarStorageDir = process.env.AVATAR_STORAGE_DIR ?? "/tmp/user-service-avatars";
-const maxAvatarBytes = 2 * 1024 * 1024;
 const onlineWindowSeconds = 120;
-const allowedAvatarMimeTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
 
 if (!jwtSecret) {
   throw new Error("JWT_SECRET is required at runtime");
@@ -153,25 +151,38 @@ const profileUpdater: ProfileUpdater = async (userId, values) => {
   }
 };
 
+const writeAvatar: AvatarWriter = async (userId, fileName, bytes) => {
+  await writeFile(join(avatarStorageDir, fileName), bytes);
+  const avatarUrl = `/api/users/avatars/${fileName}`;
+  return prisma.profile.upsert({
+    where: { userId },
+    update: { avatarUrl },
+    create: { userId, displayName: "New user", username: `user_${userId.slice(0, 8)}`, avatarUrl },
+    select: { userId: true, displayName: true, username: true, bio: true, avatarUrl: true },
+  });
+};
+
+const readAvatar: AvatarReader = async (fileName) => {
+  try {
+    return await readFile(join(avatarStorageDir, fileName));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
+  }
+};
+
 const app = buildApp({
   internalServiceToken,
   jwtSecret,
   provisionProfile,
   readProfile,
   profileUpdater,
+  writeAvatar,
+  readAvatar,
 });
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-app.register(multipart, {
-  limits: {
-    fileSize: maxAvatarBytes,
-    files: 1,
-  },
-});
-
-app.decorateRequest("authenticatedUserId", "");
 
 async function authenticate(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   try {
@@ -213,85 +224,6 @@ app.get("/profile/:userId", async (request, reply) => {
   }
 
   return profile;
-});
-
-app.post("/me/avatar", { onRequest: authenticate }, async (request, reply) => {
-  const userId = request.authenticatedUserId;
-
-  if (!userId) {
-    return reply.code(401).send({ error: "unauthorized" });
-  }
-
-  const avatarFile = await request.file();
-  if (!avatarFile) {
-    return reply.code(400).send({ error: "avatar file is required" });
-  }
-
-  if (!allowedAvatarMimeTypes.has(avatarFile.mimetype)) {
-    return reply.code(415).send({ error: "unsupported avatar mime type" });
-  }
-
-  const extension = avatarFile.mimetype === "image/png"
-    ? "png"
-    : avatarFile.mimetype === "image/jpeg"
-      ? "jpg"
-      : "webp";
-
-  const fileName = `${userId}-${randomUUID()}.${extension}`;
-  const filePath = join(avatarStorageDir, fileName);
-  const fileBuffer = await avatarFile.toBuffer();
-  await writeFile(filePath, fileBuffer);
-
-  const avatarUrl = `/api/users/avatars/${fileName}`;
-
-  const profile = await prisma.profile.upsert({
-    where: { userId },
-    update: { avatarUrl },
-    create: {
-      userId,
-      displayName: "New user",
-      username: `user_${userId.slice(0, 8)}`,
-      avatarUrl,
-    },
-    select: {
-      userId: true,
-      displayName: true,
-      username: true,
-      avatarUrl: true,
-    },
-  });
-
-  return profile;
-});
-
-app.get("/avatars/:fileName", async (request, reply) => {
-  const params = request.params as { fileName?: string };
-  const fileName = params.fileName;
-
-  if (!fileName || basename(fileName) !== fileName) {
-    return reply.code(400).send({ error: "invalid file name" });
-  }
-
-  const absolutePath = join(avatarStorageDir, fileName);
-  const contentType = fileName.endsWith(".png")
-    ? "image/png"
-    : fileName.endsWith(".jpg") || fileName.endsWith(".jpeg")
-      ? "image/jpeg"
-      : fileName.endsWith(".webp")
-        ? "image/webp"
-        : null;
-
-  if (!contentType) {
-    return reply.code(404).send({ error: "avatar not found" });
-  }
-
-  try {
-    const fileBuffer = await readFile(absolutePath);
-    reply.header("Content-Type", contentType);
-    return reply.send(fileBuffer);
-  } catch {
-    return reply.code(404).send({ error: "avatar not found" });
-  }
 });
 
 app.post("/friends/:friendId", { onRequest: authenticate }, async (request, reply) => {

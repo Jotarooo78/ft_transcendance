@@ -1,5 +1,5 @@
 import { getAvatarSource } from "../avatar";
-import { useState, type ChangeEvent, type SubmitEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type SubmitEvent } from "react";
 
 import type { AuthenticatedUser } from "../types/auth";
 import {
@@ -40,6 +40,10 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
     getAvatarSource(user.avatarUrl),
   );
 
+  useEffect(() => () => {
+    if (avatarPreviewUrl.startsWith("blob:")) URL.revokeObjectURL(avatarPreviewUrl);
+  }, [avatarPreviewUrl]);
+
   function handleAvatarChange(event: ChangeEvent<HTMLInputElement>) {
     setErrorMessage("");
 
@@ -65,10 +69,6 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
 
       event.target.value = "";
       return;
-    }
-
-    if (avatarPreviewUrl.startsWith("blob:")) {
-      URL.revokeObjectURL(avatarPreviewUrl);
     }
 
     const previewUrl = URL.createObjectURL(file);
