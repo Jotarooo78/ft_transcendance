@@ -1,4 +1,149 @@
 import { test, expect } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
+// Read-only SQL witness, confined to the same disposable project as the browser.
+function playbackSql(id) {
+  expect(id).toMatch(/^[0-9a-f-]{36}$/);
+  const query = `SELECT json_build_object('id',s.id,'userId',s.user_id,'listenedMs',s.listened_ms,
+    'lastSequence',s.last_sequence,'qualified',s.qualified,'endedAt',s.ended_at,
+    'events',(SELECT json_agg(json_build_object('sequence',sequence,'positionMs',position_ms,
+      'listenedMsTotal',listened_ms_total) ORDER BY sequence) FROM playback.events WHERE session_id=s.id))
+    FROM playback.sessions s WHERE current_database()='transcendence_music' AND s.id='${id}'::uuid;`;
+  return JSON.parse(execFileSync('docker', ['compose','-p','transcendence_music','--env-file','/dev/null',
+    '-f',fileURLToPath(new URL('./compose.yml', import.meta.url)),'exec','-T','db','psql','-U','e2e_admin',
+    '-d','transcendence_music','-v','ON_ERROR_STOP=1','-At','-c',query], { encoding:'utf8', timeout:10000 }).trim());
+}
+const playbackProgress = r => r.request().method() === 'PUT' && /\/api\/playback\/sessions\/[^/]+\/progress$/.test(r.url()) && r.status() === 200;
+async function startPlayback(page) {
+  await page.getByRole('button', { name:'Catalog', exact:true }).click();
+  const opened = page.waitForResponse(r => r.url().endsWith('/api/playback/sessions') && r.request().method() === 'POST' && r.status() === 201);
+  const media = page.waitForResponse(r => r.url().endsWith('/api/media/assets/30000000-0000-4000-8000-000000000001/audio') && [200,206].includes(r.status()));
+  await page.locator('.catalog-track').filter({ has:page.getByRole('heading',{name:'Aube — demo',exact:true}) }).getByRole('button',{name:'Play',exact:true}).click();
+  await media;
+  const audio=page.locator('audio');
+  await expect.poll(()=>audio.evaluate(a=>a.duration)).toBeCloseTo(6,1);
+  await audio.evaluate(a=>a.play());
+  return { audio, session:await (await opened).json() };
+}
+
+test('playback: real listening, pause, seek, SQL, history and account isolation', async ({page}) => {
+  const loggedIn=page.waitForResponse(r=>r.url().endsWith('/api/auth/login') && r.status()===200);
+  const user=await createAccount(page,'eco_real');
+  const token=(await (await loggedIn).json()).token, headers={Authorization:`Bearer ${token}`};
+  const readHistory=async()=>{const r=await page.request.get('/api/playback/sessions',{headers});expect(r.status()).toBe(200);return r.json();};
+  const sent=[];
+  page.on('request',r=>{if(r.method()==='PUT' && r.url().includes('/api/playback/'))sent.push(r.postDataJSON());});
+  const confirmed=page.waitForResponse(playbackProgress);
+  const {audio,session}=await startPlayback(page); await confirmed;
+  await expect.poll(()=>audio.evaluate(a=>a.currentTime)).toBeGreaterThan(1.1);
+  const pauseSaved=page.waitForResponse(playbackProgress);
+  await audio.evaluate(a=>a.pause()); await pauseSaved;
+  await expect(page.locator('.listening-status')).toContainText('Listening progress saved.');
+  const paused=(await readHistory()).items[0];
+  expect(paused.id).toBe(session.id); expect(paused.listenedMs).toBeGreaterThan(400);
+  // Intentional real-time observation: no synthetic timeupdate/playing events.
+  await page.waitForTimeout(1200);
+  expect((await readHistory()).items[0].listenedMs).toBe(paused.listenedMs);
+  const seekSaved=page.waitForResponse(playbackProgress);
+  await audio.evaluate(a=>{a.currentTime=4.5;}); await seekSaved;
+  await expect.poll(async()=>(await readHistory()).items[0].positionMs).toBe(4500);
+  const sought=(await readHistory()).items[0];
+  expect(sought.listenedMs).toBe(paused.listenedMs);
+  const closedResponse=page.waitForResponse(r=>r.url().endsWith(`/${session.id}/close`) && r.status()===200);
+  await audio.evaluate(a=>a.play());
+  const closed=await (await closedResponse).json();
+  expect(closed.positionMs).toBe(6000); expect(closed.listenedMs).toBeGreaterThan(paused.listenedMs+700);
+  expect(closed.listenedMs).toBeLessThan(paused.listenedMs+1800);
+  const sql=playbackSql(session.id);
+  expect(sql.userId).toBe(JSON.parse(Buffer.from(token.split('.')[1],'base64url').toString()).sub);
+  expect(sql.listenedMs).toBe(closed.listenedMs); expect(sql.lastSequence).toBe(closed.lastSequence);
+  expect(sql.events).toEqual(sent); expect(sql.events.length).toBe(closed.lastSequence);
+  expect(sql.qualified).toBe(false); expect(sql.endedAt).not.toBeNull();
+  await page.getByRole('button',{name:'History',exact:true}).click();
+  const row=page.locator(`[data-session-id="${session.id}"]`);
+  await expect(row).toContainText('Closed');
+  await expect(row.locator('[data-field="listened"]')).toHaveAttribute('data-ms',String(closed.listenedMs));
+  await expect(row.locator('[data-field="position"]')).toHaveAttribute('data-ms','6000');
+  await page.reload(); await login(page,user);
+  await page.getByRole('button',{name:'History',exact:true}).click();
+  await expect(row.locator('[data-field="listened"]')).toHaveAttribute('data-ms',String(closed.listenedMs));
+  // Catalogue failure must preserve the stored facts and disable replay.
+  const tracks='**/api/catalog/tracks/20000000-0000-4000-8000-000000000001';
+  await page.route(tracks,route=>route.fulfill({status:404,body:'{}'}));
+  await page.getByRole('button',{name:'Catalog',exact:true}).click();
+  await page.getByRole('button',{name:'History',exact:true}).click();
+  await expect(row).toContainText('Track unavailable');
+  await expect(row.getByRole('button',{name:'Play track',exact:true})).toBeDisabled();
+  await expect(row.locator('[data-field="listened"]')).toHaveAttribute('data-ms',String(closed.listenedMs));
+  await page.unroute(tracks);
+  const lists='**/api/playback/sessions?*';
+  await page.route(lists,route=>route.abort());
+  await page.getByRole('button',{name:'Refresh history',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Retry history',exact:true})).toBeVisible();
+  await expect(page.getByText('No listening sessions on this page.',{exact:true})).toHaveCount(0);
+  await page.unroute(lists); await page.getByRole('button',{name:'Retry history',exact:true}).click();
+  await expect(row).toBeVisible();
+  // Real open sessions exercise the 20-row boundary and honest Open state.
+  for(let n=0;n<20;n++)expect((await page.request.post('/api/playback/sessions',{headers,data:{trackId:session.trackId}})).status()).toBe(201);
+  await page.getByRole('button',{name:'Refresh history',exact:true}).click();
+  await expect(page.locator('[data-session-id]')).toHaveCount(20);
+  await expect(page.locator('[data-session-id]').first()).toContainText('Open');
+  await page.getByRole('button',{name:'Next',exact:true}).click();
+  await expect(page.locator('[data-session-id]')).toHaveCount(1); await expect(row).toBeVisible();
+  let release,arrived,finished;
+  const gate=new Promise(r=>{release=r;}), captured=new Promise(r=>{arrived=r;}), complete=new Promise(r=>{finished=r;});
+  let first=true;
+  await page.route(lists,async route=>{
+    if(!first)return route.continue(); first=false;
+    const response=await route.fetch(); arrived(); await gate;
+    try{await route.fulfill({response});}catch{/* A's cancelled read may have no consumer. */}finally{finished();}
+  });
+  await page.getByRole('button',{name:'Refresh history',exact:true}).click(); await captured;
+  await page.getByRole('button',{name:'Log out',exact:true}).click();
+  await page.getByRole('button',{name:'Register',exact:true}).click();
+  await createAccount(page,'eco_other');
+  await page.getByRole('button',{name:'History',exact:true}).click();
+  await expect(page.getByText('No listening sessions on this page.',{exact:true})).toBeVisible();
+  release(); await complete; await page.unroute(lists);
+  await expect(page.locator('[data-session-id]')).toHaveCount(0);
+});
+
+test('playback: lost response after SQL write, bounded retry and audible save failure',async({page})=>{
+  await createAccount(page,'eco_retry');
+  let lost,confirmed,repeated=false,failed=0;
+  const pattern='**/api/playback/sessions/*/progress';
+  await page.route(pattern,async route=>{
+    const payload=route.request().postDataJSON();
+    const response=await route.fetch(); expect(response.status()).toBe(200);
+    const saved=await response.json();
+    if(!lost){lost={payload,saved}; await route.abort('failed'); return;}
+    if(!repeated){expect(payload).toEqual(lost.payload);expect(saved).toEqual(lost.saved);confirmed=saved;repeated=true;}
+    await route.fulfill({response});
+  });
+  const {audio,session}=await startPlayback(page);
+  await expect.poll(()=>repeated).toBe(true);
+  expect(confirmed.id).toBe(session.id);
+  const witness=playbackSql(session.id);
+  expect(witness.events.filter(e=>e.sequence===lost.payload.sequence)).toEqual([lost.payload]);
+  await page.unroute(pattern);
+  await page.route(pattern,route=>{failed++;return route.abort('failed');});
+  await expect(page.locator('.listening-status')).toContainText('Listening progress could not be saved. Audio can continue.');
+  expect(failed).toBe(3);
+  const before=await audio.evaluate(a=>a.currentTime);
+  await expect.poll(()=>audio.evaluate(a=>a.currentTime)).toBeGreaterThan(before+0.3);
+  await audio.evaluate(a=>a.pause());
+  await page.waitForTimeout(400); expect(failed).toBe(3);
+  await page.unroute(pattern);
+  await page.getByRole('button',{name:'Retry saving',exact:true}).click();
+  await expect(page.locator('.listening-status')).toContainText('Listening progress saved.');
+  const closedResponse=page.waitForResponse(r=>r.url().endsWith(`/${session.id}/close`) && r.status()===200);
+  await page.getByRole('button',{name:'Close audio player',exact:true}).click();
+  const closed=await(await closedResponse).json(),sql=playbackSql(session.id);
+  expect(sql.listenedMs).toBe(closed.listenedMs);expect(sql.events.length).toBe(closed.lastSequence);
+  expect(sql.events.filter(e=>e.sequence===lost.payload.sequence)).toEqual([lost.payload]);
+  expect(sql.events.map(e=>e.sequence)).toEqual(Array.from({length:closed.lastSequence},(_,n)=>n+1));
+});
 
 test('library: confirmed gestures, failures, persistence and account isolation', async ({ page, browser }) => {
   const loginResponse = page.waitForResponse(r => r.url().endsWith('/api/auth/login') && r.status() === 200);

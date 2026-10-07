@@ -608,3 +608,29 @@ Les critères de compréhension restent personnels.
   Sortie PASS ou code non nul. Le scénario conserve les deux comptes/sessions
   jusqu'au nettoyage de la campagne ; aucune horloge de fixture modifiée.
   La preuve de son décodé et des gestes du lecteur reste ECO-12.
+- Synchronisation ECO-11 : `e59aba7` publié sur origin/feat/music-journeys ;
+  aucun nouveau commit distant, aucun conflit.
+
+## ECO-12 — Lecture Chromium, SQL et historique
+
+- `browser.spec.mjs` ajoute deux scénarios playback sur la vraie pile 3443.
+  Entrées : comptes inscrits par l'interface, WAV Media de six secondes,
+  réponses Playback et oracle SQL en lecture seule via Docker/psql, limité
+  au projet/base transcendence_music. Sortie Playwright PASS ou assertion.
+- Lecture réelle puis pause : total strictement inchangé pendant 1200 ms.
+  Seek à 4500 ms : position persistée, même total ; reprise jusqu'à ended et
+  close. Crédit supplémentaire borné entre 700 et 1800 ms pour 1500 ms de
+  média restant (tolérance de cadence et de crédit serveur, aucun saut crédité).
+  SQL compare chaque événement envoyé, propriétaire, résumé et qualification.
+- History affiche les mêmes IDs/valeurs, les retrouve après reload/relogin ;
+  404 Catalogue simulé conserve les faits et désactive Play. Panne History,
+  retry, 21 sessions réellement ouvertes pour pages 20+1 et état Open vérifiés.
+  Réponse réelle A retardée jusqu'après connexion B : aucun historique A affiché.
+- Réponse perdue simulée seulement après route.fetch vers le vrai serveur :
+  renvoi identique, résumé identique, une seule ligne SQL pour cette séquence.
+  Panne réseau suivante : trois essais, message local, audio continue, pause,
+  retry explicite puis clôture confirmée. SQL vérifie ordre/count et total final.
+- `npm test --prefix tests/music -- --grep playback` : 3 tests réussis en
+  32,7 s (inclut le scénario Media dont le titre contient aussi playback).
+  Aucun timeupdate ni succès serveur fabriqué. Trace/vidéo désactivées ;
+  les captures d'échec éventuelles restent ignorées. Fermeture brutale : au mieux.
