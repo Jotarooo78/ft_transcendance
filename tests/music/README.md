@@ -49,3 +49,9 @@ Pour les cas de tri : passer catalog-edge.sql à psql dans cette pile avec
 `-v cleanup=false`, exécuter `node tests/music/http-scenario.mjs catalog-edge`,
 puis le même SQL avec `-v cleanup=true`. La garde du script refuse les autres
 bases ; le nettoyage vise seulement les UUID des deux fixtures supplémentaires.
+
+`npm ci --prefix tests/music`, `npm run install:browser --prefix tests/music`,
+puis `npm test --prefix tests/music -- --grep catalog` exécutent le navigateur.
+Le scénario utilise de vraies réponses de succès ; les refus simulés sont
+identifiés et suivis d’un retour au vrai serveur. Une réponse réelle retardée
+vérifie qu’une ancienne recherche ne remplace pas la plus récente.

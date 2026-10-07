@@ -27,3 +27,5 @@ frontend/public/audio
 # Browser E2E artifacts
 /tests/e2e/test-results/
 /tests/e2e/playwright-report/
+/tests/music/test-results/
+/tests/music/playwright-report/

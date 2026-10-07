@@ -108,4 +108,16 @@ Les critères de compréhension restent personnels.
 - Catalogue arrêté/redémarré puis DB redémarrée : catalog-verify réussi après
   chaque phase, sans seed supplémentaire. assert-catalog.sql final réussi.
 - Aucun redémarrage de Nginx nécessaire, données et UUID conservés.
-- Documentation Notion liée à CAT-9 ; synchronisation avant CAT-10.
+- Documentation Notion liée à CAT-9 ; cda4a77 publié, aucun nouveau commit ni conflit.
+
+## CAT-10 — Parcours Chromium durable
+
+- Playwright 1.63.0 verrouillé, un worker/zéro retry, URL exacte 3443 ; artefacts
+  locaux ignorés, traces et vidéos désactivées.
+- npm ci, installation Chromium et scénario catalog réussis (1 test, 5,2 s).
+  Le premier essai a identifié un sélecteur getByLabel inadapté aux combobox ;
+  remplacé par getByRole avec leur nom accessible, puis scénario entier rejoué.
+- Succès réels et identités API comparés au rendu ; erreurs 404/réseau simulées
+  suivies de retry réel ; réponse ancienne retardée, nouveau résultat conservé.
+- Documentation Notion des tests/config/package/lockfile liée à CAT-10.
+- Synchronisation à effectuer avant CAT-11.
