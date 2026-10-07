@@ -539,3 +539,16 @@ Les critères de compréhension restent personnels.
   seeds Catalogue/Media explicites. Nginx -t passe, /sessions anonyme 401,
   /metrics 403 et /ready 200 par HTTPS. Log /tmp/music-eco7.log.
 - Variables et niveaux de disponibilité documentés ; notes Notion actualisées.
+- Synchronisation ECO-7 : 0c9791d publié, aucun apport distant ni conflit.
+
+## ECO-8 — Mesure locale du temps actif
+
+- ListeningClock utilise temps monotone et avancement média ; pause/attente
+  coupent l’activité, seeking/seeked signalent une discontinuité explicite.
+- Intervalle supérieur à 2500 ms abandonné ; saut supérieur à elapsed+250 ms
+  ignoré. La marge de jitter ne crédite rien au-delà des deux horloges.
+  Sortie entière et reset par piste/session ; aucun transport encore branché.
+- Quatre tests passent : 2 s lecture + pause 3 s + seek + reprise 1 s = 3 s
+  actives, attente/suspension/sauts/reset et bornes. Lint/build passent après
+  référence explicite aux types Node déjà présents dans le fichier de test.
+- Trois notes Notion produites et liées ; aucune nouvelle dépendance frontend.
