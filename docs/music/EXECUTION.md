@@ -137,4 +137,13 @@ Les critères de compréhension restent personnels.
 - Après le second nettoyage, zéro conteneur, volume ou réseau portant le
   label com.docker.compose.project=transcendence_music.
 - Promesse CAT prouvée ; audio, Library et Playback restent à réaliser.
-- Synchronisation à effectuer avant MED-1.
+- Synchronisation CAT-11 : 49fed22 publié, aucun nouveau commit ni conflit.
+
+## MED-1 — Contrat des octets audio
+
+- MEDIA_CONTRACT.md relie assetId, publication Catalogue, métadonnées et
+  stockage privé. Définit GET/HEAD, plages, statuts, timeout, confinement et
+  limite du retrait pendant un flux en cours.
+- Contrôle documentaire contre schémas/contrat Catalogue réalisé ; format de
+  démonstration déterministe précisé. Aucune route Media encore implémentée.
+- Synchronisation à effectuer avant MED-2.
