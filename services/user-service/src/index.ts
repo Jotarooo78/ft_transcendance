@@ -20,8 +20,10 @@ import {
 
 const jwtSecret = process.env.JWT_SECRET;
 const internalServiceToken = process.env.INTERNAL_SERVICE_TOKEN;
-const avatarStorageDir = process.env.AVATAR_STORAGE_DIR ?? "/tmp/user-service-avatars";
+const avatarStorageDir =
+  process.env.AVATAR_STORAGE_DIR ?? "/tmp/user-service-avatars";
 const onlineWindowSeconds = 120;
+
 
 if (!jwtSecret) {
   throw new Error("JWT_SECRET is required at runtime");
@@ -184,7 +186,10 @@ const app = buildApp({
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-async function authenticate(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+async function authenticate(
+  request: FastifyRequest,
+  reply: FastifyReply,
+): Promise<void> {
   try {
     await request.jwtVerify();
   } catch {
@@ -200,6 +205,74 @@ async function authenticate(request: FastifyRequest, reply: FastifyReply): Promi
 
   request.authenticatedUserId = subject;
 }
+
+app.get("/profiles", { onRequest: authenticate }, async (request, reply) => {
+  const currentUserId = request.authenticatedUserId;
+
+  if (!currentUserId) {
+    return reply.code(401).send({ error: "unauthorized" });
+  }
+
+  const profiles = await prisma.profile.findMany({
+    where: {
+      userId: {
+        not: currentUserId,
+      },
+    },
+    select: {
+      userId: true,
+      displayName: true,
+      username: true,
+      bio: true,
+      avatarUrl: true,
+    },
+    orderBy: {
+      username: "asc",
+    },
+  });
+
+  const userIds = profiles.map((profile) => profile.userId);
+
+  const presences = await prisma.presence.findMany({
+    where: {
+      userId: {
+        in: userIds,
+      },
+    },
+    select: {
+      userId: true,
+      isOnline: true,
+      lastSeenAt: true,
+    },
+  });
+
+  const presenceByUserId = new Map(
+    presences.map((presence) => [presence.userId, presence]),
+  );
+
+  const nowMs = Date.now();
+  const ttlMs = onlineWindowSeconds * 1000;
+
+  const users = profiles.map((profile) => {
+    const presence = presenceByUserId.get(profile.userId);
+
+    const isOnline =
+      presence !== undefined &&
+      presence.isOnline &&
+      nowMs - presence.lastSeenAt.getTime() <= ttlMs;
+
+    return {
+      userId: profile.userId,
+      displayName: profile.displayName,
+      username: profile.username,
+      bio: profile.bio,
+      avatarUrl: profile.avatarUrl,
+      onlineStatus: isOnline ? "online" : "offline",
+    };
+  });
+
+  return { users };
+});
 
 app.get("/profile/:userId", async (request, reply) => {
   const params = request.params as { userId?: string };
@@ -226,67 +299,75 @@ app.get("/profile/:userId", async (request, reply) => {
   return profile;
 });
 
-app.post("/friends/:friendId", { onRequest: authenticate }, async (request, reply) => {
-  const userId = request.authenticatedUserId;
-  const params = request.params as { friendId?: string };
-  const friendId = params.friendId;
+app.post(
+  "/friends/:friendId",
+  { onRequest: authenticate },
+  async (request, reply) => {
+    const userId = request.authenticatedUserId;
+    const params = request.params as { friendId?: string };
+    const friendId = params.friendId;
 
-  if (!userId) {
-    return reply.code(401).send({ error: "unauthorized" });
-  }
+    if (!userId) {
+      return reply.code(401).send({ error: "unauthorized" });
+    }
 
-  if (typeof friendId !== "string" || !uuidPattern.test(friendId)) {
-    return reply.code(400).send({ error: "invalid friend id" });
-  }
+    if (typeof friendId !== "string" || !uuidPattern.test(friendId)) {
+      return reply.code(400).send({ error: "invalid friend id" });
+    }
 
-  if (friendId === userId) {
-    return reply.code(400).send({ error: "cannot add yourself" });
-  }
+    if (friendId === userId) {
+      return reply.code(400).send({ error: "cannot add yourself" });
+    }
 
-  const friendProfile = await prisma.profile.findUnique({
-    where: { userId: friendId },
-    select: { userId: true },
-  });
+    const friendProfile = await prisma.profile.findUnique({
+      where: { userId: friendId },
+      select: { userId: true },
+    });
 
-  if (!friendProfile) {
-    return reply.code(404).send({ error: "friend profile not found" });
-  }
+    if (!friendProfile) {
+      return reply.code(404).send({ error: "friend profile not found" });
+    }
 
-  await prisma.friend.createMany({
-    data: [
-      { userId, friendId },
-      { userId: friendId, friendId: userId },
-    ],
-    skipDuplicates: true,
-  });
-
-  return { ok: true };
-});
-
-app.delete("/friends/:friendId", { onRequest: authenticate }, async (request, reply) => {
-  const userId = request.authenticatedUserId;
-  const params = request.params as { friendId?: string };
-  const friendId = params.friendId;
-
-  if (!userId) {
-    return reply.code(401).send({ error: "unauthorized" });
-  }
-
-  if (typeof friendId !== "string" || !uuidPattern.test(friendId)) {
-    return reply.code(400).send({ error: "invalid friend id" });
-  }
-
-  await prisma.friend.deleteMany({
-    where: {
-      OR: [
+    await prisma.friend.createMany({
+      data: [
         { userId, friendId },
         { userId: friendId, friendId: userId },
       ],
-    },
-  });
+      skipDuplicates: true,
+    });
 
-  return { ok: true };
-});
+    return { ok: true };
+  },
+);
+
+app.delete(
+  "/friends/:friendId",
+  { onRequest: authenticate },
+  async (request, reply) => {
+    const userId = request.authenticatedUserId;
+    const params = request.params as { friendId?: string };
+    const friendId = params.friendId;
+
+    if (!userId) {
+      return reply.code(401).send({ error: "unauthorized" });
+    }
+
+    if (typeof friendId !== "string" || !uuidPattern.test(friendId)) {
+      return reply.code(400).send({ error: "invalid friend id" });
+    }
+
+    await prisma.friend.deleteMany({
+      where: {
+        OR: [
+          { userId, friendId },
+          { userId: friendId, friendId: userId },
+        ],
+      },
+    });
+
+    return { ok: true };
+  },
+);
 
 app.get("/friends", { onRequest: authenticate }, async (request, reply) => {
   const userId = request.authenticatedUserId;
@@ -312,6 +393,7 @@ app.get("/friends", { onRequest: authenticate }, async (request, reply) => {
         userId: true,
         displayName: true,
         username: true,
+        bio: true,
         avatarUrl: true,
       },
     }),
@@ -342,6 +424,7 @@ app.get("/friends", { onRequest: authenticate }, async (request, reply) => {
       userId: profile.userId,
       displayName: profile.displayName,
       username: profile.username,
+      bio: profile.bio,
       avatarUrl: profile.avatarUrl,
       onlineStatus: isOnline ? "online" : "offline",
       lastSeenAt: presence?.lastSeenAt.toISOString() ?? null,
@@ -351,51 +434,59 @@ app.get("/friends", { onRequest: authenticate }, async (request, reply) => {
   return { friends };
 });
 
-app.post("/presence/heartbeat", { onRequest: authenticate }, async (request, reply) => {
-  const userId = request.authenticatedUserId;
+app.post(
+  "/presence/heartbeat",
+  { onRequest: authenticate },
+  async (request, reply) => {
+    const userId = request.authenticatedUserId;
 
-  if (!userId) {
-    return reply.code(401).send({ error: "unauthorized" });
-  }
+    if (!userId) {
+      return reply.code(401).send({ error: "unauthorized" });
+    }
 
-  await prisma.presence.upsert({
-    where: { userId },
-    update: {
-      isOnline: true,
-      lastSeenAt: new Date(),
-    },
-    create: {
-      userId,
-      isOnline: true,
-      lastSeenAt: new Date(),
-    },
-  });
+    await prisma.presence.upsert({
+      where: { userId },
+      update: {
+        isOnline: true,
+        lastSeenAt: new Date(),
+      },
+      create: {
+        userId,
+        isOnline: true,
+        lastSeenAt: new Date(),
+      },
+    });
 
-  return { onlineStatus: "online" };
-});
+    return { onlineStatus: "online" };
+  },
+);
 
-app.post("/presence/offline", { onRequest: authenticate }, async (request, reply) => {
-  const userId = request.authenticatedUserId;
+app.post(
+  "/presence/offline",
+  { onRequest: authenticate },
+  async (request, reply) => {
+    const userId = request.authenticatedUserId;
 
-  if (!userId) {
-    return reply.code(401).send({ error: "unauthorized" });
-  }
+    if (!userId) {
+      return reply.code(401).send({ error: "unauthorized" });
+    }
 
-  await prisma.presence.upsert({
-    where: { userId },
-    update: {
-      isOnline: false,
-      lastSeenAt: new Date(),
-    },
-    create: {
-      userId,
-      isOnline: false,
-      lastSeenAt: new Date(),
-    },
-  });
+    await prisma.presence.upsert({
+      where: { userId },
+      update: {
+        isOnline: false,
+        lastSeenAt: new Date(),
+      },
+      create: {
+        userId,
+        isOnline: false,
+        lastSeenAt: new Date(),
+      },
+    });
 
-  return { onlineStatus: "offline" };
-});
+    return { onlineStatus: "offline" };
+  },
+);
 
 app.get("/presence/:userId", async (request, reply) => {
   const params = request.params as { userId?: string };

@@ -7,20 +7,35 @@ import CatalogPage from "./pages/CatalogPage";
 import PlaylistsPage from "./pages/PlaylistsPage";
 import UsersPage from "./pages/UsersPage";
 
-import { mockUsers } from "./data/users";
-import type { AuthenticatedUser } from "./types/auth";
+import type { AuthenticatedUser, PublicUser } from "./types/auth";
 import type { Playlist } from "./types/music";
 import { loadPlaylists, savePlaylists } from "./storage/playlistsStorage";
-import { loadFriendIds, saveFriendIds } from "./storage/friendsStorage";
 
 import { clearAccessToken, onSessionCleared } from "./services/session";
-import { updateMyProfile, uploadMyAvatar } from "./services/users";
+import {
+  addFriend,
+  getFriends,
+  getUsers,
+  removeFriend,
+  updateMyProfile,
+  uploadMyAvatar,
+  markPresenceOffline,
+  sendPresenceHeartbeat,
+} from "./services/users";
 
 import "./App.css";
 
 type PublicPage = "register" | "login";
 
 type PrivatePage = "profile" | "catalog" | "playlists" | "users";
+
+function getErrorMessage(error: unknown, fallbackMessage: string): string {
+  if (error instanceof Error) {
+    return error.name === "SyntaxError" ? fallbackMessage : error.message;
+  }
+
+  return fallbackMessage;
+}
 
 function App() {
   const [currentPage, setCurrentPage] = useState<PublicPage>("register");
@@ -29,39 +44,143 @@ function App() {
     null,
   );
 
+  const [users, setUsers] = useState<PublicUser[]>([]);
+
   const [privatePage, setPrivatePage] = useState<PrivatePage>("profile");
 
   const [playlists, setPlaylists] = useState<Playlist[]>(loadPlaylists);
 
-  const [friendIds, setFriendIds] = useState<string[]>(loadFriendIds);
+  const [friends, setFriends] = useState<PublicUser[]>([]);
 
-  const friends = mockUsers.filter((user) => friendIds.includes(user.id));
+  const friendIds = friends.map((friend) => friend.id);
+
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     savePlaylists(playlists);
   }, [playlists]);
 
   useEffect(() => {
-    saveFriendIds(friendIds);
-  }, [friendIds]);
-
-  useEffect(() => {
     const unsubscribe = onSessionCleared(() => {
       setCurrentUser(null);
+      setUsers([]);
+      setFriends([]);
       setCurrentPage("login");
       setPrivatePage("profile");
+      setErrorMessage("");
     });
 
     return unsubscribe;
   }, []);
 
+  useEffect(() => {
+    if (currentUser === null) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    async function loadUserData() {
+      try {
+        const [loadedUsers, loadedFriends] = await Promise.all([
+          getUsers(),
+          getFriends(),
+        ]);
+
+        if (!isCancelled) {
+          setUsers(loadedUsers);
+          setFriends(loadedFriends);
+          setErrorMessage("");
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          setErrorMessage(
+            getErrorMessage(error, "Unable to load users and friends."),
+          );
+        }
+      }
+    }
+
+    void loadUserData();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (currentUser === null) {
+      return;
+    }
+
+    async function sendHeartbeat() {
+      try {
+        await sendPresenceHeartbeat();
+        setErrorMessage("");
+      } catch (error) {
+        setErrorMessage(
+          getErrorMessage(error, "Unable to update your online status."),
+        );
+      }
+    }
+
+    void sendHeartbeat();
+
+    const intervalId = window.setInterval(() => {
+      void sendHeartbeat();
+    }, 60_000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (currentUser === null) {
+      return;
+    }
+
+    async function refreshUserData() {
+      try {
+        const [loadedUsers, loadedFriends] = await Promise.all([
+          getUsers(),
+          getFriends(),
+        ]);
+
+        setUsers(loadedUsers);
+        setFriends(loadedFriends);
+        setErrorMessage("");
+      } catch (error) {
+        setErrorMessage(
+          getErrorMessage(error, "Unable to refresh users and friends."),
+        );
+      }
+    }
+
+    const intervalId = window.setInterval(() => {
+      void refreshUserData();
+    }, 30_000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [currentUser]);
+
   function handleLoginSuccess(user: AuthenticatedUser) {
+    setErrorMessage("");
     setCurrentUser(user);
     setPrivatePage("profile");
   }
 
-  function handleLogout() {
-    clearAccessToken();
+  async function handleLogout(): Promise<void> {
+    try {
+      await markPresenceOffline();
+    } catch {
+      // Heartbeats stop after logout, so the backend will eventually mark the
+      // user offline even if this best-effort request cannot be delivered.
+    } finally {
+      clearAccessToken();
+    }
   }
 
   function handleCreatePlaylist(playlist: Playlist) {
@@ -159,20 +278,31 @@ function App() {
     }
   }
 
-  function handleAddFriend(userId: string) {
-    setFriendIds((currentFriendIds) => {
-      if (currentFriendIds.includes(userId)) {
-        return currentFriendIds;
-      }
-
-      return [...currentFriendIds, userId];
-    });
+  async function refreshFriends(): Promise<void> {
+    const loadedFriends = await getFriends();
+    setFriends(loadedFriends);
   }
 
-  function handleRemoveFriend(userId: string) {
-    setFriendIds((currentFriendIds) =>
-      currentFriendIds.filter((friendId) => friendId !== userId),
-    );
+  async function handleAddFriend(userId: string): Promise<void> {
+    setErrorMessage("");
+
+    try {
+      await addFriend(userId);
+      await refreshFriends();
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, "Unable to add this friend."));
+    }
+  }
+
+  async function handleRemoveFriend(userId: string): Promise<void> {
+    setErrorMessage("");
+
+    try {
+      await removeFriend(userId);
+      await refreshFriends();
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error, "Unable to remove this friend."));
+    }
   }
 
   if (currentUser !== null) {
@@ -245,12 +375,20 @@ function App() {
             <button
               type="button"
               className="navigation-button"
-              onClick={handleLogout}
+              onClick={() => {
+                void handleLogout();
+              }}
             >
               Log out
             </button>
           </nav>
         </header>
+
+        {errorMessage && (
+          <p className="message error-message" role="alert">
+            {errorMessage}
+          </p>
+        )}
 
         {privatePage === "profile" && (
           <ProfilePage
@@ -280,7 +418,7 @@ function App() {
 
         {privatePage === "users" && (
           <UsersPage
-            users={mockUsers}
+            users={users}
             friendIds={friendIds}
             onAddFriend={handleAddFriend}
             onRemoveFriend={handleRemoveFriend}

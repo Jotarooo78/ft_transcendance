@@ -43,6 +43,33 @@ export type AvatarUploadResponse = {
   avatarUrl: string;
 };
 
+export type UserDirectoryItemResponse = {
+  userId: string;
+  displayName: string;
+  username: string;
+  bio: string | null;
+  avatarUrl: string | null;
+  onlineStatus: "online" | "offline";
+};
+
+export type UserDirectoryResponse = {
+  users: UserDirectoryItemResponse[];
+};
+
+export type FriendResponse = {
+  userId: string;
+  displayName: string;
+  username: string;
+  bio: string | null;
+  avatarUrl: string | null;
+  onlineStatus: "online" | "offline";
+  lastSeenAt: string | null;
+};
+
+export type FriendsResponse = {
+  friends: FriendResponse[];
+};
+
 export type UpdateProfileRequest = {
   displayName: string;
   username: string;
@@ -66,8 +93,9 @@ export type AuthenticatedUser = {
 
 export type PublicUser = {
   id: string;
+  displayName: string;
   username: string;
-  bio: string;
+  bio: string | null;
   avatarUrl: string | null;
   isOnline: boolean;
 };
