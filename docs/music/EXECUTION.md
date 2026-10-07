@@ -247,3 +247,16 @@ Les critères de compréhension restent personnels.
   Compose 2.40.3, Playwright 1.63.0. Promesse Media prouvée.
 - Runner, navigateur et README documentés dans Notion. Library/Playback
   restent à réaliser ; compréhension personnelle non cochée.
+- Synchronisation MED-8 : 231246c publié, aucun apport distant ni conflit.
+
+## LIB-1 — Contrat des playlists privées
+
+- Définit identité de playlist, occurrence et morceau, doublons et liste vide,
+  propriétaire JWT, visibilité privée, routes et DTO avec version sûre.
+- Mutations transactionnelles sous verrou, contrôle Catalogue borné à l’ajout,
+  refus 409 sur concurrence et réponses explicites aux suppressions répétées.
+- Bornes relues contre SQL : nom 100, description 2000, position positive,
+  cascade locale. Ancien localStorage conservé mais non importé.
+- Vérification documentaire réalisée ; aucune route Library implémentée ici.
+- Note Notion du contrat créée ; application du modèle encore asynchrone.
+  Sa documentation et son lien restent à finaliser avant le bilan global.
