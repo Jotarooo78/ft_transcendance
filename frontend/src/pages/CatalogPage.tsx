@@ -263,7 +263,7 @@ function CatalogPage({ playlists, onAddTrackToPlaylist }: CatalogPageProps) {
       </main>
 
       {selectedTrack && (
-        <AudioPlayer track={selectedTrack} onClose={handleClosePlayer} />
+        <AudioPlayer key={selectedTrack.id} track={selectedTrack} onClose={handleClosePlayer} />
       )}
     </>
   );

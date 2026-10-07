@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Track } from "../types/music";
 
 type AudioPlayerProps = {
@@ -5,7 +6,8 @@ type AudioPlayerProps = {
   onClose: () => void;
 };
 
-function AudioPlayer({ track, onClose }: AudioPlayerProps) {
+function AudioPlayerContent({ track, onClose }: AudioPlayerProps) {
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   return (
     <aside className="audio-player" aria-label="Audio player">
       <div className="audio-player-information">
@@ -14,10 +16,17 @@ function AudioPlayer({ track, onClose }: AudioPlayerProps) {
         <span>{track.artistName}</span>
       </div>
 
-      <audio key={track.id} controls autoPlay preload="metadata">
-        <source src={track.audioUrl ?? undefined} type={track.mimeType} />
+      <audio src={track.audioUrl ?? undefined} controls autoPlay preload="metadata"
+        onLoadStart={() => setStatus("loading")}
+        onCanPlay={() => setStatus("ready")}
+        onError={() => setStatus("error")}
+      >
         Your browser does not support audio playback.
       </audio>
+
+      {status === "loading" && <p role="status">Loading audio…</p>}
+      {status === "error" && <p role="alert">Audio is unavailable. Close the player and try again.</p>}
+      {status === "ready" && <p>Use the audio controls to play, pause or seek.</p>}
 
       <button
         type="button"
@@ -31,4 +40,6 @@ function AudioPlayer({ track, onClose }: AudioPlayerProps) {
   );
 }
 
-export default AudioPlayer;
+export default function AudioPlayer(props: AudioPlayerProps) {
+  return <AudioPlayerContent key={props.track.id} {...props} />;
+}

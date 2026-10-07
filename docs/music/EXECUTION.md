@@ -200,3 +200,17 @@ Les critères de compréhension restent personnels.
   vérifiés et signature RIFF. Métriques publiques : 403.
 - Aucun seed rejoué : les fichiers de MED-2 ont survécu à la reconstruction.
 - ENVIRONMENT.md et notes Notion documentent variables, volumes et seeds.
+- Synchronisation MED-5 : 9b4e544 publié, aucun apport distant ni conflit.
+
+## MED-6 — Lecteur et erreur locale
+
+- URL audio réelle sans MIME présumé ; chargement et erreur par événements
+  natifs, message de disponibilité sans supposer un autoplay réussi.
+- Remontage par UUID dans le composant, y compris pour ses autres usages.
+  Fermer/rouvrir permet de réessayer ; changer de piste efface l’ancien état.
+- Lint et build frontend passent. Chromium réel via HTTPS : durée 6 s,
+  progression > 0,3 s, déplacement à 3 s puis progression > 3,3 s.
+- Réponse 404 volontairement simulée : erreur locale affichée ; changement
+  de piste puis réouverture après retrait de la panne décodent les vrais WAV.
+- Preuve locale : /tmp/music-med6-browser.mjs. Test durable ajouté en MED-8.
+  Aucune donnée Playback envoyée avant ECO. Notes Notion actualisées.
