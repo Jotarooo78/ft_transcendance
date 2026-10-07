@@ -23,3 +23,7 @@ frontend/public/audio
 # Local Codex instructions and personal workflow skills
 /AGENTS.md
 /.agents/skills/rapports-pedagogiques-notion/
+
+# Browser E2E artifacts
+/tests/e2e/test-results/
+/tests/e2e/playwright-report/

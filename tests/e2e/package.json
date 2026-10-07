@@ -1,0 +1,11 @@
+{
+  "name": "transcendence-e2e",
+  "private": true,
+  "type": "module",
+  "engines": { "node": "22.x" },
+  "scripts": {
+    "test": "playwright test",
+    "install:browser": "playwright install chromium"
+  },
+  "devDependencies": { "@playwright/test": "1.63.0" }
+}
