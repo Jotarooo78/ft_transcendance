@@ -392,3 +392,16 @@ Les critères de compréhension restent personnels.
 - Notion : les modèles retardés sont enfin appliqués. Documentation LIB-1 à
   LIB-10 remplie et liée ; copies vides issues des reprises nettoyées. Statuts
   CAT/MED et LIB-1 à LIB-9 rattrapés, compréhension laissée à l’utilisateur.
+- Synchronisation LIB-10 : 2b90ffd publié, aucun apport distant ni conflit.
+
+## LIB-11 — Formulaire d’édition confirmé
+
+- PATCH versionné, remplacement du DTO confirmé, attente et erreur locales.
+  Saisie conservée sur échec et 409, formulaire fermé seulement au succès.
+- Chromium a révélé une collision de clés React entre formulaire et liste :
+  préfixes distincts ajoutés puis scénario rejoué avec succès.
+- Lint/build passent. Chromium : panne simulée, conflit réel après édition
+  externe, brouillon inchangé, nouvelle soumission explicite et relecture
+  serveur du nom/description/version 3. Le premier accès après reconstruction
+  a reçu 502 pendant le démarrage ; relecture après disponibilité réussie.
+- Preuve locale /tmp/music-lib11-browser.mjs ; notes Notion mises à jour.

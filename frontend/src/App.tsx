@@ -355,6 +355,7 @@ function App() {
             onRetry={library.reload}
             onCreate={library.create}
             onRemoveItem={library.removeItem}
+            onUpdate={library.update}
           />
         )}
 

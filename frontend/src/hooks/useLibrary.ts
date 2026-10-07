@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { addPlaylistItem, createPlaylist, getPlaylist, getPlaylists, LibraryMutationError, removePlaylistItem } from "../services/library";
+import { addPlaylistItem, createPlaylist, getPlaylist, getPlaylists, LibraryMutationError, removePlaylistItem, updatePlaylist } from "../services/library";
 import { getAccessToken, onSessionCleared } from "../services/session";
 import type { PrivatePlaylist } from "../types/music";
 
@@ -55,5 +55,6 @@ export function useLibrary(ownerId: string | null) {
   return { playlists: current ? result.items : [], loading: ownerId !== null && !current,
     error: current ? result.error : undefined, reload: () => setRetry(value => value + 1), create,
     addItem: (playlist: PrivatePlaylist, trackId: string) => mutate(playlist, () => addPlaylistItem(playlist, trackId)),
+    update: (playlist: PrivatePlaylist, name: string, description: string) => mutate(playlist, () => updatePlaylist(playlist, name, description)),
     removeItem: (playlist: PrivatePlaylist, itemId: string) => mutate(playlist, () => removePlaylistItem(playlist, itemId)) };
 }

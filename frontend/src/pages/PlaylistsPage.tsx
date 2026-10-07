@@ -9,10 +9,34 @@ type Props = {
   onRetry: () => void;
   onCreate: (name: string, description: string) => Promise<PrivatePlaylist>;
   onRemoveItem: (playlist: PrivatePlaylist, itemId: string) => Promise<PrivatePlaylist>;
+  onUpdate: (playlist: PrivatePlaylist, name: string, description: string) => Promise<PrivatePlaylist>;
 };
 
-export default function PlaylistsPage({ playlists, loading, error, onRetry, onCreate, onRemoveItem }: Props) {
+function PlaylistEditor({ playlist, onUpdate, onClose }: { playlist: PrivatePlaylist; onUpdate: Props["onUpdate"]; onClose: () => void }) {
+  const [name, setName] = useState(playlist.name);
+  const [description, setDescription] = useState(playlist.description);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  async function submit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (saving || name.trim() === "") return;
+    setSaving(true); setError("");
+    try { await onUpdate(playlist, name.trim(), description.trim()); onClose(); }
+    catch (error) { setError(error instanceof Error ? error.message : "Unable to save playlist."); }
+    finally { setSaving(false); }
+  }
+  return <form className="playlist-edit-form" onSubmit={submit} aria-label="Edit playlist">
+    <label>Name<input value={name} onChange={event => setName(event.target.value)} disabled={saving} required /></label>
+    <label>Description<input value={description} onChange={event => setDescription(event.target.value)} disabled={saving} /></label>
+    <button type="submit" disabled={saving || name.trim() === ""}>{saving ? "Saving…" : "Save changes"}</button>
+    <button type="button" disabled={saving} onClick={onClose}>Cancel edit</button>
+    {error && <p role="alert">{error}</p>}
+  </form>;
+}
+
+export default function PlaylistsPage({ playlists, loading, error, onRetry, onCreate, onRemoveItem, onUpdate }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [creating, setCreating] = useState(false);
@@ -47,7 +71,7 @@ export default function PlaylistsPage({ playlists, loading, error, onRetry, onCr
           {playlists.length === 0 && <p>No playlists yet.</p>}
           <div className="playlist-list">{playlists.map(playlist => <button type="button" key={playlist.id}
             className={playlist.id === selected?.id ? "playlist-card active" : "playlist-card"}
-            onClick={() => setSelectedId(playlist.id)}>
+            onClick={() => { setSelectedId(playlist.id); setEditingId(null); }}>
             <strong>{playlist.name}</strong><span>{playlist.description || "No description"}</span>
             <span>{playlist.items.length} track(s)</span>
           </button>)}</div>
@@ -55,9 +79,10 @@ export default function PlaylistsPage({ playlists, loading, error, onRetry, onCr
     </section>
     {!loading && !error && selected && <section className="playlist-section" aria-labelledby="playlist-tracks-title">
       <div className="playlist-heading"><h2 id="playlist-tracks-title">Tracks in {selected.name}</h2>
-        <div className="playlist-heading-actions"><button type="button" disabled>Edit playlist</button><button type="button" disabled>Delete playlist</button></div>
+        <div className="playlist-heading-actions"><button type="button" onClick={() => setEditingId(selected.id)} disabled={editingId === selected.id}>Edit playlist</button><button type="button" disabled>Delete playlist</button></div>
       </div>
-      <PlaylistTracks key={selected.id} playlist={selected} onRemove={onRemoveItem} />
+      {editingId === selected.id && <PlaylistEditor key={`editor:${selected.id}`} playlist={selected} onUpdate={onUpdate} onClose={() => setEditingId(null)} />}
+      <PlaylistTracks key={`tracks:${selected.id}`} playlist={selected} onRemove={onRemoveItem} />
     </section>}
   </main>;
 }

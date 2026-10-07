@@ -71,3 +71,7 @@ export function addPlaylistItem(playlist: PrivatePlaylist, trackId: string) {
 export function removePlaylistItem(playlist: PrivatePlaylist, itemId: string) {
   return mutatePlaylist(`${encodeURIComponent(playlist.id)}/items/${encodeURIComponent(itemId)}`, "DELETE", { expectedVersion: playlist.version });
 }
+
+export function updatePlaylist(playlist: PrivatePlaylist, name: string, description: string) {
+  return mutatePlaylist(encodeURIComponent(playlist.id), "PATCH", { name, description, expectedVersion: playlist.version });
+}
