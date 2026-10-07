@@ -552,3 +552,20 @@ Les critères de compréhension restent personnels.
   actives, attente/suspension/sauts/reset et bornes. Lint/build passent après
   référence explicite aux types Node déjà présents dans le fichier de test.
 - Trois notes Notion produites et liées ; aucune nouvelle dépendance frontend.
+- Synchronisation ECO-8 : 543fdc2 publié, aucun apport distant ni conflit.
+
+## ECO-9 — Envoi ordonné depuis le lecteur
+
+- Client authentifié, timeout 5 s et keepalive au mieux ; ouverture sans retry
+  automatique car une réponse perdue peut masquer une session déjà créée.
+- File : une demande en vol et dernière mesure, trois tentatives max à 150 ms
+  pour progression/clôture, même séquence/payload jusqu’à confirmation.
+  Échec conserve la demande pour retry explicite ; clôture après progression.
+- Lecteur raccordé aux vrais événements audio et intervalle 1 s ; mesure
+  réinitialisée à la nouvelle lecture, pause conservant la session. Fin et
+  démontage traités, réponses d’ancien compte ignorées, son indépendant des
+  erreurs de sauvegarde locales. Une ouverture tardive est terminée au mieux.
+- Dix tests frontend passent : mesure et file, perte de réponse après écriture
+  simulée, coalescence, retries, changement de piste, ouverture incertaine,
+  déconnexion avant/après ouverture. Lint/build verts ; SQL/Chromium ECO-11/12.
+- Quatre notes de fichiers actualisées et liées dans Notion.
