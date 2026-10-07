@@ -1,9 +1,10 @@
 import Fastify from "fastify";
 import client from "prom-client";
-import { uuidPattern, type TrackDto } from "./catalog.js";
+import { parseTrackQuery, uuidPattern, type TrackDto, type TrackList, type TrackQuery } from "./catalog.js";
 
 type Options = {
   readTrack: (id: string) => Promise<TrackDto | null>;
+  listTracks?: (query: TrackQuery) => Promise<TrackList>;
   ready: () => Promise<void>;
   close?: () => Promise<void>;
   logger?: boolean;
@@ -34,6 +35,16 @@ export function buildApp(options: Options) {
       const track = await options.readTrack(request.params.id.toLowerCase());
       if (!track) return reply.code(404).send({ error: "track_not_found" });
       return track;
+    } catch {
+      return reply.code(503).send({ error: "catalog_unavailable" });
+    }
+  });
+  app.get<{ Querystring: Record<string, unknown> }>("/tracks", async (request, reply) => {
+    const query = parseTrackQuery(request.query);
+    if (!query) return reply.code(400).send({ error: "invalid_request" });
+    try {
+      if (!options.listTracks) throw new Error("Missing catalogue list reader");
+      return await options.listTracks(query);
     } catch {
       return reply.code(503).send({ error: "catalog_unavailable" });
     }

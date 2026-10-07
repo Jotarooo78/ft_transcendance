@@ -1,10 +1,12 @@
 import { buildApp } from "./app.js";
 import { toTrackDto } from "./catalog.js";
 import { disconnectPrisma, prisma } from "./database/prisma.js";
+import { listTracks } from "./database/catalog-list.js";
 
 const app = buildApp({
   logger: true,
   close: disconnectPrisma,
+  listTracks,
   ready: async () => {
     await prisma.$queryRaw`SELECT 1`;
   },

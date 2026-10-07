@@ -1,11 +1,35 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { buildApp } from "./app.js";
-import { toTrackDto } from "./catalog.js";
+import { parseTrackQuery, toTrackDto } from "./catalog.js";
 
 const id = "20000000-0000-4000-8000-000000000001";
 const row = { id, title: "Aube", artistName: "Atelier Demo", albumTitle: "", genre: "Demo",
   durationMs: 6000n, audioAssetId: "30000000-0000-4000-8000-000000000001" };
+
+test("list bounds and malformed parameters reject before reading", async t => {
+  let calls = 0;
+  const app = buildApp({ ready: async () => {}, readTrack: async () => null,
+    listTracks: async query => { calls++; return { ...query, items: [], total: 0, genres: [] }; } });
+  t.after(() => app.close());
+  for (const bad of ["page=0", "page=-1", "page=1.5", "page=1e2", "pageSize=101", "pageSize=0", "page=9007199254740992",
+    "page=9007199254740991&pageSize=100", "sort=no", "page=1&page=2", "genre=a&genre=b", "q=a&q=b", "unknown=x", `q=${"a".repeat(201)}`]) {
+    assert.equal((await app.inject(`/tracks?${bad}`)).statusCode, 400, bad);
+  }
+  assert.equal(calls, 0);
+  const result = await app.inject("/tracks?page=2&pageSize=2&q=none&sort=artist");
+  assert.equal(result.statusCode, 200); assert.equal(result.json().total, 0);
+  assert.equal(result.json().page, 2); assert.deepEqual(result.json().items, []);
+  assert.deepEqual(parseTrackQuery({}), { page: 1, pageSize: 20, q: "", genre: "", sort: "title" });
+});
+
+test("list storage failure is a controlled 503", async t => {
+  const app = buildApp({ ready: async () => {}, readTrack: async () => null,
+    listTracks: async () => { throw new Error("private SQL"); } });
+  t.after(() => app.close());
+  const r = await app.inject("/tracks");
+  assert.equal(r.statusCode, 503); assert.deepEqual(r.json(), { error: "catalog_unavailable" });
+});
 
 test("detail DTO has explicit units and exposes only public fields", () => {
   const dto = toTrackDto({ ...row });

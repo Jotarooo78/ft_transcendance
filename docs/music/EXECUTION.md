@@ -53,4 +53,14 @@ Les critères de compréhension restent personnels.
 - Fetch interne sur PostgreSQL : détail Aube 200 avec artiste/genre/durée,
   draft réellement présent et UUID absent 404, UUID mal formé 400.
 - Documentation Notion des cinq fichiers liée à CAT-4.
-- Synchronisation à effectuer avant CAT-5.
+- Synchronisation CAT-4 : 1a2416f publié, aucun nouveau commit ni conflit.
+
+## CAT-5 — Liste, recherche et pagination
+
+- Liste SQL paramétrée dans catalog-list.ts ; filtre commun liste/count, snapshot
+  RepeatableRead, collation C et UUID de départage ; tri global avant pagination.
+- Quatre tests du service réussis et vérification réelle de pages 2+1 sur les
+  trois tris, total 3, genres, absence du brouillon, recherche littérale %/_ et
+  insensible à la casse, recherche absente et page vide. Aucune lecture Media.
+- Notes de documentation existantes actualisées et lecteur SQL documenté.
+- Synchronisation à effectuer avant CAT-6.
