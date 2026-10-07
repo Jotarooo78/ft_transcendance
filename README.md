@@ -29,6 +29,13 @@ Le schéma PostgreSQL, ses cardinalités et la procédure de reconstruction sont
 Le rôle de chaque fichier présent dans ces dossiers est résumé dans
 [docs/STRUCTURE_SERVICES.md](docs/STRUCTURE_SERVICES.md).
 
+## Preuve du parcours utilisateur
+
+La campagne PCE se lance avec `tests/e2e/run.sh` : tests Auth/Users, frontend,
+pile isolée vide, HTTPS, SQL, redémarrages et parcours Chromium.
+Les prérequis, les ressources ciblées et le diagnostic sont décrits dans
+[tests/e2e/README.md](tests/e2e/README.md).
+
 ## 📝 Repartition des modules
 
 ### Tiphaine
