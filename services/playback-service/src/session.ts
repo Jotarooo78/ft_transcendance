@@ -21,3 +21,13 @@ export function openInput(value: unknown): string | null {
   const body = value as Record<string, unknown>;
   return Object.keys(body).length === 1 && typeof body.trackId === "string" && uuidPattern.test(body.trackId) ? body.trackId.toLowerCase() : null;
 }
+
+export type Progress = { sequence: number; positionMs: number; listenedMsTotal: number };
+export function progressInput(value: unknown): Progress | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const body = value as Record<string, unknown>;
+  if (Object.keys(body).length !== 3 || !["sequence", "positionMs", "listenedMsTotal"].every(key =>
+    typeof body[key] === "number" && Number.isSafeInteger(body[key]) && body[key] >= 0)) return null;
+  if ((body.sequence as number) < 1 || (body.sequence as number) > 2147483647) return null;
+  return body as Progress;
+}

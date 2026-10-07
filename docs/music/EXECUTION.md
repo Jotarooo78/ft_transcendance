@@ -477,3 +477,16 @@ Les critères de compréhension restent personnels.
   durée invalide, 404/503 et vrai client HTTP local avec timeout. Les écritures
   PostgreSQL réelles seront vérifiées dans ECO-11.
 - Sept notes de fichiers créées, remplies et liées dans Notion.
+- Synchronisation ECO-2 : 27219b5 publié, aucun apport distant ni conflit.
+
+## ECO-3 — Progression atomique et bornée
+
+- PUT authentifié, trois entiers stricts, séquence Int32, positions/déclarations
+  JSON sûres. Ordre consécutif, total monotone et position bornée sous verrou.
+- Transaction Prisma locale avec contrôle propriétaire ; écrit Event et résumé
+  Session ensemble. Crédit min(déclaration, intervalle, temps global, durée
+  restante), horloge serveur après verrou, tolérance ajoutée zéro.
+- Quatre tests passent : refus avant writer, deux écritures cohérentes,
+  position arrière, plafonds, séquence sautée, total décroissant, session close
+  et horloge arrière. Ces tests injectés ne remplacent pas ECO-11 PostgreSQL.
+- Build Docker vert ; notes produites et amendées, liées dans Notion.

@@ -3,11 +3,67 @@ import { test } from "node:test";
 import { createServer } from "node:http";
 import { buildApp } from "./app.js";
 import { catalogReader } from "./catalog.js";
-import { toSession } from "./session.js";
+import { PlaybackError, progressInput, toSession, type SessionRow } from "./session.js";
+import { recordProgress, type EventRow, type SessionTransaction } from "./progress.js";
 
 const owner = "40000000-0000-4000-8000-000000000001", trackId = "20000000-0000-4000-8000-000000000001";
 const id = "70000000-0000-4000-8000-000000000001";
 const row = { id, trackId, trackDurationMs: 6000n, startedAt: new Date("2026-01-01T00:00:00Z"), endedAt: null, listenedMs: 0n, lastSequence: 0 };
+
+function memoryTransaction(initial: SessionRow = row) {
+  let state = structuredClone(initial), summaries = 0;
+  const events = new Map<number, EventRow>();
+  const tx: SessionTransaction = {
+    get session() { return state; }, getEvent: async sequence => events.get(sequence) ?? null,
+    createEvent: async event => { assert.equal(events.has(event.sequence), false); events.set(event.sequence, event); },
+    saveProgress: async (listenedMs, lastSequence) => { summaries++; state = { ...state, listenedMs, lastSequence }; return state; },
+  };
+  return { tx, events, state: () => state, summaries: () => summaries };
+}
+
+test("progress validates request shape before the writer and preserves business errors", async t => {
+  let writes = 0;
+  const app = buildApp({ jwtSecret: "test-only-playback-secret", ready: async () => {}, readTrackDuration: async () => 6000,
+    createSession: async () => toSession(row), progressSession: async (subject, sessionId, input) => {
+      assert.equal(subject, owner); assert.equal(sessionId, id); writes++;
+      throw new PlaybackError(409, "progress_conflict");
+    } });
+  t.after(() => app.close()); await app.ready();
+  const headers = { authorization: `Bearer ${app.jwt.sign({ sub: owner })}` }, url = `/sessions/${id}/progress`;
+  const valid = { sequence: 1, positionMs: 1000, listenedMsTotal: 1000 };
+  assert.equal((await app.inject({ method: "PUT", url, payload: valid })).statusCode, 401);
+  for (const payload of [{ ...valid, sequence: 0 }, { ...valid, sequence: 2147483648 }, { ...valid, positionMs: -1 },
+    { ...valid, listenedMsTotal: Number.MAX_SAFE_INTEGER + 1 }, { ...valid, listenedMsTotal: 1.5 }, { ...valid, userId: owner }]) {
+    assert.equal(progressInput(payload), null);
+    assert.equal((await app.inject({ method: "PUT", url, headers, payload })).statusCode, 400);
+  }
+  assert.equal(writes, 0);
+  const result = await app.inject({ method: "PUT", url, headers, payload: valid });
+  assert.equal(result.statusCode, 409); assert.equal(writes, 1);
+});
+
+test("progress writes event and summary together and bounds credit independently from position", async () => {
+  const memory = memoryTransaction(), start = row.startedAt.getTime();
+  const first = await recordProgress(memory.tx, { sequence: 1, positionMs: 5000, listenedMsTotal: 2000 }, () => start + 2000);
+  assert.equal(first.listenedMs, 2000); assert.equal(first.positionMs, 5000); assert.equal(first.lastSequence, 1);
+  assert.equal(memory.events.size, 1); assert.equal(memory.summaries(), 1); assert.equal(memory.events.get(1)?.listenedMsTotal, 2000n);
+  const second = await recordProgress(memory.tx, { sequence: 2, positionMs: 1000, listenedMsTotal: 3000 }, () => start + 3000);
+  assert.equal(second.listenedMs, 3000); assert.equal(second.positionMs, 1000);
+  for (const input of [{ sequence: 4, positionMs: 1000, listenedMsTotal: 3000 }, { sequence: 3, positionMs: 6001, listenedMsTotal: 3000 },
+    { sequence: 3, positionMs: 1000, listenedMsTotal: 2000 }]) {
+    await assert.rejects(recordProgress(memory.tx, input, () => start + 4000), PlaybackError);
+    assert.equal(memory.events.size, 2); assert.equal(memory.summaries(), 2); assert.deepEqual(memory.state(), { ...row, listenedMs: 3000n, lastSequence: 2 });
+  }
+  const excessive = await recordProgress(memory.tx, { sequence: 3, positionMs: 6000, listenedMsTotal: 1000000 }, () => start + 3500);
+  assert.equal(excessive.listenedMs, 3500); assert.equal(memory.events.get(3)?.listenedMsTotal, 1000000n);
+  const capped = await recordProgress(memory.tx, { sequence: 4, positionMs: 6000, listenedMsTotal: 2000000 }, () => start + 10000);
+  assert.equal(capped.listenedMs, 6000);
+  const closed = memoryTransaction({ ...row, endedAt: new Date(start + 1) });
+  await assert.rejects(recordProgress(closed.tx, { sequence: 1, positionMs: 1, listenedMsTotal: 1 }), PlaybackError);
+  assert.equal(closed.events.size, 0);
+  const backwards = memoryTransaction();
+  assert.equal((await recordProgress(backwards.tx, { sequence: 1, positionMs: 1, listenedMsTotal: 1000 }, () => start - 100)).listenedMs, 0);
+});
 
 test("opening uses verified identity and catalogue duration; refusals write nothing", async t => {
   let writes = 0, lookups = 0, duration: number | null = 6000, outage = false, closed = false;

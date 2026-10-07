@@ -1,7 +1,7 @@
 import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 import jwt from "@fastify/jwt";
 import client from "prom-client";
-import { openInput, PlaybackError, uuidPattern, type Session } from "./session.js";
+import { openInput, PlaybackError, progressInput, uuidPattern, type Progress, type Session } from "./session.js";
 
 declare module "fastify" { interface FastifyRequest { authenticatedUserId?: string } }
 declare module "@fastify/jwt" {
@@ -9,6 +9,7 @@ declare module "@fastify/jwt" {
 }
 type Options = { jwtSecret: string; readTrackDuration: (trackId: string) => Promise<number | null>;
   createSession: (owner: string, trackId: string, duration: number) => Promise<Session>;
+  progressSession?: (owner: string, id: string, input: Progress) => Promise<Session>;
   ready: () => Promise<void>; close?: () => Promise<void>; logger?: boolean };
 
 export function buildApp(options: Options) {
@@ -39,6 +40,17 @@ export function buildApp(options: Options) {
       if (duration === null) throw new PlaybackError(404, "track_not_found");
       if (!Number.isSafeInteger(duration) || duration <= 0) throw new Error("Invalid track duration");
       return reply.code(201).send(await options.createSession(request.authenticatedUserId!, trackId, duration));
+    } catch (error) {
+      if (error instanceof PlaybackError) return reply.code(error.status).send({ error: error.code });
+      return reply.code(503).send({ error: "playback_unavailable" });
+    }
+  });
+  app.put<{ Params: { id: string } }>("/sessions/:id/progress", { onRequest: authenticate }, async (request, reply) => {
+    const input = progressInput(request.body);
+    if (!input || !uuidPattern.test(request.params.id)) return reply.code(400).send({ error: "invalid_request" });
+    try {
+      if (!options.progressSession) throw new Error("Missing progress writer");
+      return await options.progressSession(request.authenticatedUserId!, request.params.id.toLowerCase(), input);
     } catch (error) {
       if (error instanceof PlaybackError) return reply.code(error.status).send({ error: error.code });
       return reply.code(503).send({ error: "playback_unavailable" });
