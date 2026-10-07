@@ -331,3 +331,15 @@ Les critères de compréhension restent personnels.
 - playlist valide, app protège la route, mutations écrit atomiquement, index
   branche et app.test vérifie les comportements avec stockage contrôlé.
   Amendements Notion préparés, modèles externes encore en attente.
+- Synchronisation LIB-6 : ecd91d2 publié, aucun apport distant ni conflit.
+
+## LIB-7 — Suppression locale d’une playlist
+
+- DELETE avec contrôle propriétaire/version sous verrou ; réponse 204 après
+  suppression, répétition 404. La FK existante cascade vers ses seuls items.
+  Aucun appel destructeur ni lecture à Catalogue/Media.
+- Build et huit tests Library passent : identité, propriété, version,
+  ressource absente, succès et répétition. Cascade SQL réelle prévue LIB-13.
+- app valide et répond ; mutations réutilise le verrou générique et supprime ;
+  index branche ; app.test vérifie les refus et l’absence d’appel Catalogue.
+  Amendements Notion préparés, modèles externes encore en attente.

@@ -9,6 +9,31 @@ const owner = "40000000-0000-4000-8000-000000000001", other = "40000000-0000-400
 const id = "50000000-0000-4000-8000-000000000001";
 const playlist = { id, name: "Private", description: "", version: 1, items: [] };
 
+test("delete requires ownership and current version; repeats are explicit 404", async t => {
+  let exists=true,writes=0,lookups=0;
+  const app=buildApp({jwtSecret:"test-only-library-secret",ready:async()=>{},
+    readPlaylists:async()=>({page:1,pageSize:20,total:exists?1:0,items:exists?[playlist]:[]}),
+    readPlaylist:async()=>exists?playlist:null,
+    isTrackPublished:async()=>{lookups++;throw new Error("Catalogue down");},
+    deletePlaylist:async(subject,playlistId,version)=>{
+      if(subject!==owner || playlistId!==id || !exists)throw new PlaylistError(404,"playlist_not_found");
+      if(version!==1)throw new PlaylistError(409,"version_conflict");
+      writes++;exists=false;
+    },
+  });
+  t.after(()=>app.close());await app.ready();
+  const headers={authorization:`Bearer ${app.jwt.sign({sub:owner})}`},url=`/playlists/${id}`,payload={expectedVersion:1};
+  assert.equal((await app.inject({method:"DELETE",url,payload})).statusCode,401);
+  assert.equal((await app.inject({method:"DELETE",url,headers,payload:{expectedVersion:2}})).statusCode,409);
+  assert.equal((await app.inject({method:"DELETE",url,headers:{authorization:`Bearer ${app.jwt.sign({sub:other})}`},payload})).statusCode,404);
+  assert.equal((await app.inject({method:"DELETE",url:`/playlists/${other}`,headers,payload})).statusCode,404);
+  assert.equal(writes,0);
+  const result=await app.inject({method:"DELETE",url,headers,payload});
+  assert.equal(result.statusCode,204);assert.equal(result.body,"");
+  assert.equal((await app.inject({method:"DELETE",url,headers,payload})).statusCode,404);
+  assert.equal(writes,1);assert.equal(lookups,0);
+});
+
 test("edit validates all fields before an atomic versioned update", async t => {
   let state: Playlist={...playlist};let writes=0,outage=false;
   const app=buildApp({jwtSecret:"test-only-library-secret",ready:async()=>{},

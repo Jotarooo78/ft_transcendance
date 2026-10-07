@@ -16,6 +16,7 @@ type Options = {
   addItem?: (owner: string, id: string, trackId: string, expectedVersion: number) => Promise<Playlist>;
   removeItem?: (owner: string, id: string, itemId: string, expectedVersion: number) => Promise<Playlist>;
   updatePlaylist?: (owner: string, id: string, changes: Partial<PlaylistInput>, expectedVersion: number) => Promise<Playlist>;
+  deletePlaylist?: (owner: string, id: string, expectedVersion: number) => Promise<void>;
   ready: () => Promise<void>; close?: () => Promise<void>; logger?: boolean;
 };
 
@@ -98,6 +99,18 @@ export function buildApp(options: Options) {
     try {
       if (!options.updatePlaylist) throw new Error("Missing update writer");
       return await options.updatePlaylist(request.authenticatedUserId!, request.params.id.toLowerCase(), input.changes, input.expectedVersion);
+    } catch (error) {
+      if (error instanceof PlaylistError) return reply.code(error.status).send({ error: error.code });
+      return reply.code(503).send({ error: "library_unavailable" });
+    }
+  });
+  app.delete<{ Params: { id: string } }>("/playlists/:id", { onRequest: authenticate }, async (request, reply) => {
+    const expectedVersion = versionInput(request.body);
+    if (expectedVersion === null || !uuidPattern.test(request.params.id)) return reply.code(400).send({ error: "invalid_request" });
+    try {
+      if (!options.deletePlaylist) throw new Error("Missing deletion writer");
+      await options.deletePlaylist(request.authenticatedUserId!, request.params.id.toLowerCase(), expectedVersion);
+      return reply.code(204).send();
     } catch (error) {
       if (error instanceof PlaylistError) return reply.code(error.status).send({ error: error.code });
       return reply.code(503).send({ error: "library_unavailable" });
