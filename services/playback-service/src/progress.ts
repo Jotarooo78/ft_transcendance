@@ -6,6 +6,7 @@ export type SessionTransaction = {
   getEvent: (sequence: number) => Promise<EventRow | null>;
   createEvent: (event: EventRow) => Promise<void>;
   saveProgress: (listenedMs: bigint, sequence: number) => Promise<SessionRow>;
+  saveClose: (endedAt: Date) => Promise<SessionRow>;
 };
 
 // The caller holds the owner's session row lock for this entire operation.
@@ -38,4 +39,15 @@ export async function recordProgress(tx: SessionTransaction, input: Progress, cl
   await tx.createEvent({ sequence: input.sequence, positionMs: BigInt(input.positionMs), listenedMsTotal: declared, receivedAt: new Date(now) });
   const updated = await tx.saveProgress(row.listenedMs + added, input.sequence);
   return toSession(updated, BigInt(input.positionMs));
+}
+
+export async function recordClose(tx: SessionTransaction, clock: () => number = Date.now): Promise<Session> {
+  const row = tx.session;
+  const latest = row.lastSequence === 0 ? null : await tx.getEvent(row.lastSequence);
+  if (row.lastSequence !== 0 && !latest) throw new Error("Missing latest event");
+  if (row.endedAt) return toSession(row, latest?.positionMs ?? 0n);
+  const now = Math.trunc(clock());
+  if (!Number.isSafeInteger(now)) throw new Error("Invalid server clock");
+  const updated = await tx.saveClose(new Date(Math.max(row.startedAt.getTime(), now)));
+  return toSession(updated, latest?.positionMs ?? 0n);
 }

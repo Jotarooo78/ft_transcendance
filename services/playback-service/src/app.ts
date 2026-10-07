@@ -10,6 +10,7 @@ declare module "@fastify/jwt" {
 type Options = { jwtSecret: string; readTrackDuration: (trackId: string) => Promise<number | null>;
   createSession: (owner: string, trackId: string, duration: number) => Promise<Session>;
   progressSession?: (owner: string, id: string, input: Progress) => Promise<Session>;
+  closeSession?: (owner: string, id: string) => Promise<Session>;
   ready: () => Promise<void>; close?: () => Promise<void>; logger?: boolean };
 
 export function buildApp(options: Options) {
@@ -51,6 +52,19 @@ export function buildApp(options: Options) {
     try {
       if (!options.progressSession) throw new Error("Missing progress writer");
       return await options.progressSession(request.authenticatedUserId!, request.params.id.toLowerCase(), input);
+    } catch (error) {
+      if (error instanceof PlaybackError) return reply.code(error.status).send({ error: error.code });
+      return reply.code(503).send({ error: "playback_unavailable" });
+    }
+  });
+  app.post<{ Params: { id: string } }>("/sessions/:id/close", { onRequest: authenticate }, async (request, reply) => {
+    if (!uuidPattern.test(request.params.id) || (request.body !== undefined &&
+      (!request.body || typeof request.body !== "object" || Array.isArray(request.body) || Object.keys(request.body).length !== 0))) {
+      return reply.code(400).send({ error: "invalid_request" });
+    }
+    try {
+      if (!options.closeSession) throw new Error("Missing close writer");
+      return await options.closeSession(request.authenticatedUserId!, request.params.id.toLowerCase());
     } catch (error) {
       if (error instanceof PlaybackError) return reply.code(error.status).send({ error: error.code });
       return reply.code(503).send({ error: "playback_unavailable" });

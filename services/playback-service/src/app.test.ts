@@ -4,22 +4,54 @@ import { createServer } from "node:http";
 import { buildApp } from "./app.js";
 import { catalogReader } from "./catalog.js";
 import { PlaybackError, progressInput, toSession, type SessionRow } from "./session.js";
-import { recordProgress, type EventRow, type SessionTransaction } from "./progress.js";
+import { recordClose, recordProgress, type EventRow, type SessionTransaction } from "./progress.js";
 
 const owner = "40000000-0000-4000-8000-000000000001", trackId = "20000000-0000-4000-8000-000000000001";
 const id = "70000000-0000-4000-8000-000000000001";
 const row = { id, trackId, trackDurationMs: 6000n, startedAt: new Date("2026-01-01T00:00:00Z"), endedAt: null, listenedMs: 0n, lastSequence: 0 };
 
 function memoryTransaction(initial: SessionRow = row) {
-  let state = structuredClone(initial), summaries = 0;
+  let state = structuredClone(initial), summaries = 0, closures = 0;
   const events = new Map<number, EventRow>();
   const tx: SessionTransaction = {
     get session() { return state; }, getEvent: async sequence => events.get(sequence) ?? null,
     createEvent: async event => { assert.equal(events.has(event.sequence), false); events.set(event.sequence, event); },
     saveProgress: async (listenedMs, lastSequence) => { summaries++; state = { ...state, listenedMs, lastSequence }; return state; },
+    saveClose: async endedAt => { closures++; state = { ...state, endedAt }; return state; },
   };
-  return { tx, events, state: () => state, summaries: () => summaries };
+  return { tx, events, state: () => state, summaries: () => summaries, closures: () => closures };
 }
+
+test("close belongs to the subject, is terminal and idempotent without invented time", async t => {
+  const memory = memoryTransaction(), start = row.startedAt.getTime();
+  let now = start + 2000;
+  const input = { sequence: 1, positionMs: 1000, listenedMsTotal: 1000 };
+  await recordProgress(memory.tx, input, () => start + 1000);
+  const app = buildApp({ jwtSecret: "test-only-playback-secret", ready: async () => {},
+    readTrackDuration: async () => { throw new Error("Catalogue must not be called"); }, createSession: async () => toSession(row),
+    closeSession: async (subject, sessionId) => {
+      if (subject !== owner || sessionId !== id) throw new PlaybackError(404, "session_not_found");
+      return recordClose(memory.tx, () => now);
+    }, progressSession: async (_subject, _id, value) => recordProgress(memory.tx, value, () => now),
+  });
+  t.after(() => app.close()); await app.ready();
+  const headers = { authorization: `Bearer ${app.jwt.sign({ sub: owner })}` }, url = `/sessions/${id}/close`;
+  assert.equal((await app.inject({ method: "POST", url })).statusCode, 401);
+  assert.equal((await app.inject({ method: "POST", url, headers, payload: { endedAt: "forged" } })).statusCode, 400);
+  assert.equal((await app.inject({ method: "POST", url, headers: { authorization: `Bearer ${app.jwt.sign({ sub: trackId })}` } })).statusCode, 404);
+  assert.equal((await app.inject({ method: "POST", url: `/sessions/${trackId}/close`, headers })).statusCode, 404);
+  assert.equal(memory.closures(), 0);
+  const closed = await app.inject({ method: "POST", url, headers, payload: {} });
+  assert.equal(closed.statusCode, 200); assert.equal(closed.json().endedAt, new Date(now).toISOString());
+  assert.equal(closed.json().listenedMs, 1000); now += 10000;
+  assert.deepEqual((await app.inject({ method: "POST", url, headers })).json(), closed.json());
+  assert.equal(memory.closures(), 1); assert.equal(memory.events.size, 1); assert.equal(memory.summaries(), 1);
+  assert.equal((await app.inject({ method: "PUT", url: `/sessions/${id}/progress`, headers, payload: { ...input, sequence: 2 } })).statusCode, 409);
+  assert.deepEqual((await app.inject({ method: "PUT", url: `/sessions/${id}/progress`, headers, payload: input })).json(), closed.json());
+  const backwards = memoryTransaction();
+  assert.equal((await recordClose(backwards.tx, () => start - 1000)).endedAt, row.startedAt.toISOString());
+  assert.equal(backwards.events.size, 0); assert.equal(backwards.state().listenedMs, 0n);
+});
 
 test("exact retransmissions confirm one event even when older or closed; divergent content conflicts", async () => {
   const memory = memoryTransaction(), start = row.startedAt.getTime();

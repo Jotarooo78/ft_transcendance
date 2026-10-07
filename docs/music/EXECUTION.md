@@ -502,3 +502,15 @@ Les critères de compréhension restent personnels.
   Aucun double crédit ; PostgreSQL réel reste à éprouver dans ECO-11.
 - L’adaptation se limite au calcul transactionnel et ses tests ; les routes et
   le point d’entrée utilisent déjà cette fonction. Notes Notion actualisées.
+- Synchronisation ECO-4 : a303fd9 publié, aucun apport distant ni conflit.
+
+## ECO-5 — Clôture idempotente
+
+- POST close authentifié, sans paramètres temporels client. Sous verrou du
+  propriétaire, endedAt fixé une fois avec horloge serveur au moins startedAt.
+- Aucun Event artificiel ni crédit supplémentaire. Ancien doublon confirmé,
+  nouvelle séquence refusée après clôture ; aucune dépendance Catalogue.
+- Build Docker et sept tests passent : droits, corps forgé, double clôture,
+  compteurs inchangés, ordre des progressions et horloge arrière.
+- Notes Notion amendées et liées. Une fermeture brutale reste au mieux et
+  aucune clôture automatique de session abandonnée n’est ajoutée.

@@ -1,5 +1,5 @@
 import { prisma } from "./prisma.js";
-import { recordProgress, type SessionTransaction } from "../progress.js";
+import { recordClose, recordProgress, type SessionTransaction } from "../progress.js";
 import { PlaybackError, type Progress, type Session } from "../session.js";
 
 export async function withSession<T>(owner: string, id: string, change: (tx: SessionTransaction) => Promise<T>): Promise<T> {
@@ -12,10 +12,15 @@ export async function withSession<T>(owner: string, id: string, change: (tx: Ses
       getEvent: sequence => tx.event.findUnique({ where: { sessionId_sequence: { sessionId: id, sequence } } }),
       createEvent: async event => { await tx.event.create({ data: { ...event, sessionId: id } }); },
       saveProgress: (listenedMs, lastSequence) => tx.session.update({ where: { id }, data: { listenedMs, lastSequence } }),
+      saveClose: endedAt => tx.session.update({ where: { id }, data: { endedAt } }),
     });
   });
 }
 
 export function progressSession(owner: string, id: string, input: Progress): Promise<Session> {
   return withSession(owner, id, tx => recordProgress(tx, input));
+}
+
+export function closeSession(owner: string, id: string): Promise<Session> {
+  return withSession(owner, id, tx => recordClose(tx));
 }
