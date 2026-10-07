@@ -23,6 +23,37 @@ export async function login(page,user) {
   await expect(page.getByRole('button',{name:'Catalog',exact:true})).toBeVisible();
 }
 
+test('media: real decode, playback, seek and recovery', async ({page}) => {
+  await createAccount(page,'media');
+  await page.getByRole('button',{name:'Catalog',exact:true}).click();
+  const first=page.locator('.catalog-track').filter({has:page.getByRole('heading',{name:'Aube — demo',exact:true})});
+  const second=page.locator('.catalog-track').filter({has:page.getByRole('heading',{name:'Brise — demo',exact:true})});
+  const received=page.waitForResponse(r=>r.url().endsWith('/api/media/assets/30000000-0000-4000-8000-000000000001/audio') && [200,206].includes(r.status()));
+  await first.getByRole('button',{name:'Play',exact:true}).click();
+  await received;
+  const audio=page.locator('audio');
+  await expect.poll(()=>audio.evaluate(a=>a.duration)).toBeCloseTo(6,1);
+  // Real play()/seek on the element after the user's Play gesture, no synthetic media events.
+  await audio.evaluate(a=>a.play());
+  await expect.poll(()=>audio.evaluate(a=>a.currentTime)).toBeGreaterThan(0.3);
+  const before=await audio.evaluate(a=>a.currentTime);
+  await expect.poll(()=>audio.evaluate(a=>a.currentTime)).toBeGreaterThan(before+0.2);
+  await audio.evaluate(a=>{a.currentTime=3;});
+  await expect.poll(()=>audio.evaluate(a=>a.currentTime)).toBeGreaterThan(3.3);
+  await page.getByRole('button',{name:'Close audio player',exact:true}).click();
+  const pattern='**/api/media/assets/30000000-0000-4000-8000-000000000001/audio';
+  await page.route(pattern,route=>route.fulfill({status:404,body:'unavailable'}));
+  await first.getByRole('button',{name:'Play',exact:true}).click();
+  await expect(page.getByRole('alert')).toHaveText('Audio is unavailable. Close the player and try again.');
+  await second.getByRole('button',{name:'Play',exact:true}).click();
+  await expect.poll(()=>audio.evaluate(a=>a.duration)).toBeCloseTo(6,1);
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await page.unroute(pattern);
+  await page.getByRole('button',{name:'Close audio player',exact:true}).click();
+  await first.getByRole('button',{name:'Play',exact:true}).click();
+  await expect.poll(()=>audio.evaluate(a=>a.duration)).toBeCloseTo(6,1);
+});
+
 test('catalog: real lists, filters, detail, cancellation and controlled failures',async({page})=>{
   await createAccount(page,'catalog');
   const firstResponse=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/catalog/tracks' && r.status()===200);

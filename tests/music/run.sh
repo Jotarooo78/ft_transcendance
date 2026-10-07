@@ -7,7 +7,7 @@ readonly project_name=transcendence_music
 compose_file="$script_dir/compose.yml"
 compose=(docker compose -p "$project_name" --env-file /dev/null -f "$compose_file")
 campaign="${1:-catalog}"
-[[ "$campaign" == catalog ]] || { echo 'Expected campaign: catalog' >&2; exit 2; }
+[[ "$campaign" == catalog || "$campaign" == media ]] || { echo 'Expected campaign: catalog or media' >&2; exit 2; }
 phase=guard
 cleanup_enabled=false
 complete=false
@@ -66,6 +66,10 @@ phase=build
 "${compose[@]}" build
 phase=catalog-unit
 "${compose[@]}" run --rm --no-deps migrate-catalog npm test
+if [[ "$campaign" == media ]]; then
+  phase=media-unit
+  "${compose[@]}" run --rm --no-deps migrate-media npm test
+fi
 phase=frontend-lint-build
 "${compose[@]}" run --rm --no-deps frontend sh -ec 'npm run lint && npm run build'
 phase=browser-install
@@ -98,5 +102,34 @@ phase=database-restart
 node "$script_dir/http-scenario.mjs" catalog-verify
 sql_file < "$script_dir/assert-catalog.sql"
 phase=browser
-npm test --prefix "$script_dir" -- --grep catalog
+browser_pattern=catalog
+if [[ "$campaign" == media ]]; then
+  phase=media-seed
+  for pass in 1 2; do
+    "${compose[@]}" exec -T media-service npm run seed:demo
+    sql_file < "$script_dir/assert-media.sql"
+  done
+  phase=media-fixtures
+  sql_file -v cleanup=false < "$script_dir/media-edge.sql"
+  "${compose[@]}" exec -T media-service node --input-type=module -e 'import {copyFile} from "node:fs/promises"; import {constants} from "node:fs"; for(const name of ["edge-pending.wav","edge-private.wav"]) await copyFile("/data/audio/demo-1.wav", "/data/audio/"+name, constants.COPYFILE_EXCL);'
+  phase=media-http
+  node "$script_dir/http-scenario.mjs" media
+  phase=media-catalogue-outage
+  "${compose[@]}" stop catalog-service
+  node "$script_dir/http-scenario.mjs" media-unavailable
+  "${compose[@]}" up -d --no-deps --wait catalog-service
+  phase=media-restarts
+  "${compose[@]}" restart media-service
+  node "$script_dir/http-scenario.mjs" media-verify
+  "${compose[@]}" restart db
+  node "$script_dir/http-scenario.mjs" media-verify
+  sql_file < "$script_dir/assert-media.sql"
+  phase=media-fixtures-cleanup
+  sql_file -v cleanup=true < "$script_dir/media-edge.sql"
+  "${compose[@]}" exec -T media-service node --input-type=module -e 'import {unlink} from "node:fs/promises"; for(const name of ["edge-pending.wav","edge-private.wav"]) await unlink("/data/audio/"+name);'
+  node "$script_dir/http-scenario.mjs" catalog-verify
+  browser_pattern='catalog|media'
+fi
+phase=browser
+npm test --prefix "$script_dir" -- --grep "$browser_pattern"
 complete=true

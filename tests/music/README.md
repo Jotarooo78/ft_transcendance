@@ -80,6 +80,26 @@ En cas d’échec, partir du nom de phase : syntaxe/configuration, premier test
 Les logs applicatifs complets ne sont pas déversés pour éviter d’exposer des
 tokens. Rejouer une phase isolément si nécessaire, puis la campagne corrigée.
 
-La campagne Catalogue ne prouve pas encore les octets audio, les playlists
-persistées ou les sessions d’écoute ; leurs phases seront ajoutées après
-implémentation. `docs/music/EXECUTION.md` conserve les résultats observés.
+## Campagne Media
+
+`tests/music/run.sh media` inclut les contrôles Catalogue, trois tests Media,
+deux seeds audio/SQL, empreintes HTTPS, HEAD/plages/refus, panne Catalogue
+et redémarrages Media puis DB sans seed. Le volume supplémentaire isolé est
+`transcendence_music_music_media_data`. La garde et le nettoyage couvrent
+les trois volumes musicaux, y compris celui des avatars utilisé pour Auth/Users.
+
+`media-edge.sql` crée des assets réservés pending/retiré/fichier absent.
+Le runner copie deux WAV sous des noms dédiés, laisse le troisième absent,
+vérifie les refus réels puis retire exactement ces fixtures SQL et fichiers.
+Le scénario `media-verify` compare les trois empreintes MED-2 sans réinstaller
+de données ; `media-unavailable` attend 503 lors de l’arrêt de Catalogue.
+
+Le test navigateur media s’inscrit et se connecte réellement, observe une
+réponse audio, la durée décodée, deux positions croissantes, puis un seek
+suivi d’une nouvelle progression. Aucun événement audio n’est fabriqué.
+Seule la panne 404 est simulée ; changement de piste et nouvelle tentative
+retournent ensuite aux octets du serveur. Les contrôles HTTP prouvent le
+transport, les empreintes après redémarrage le stockage, Chromium le décodage.
+
+Les playlists persistées et sessions d’écoute restent à réaliser.
+`docs/music/EXECUTION.md` conserve les résultats et les révisions observées.

@@ -228,3 +228,22 @@ Les critères de compréhension restent personnels.
 - Fixtures SQL et deux copies de fichiers retirées ; `catalog-verify` passe.
   Les fichiers de démonstration sont conservés pour la preuve navigateur.
 - Documentation Notion des contrôles et fixtures reliée à MED-7.
+- Synchronisation MED-7 : b8764af publié, aucun apport distant ni conflit.
+
+## MED-8 — Campagne Media complète
+
+- Test navigateur durable media seul : succès en 7,5 s. Puis campagne
+  `tests/music/run.sh media` depuis volumes neufs : PASS, cleanup inclus.
+- Cinq tests Catalogue, trois Media, lint/build frontend, six migrations et
+  permissions, doubles seeds et SQL, HTTPS/empreintes/plages/refus, panne
+  Catalogue, redémarrages Catalogue/Media/DB sans seed : tous réussis.
+- Chromium : deux scénarios catalog et media réussis en 10,4 s. Décodage,
+  progression réelle et seek ; aucune fabrication d’événement de lecture.
+- Après nettoyage : zéro conteneur, volume ou réseau transcendence_music.
+  La garde couvre trois volumes (DB, audio, avatars), correction documentaire
+  du critère Notion qui en mentionnait deux.
+- Journal /tmp/music-med8-campaign.log. Base b8764af, sources de MED-8 alors
+  modifiées et signalées ; Node 22.23.2, npm 10.9.8, Docker 29.1.3,
+  Compose 2.40.3, Playwright 1.63.0. Promesse Media prouvée.
+- Runner, navigateur et README documentés dans Notion. Library/Playback
+  restent à réaliser ; compréhension personnelle non cochée.
