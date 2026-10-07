@@ -318,3 +318,16 @@ Les critères de compréhension restent personnels.
 - app valide et route ; mutations exécute la transaction locale ; playlist
   valide expectedVersion ; index branche ; app.test exerce les refus.
   Amendements Notion préparés, modèles externes toujours en attente.
+- Synchronisation LIB-5 : 52bc13d publié, aucun apport distant ni conflit.
+
+## LIB-6 — Édition atomique
+
+- PATCH name/description et expectedVersion ; validation complète avant writer,
+  champs de propriétaire/visibilité interdits. Réutilise verrou et version.
+- Champs et version/updatedAt mis à jour dans une transaction ; aucun effet
+  partiel si un champ est invalide, conflit ou panne.
+- Build et sept tests Library passent : refus sans changement, édition des
+  deux champs et description seule conservant le nom, DTO confirmé.
+- playlist valide, app protège la route, mutations écrit atomiquement, index
+  branche et app.test vérifie les comportements avec stockage contrôlé.
+  Amendements Notion préparés, modèles externes encore en attente.

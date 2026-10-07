@@ -1,7 +1,7 @@
 import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 import jwt from "@fastify/jwt";
 import client from "prom-client";
-import { addItemInput, createInput, pageQuery, PlaylistError, uuidPattern, versionInput, type PageQuery, type Playlist, type PlaylistInput, type PlaylistPage } from "./playlist.js";
+import { addItemInput, createInput, editInput, pageQuery, PlaylistError, uuidPattern, versionInput, type PageQuery, type Playlist, type PlaylistInput, type PlaylistPage } from "./playlist.js";
 
 declare module "fastify" { interface FastifyRequest { authenticatedUserId?: string } }
 declare module "@fastify/jwt" {
@@ -15,6 +15,7 @@ type Options = {
   isTrackPublished?: (trackId: string) => Promise<boolean>;
   addItem?: (owner: string, id: string, trackId: string, expectedVersion: number) => Promise<Playlist>;
   removeItem?: (owner: string, id: string, itemId: string, expectedVersion: number) => Promise<Playlist>;
+  updatePlaylist?: (owner: string, id: string, changes: Partial<PlaylistInput>, expectedVersion: number) => Promise<Playlist>;
   ready: () => Promise<void>; close?: () => Promise<void>; logger?: boolean;
 };
 
@@ -86,6 +87,17 @@ export function buildApp(options: Options) {
     try {
       if (!options.removeItem) throw new Error("Missing removal writer");
       return await options.removeItem(request.authenticatedUserId!, request.params.id.toLowerCase(), request.params.itemId.toLowerCase(), expectedVersion);
+    } catch (error) {
+      if (error instanceof PlaylistError) return reply.code(error.status).send({ error: error.code });
+      return reply.code(503).send({ error: "library_unavailable" });
+    }
+  });
+  app.patch<{ Params: { id: string } }>("/playlists/:id", { onRequest: authenticate }, async (request, reply) => {
+    const input = editInput(request.body);
+    if (!input || !uuidPattern.test(request.params.id)) return reply.code(400).send({ error: "invalid_request" });
+    try {
+      if (!options.updatePlaylist) throw new Error("Missing update writer");
+      return await options.updatePlaylist(request.authenticatedUserId!, request.params.id.toLowerCase(), input.changes, input.expectedVersion);
     } catch (error) {
       if (error instanceof PlaylistError) return reply.code(error.status).send({ error: error.code });
       return reply.code(503).send({ error: "library_unavailable" });

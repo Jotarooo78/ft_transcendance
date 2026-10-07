@@ -1,6 +1,6 @@
 import { prisma } from "./prisma.js";
 import type { Prisma } from "../generated/prisma/client.js";
-import { PlaylistError, toPlaylist, type Playlist } from "../playlist.js";
+import { PlaylistError, toPlaylist, type Playlist, type PlaylistInput } from "../playlist.js";
 
 async function withPlaylist(owner: string, id: string, expectedVersion: number,
   change: (tx: Prisma.TransactionClient, version: bigint) => Promise<Playlist>): Promise<Playlist> {
@@ -33,6 +33,14 @@ export async function removeItem(owner: string, id: string, itemId: string, expe
     const removed = await tx.playlistItem.deleteMany({ where: { id: itemId, playlistId: id } });
     if (removed.count !== 1) throw new PlaylistError(404, "item_not_found");
     return toPlaylist(await tx.playlist.update({ where: { id }, data: { version: { increment: 1 } },
+      include: { items: { orderBy: { position: "asc" } } } }));
+  });
+}
+
+export async function updatePlaylist(owner: string, id: string, changes: Partial<PlaylistInput>, expectedVersion: number): Promise<Playlist> {
+  return withPlaylist(owner, id, expectedVersion, async (tx, version) => {
+    if (version >= BigInt(Number.MAX_SAFE_INTEGER)) throw new PlaylistError(409, "playlist_limit");
+    return toPlaylist(await tx.playlist.update({ where: { id }, data: { ...changes, version: { increment: 1 } },
       include: { items: { orderBy: { position: "asc" } } } }));
   });
 }

@@ -9,6 +9,37 @@ const owner = "40000000-0000-4000-8000-000000000001", other = "40000000-0000-400
 const id = "50000000-0000-4000-8000-000000000001";
 const playlist = { id, name: "Private", description: "", version: 1, items: [] };
 
+test("edit validates all fields before an atomic versioned update", async t => {
+  let state: Playlist={...playlist};let writes=0,outage=false;
+  const app=buildApp({jwtSecret:"test-only-library-secret",ready:async()=>{},
+    readPlaylists:async()=>({page:1,pageSize:20,total:1,items:[state]}),readPlaylist:async()=>state,
+    updatePlaylist:async(subject,playlistId,changes,version)=>{
+      assert.equal(playlistId,id);
+      if(subject!==owner)throw new PlaylistError(404,"playlist_not_found");
+      if(version!==state.version)throw new PlaylistError(409,"version_conflict");
+      if(outage)throw new Error("SQL unavailable");
+      writes++;state={...state,...changes,version:state.version+1};return state;
+    },
+  });
+  t.after(()=>app.close());await app.ready();
+  const headers={authorization:`Bearer ${app.jwt.sign({sub:owner})}`},url=`/playlists/${id}`;
+  for(const payload of [{expectedVersion:1},{expectedVersion:1,name:" ",description:"valid"},
+    {expectedVersion:1,name:"valid",description:"x".repeat(2001)}, {expectedVersion:1,name:"valid",ownerUserId:other},
+    {expectedVersion:1,description:"valid",visibility:"public"}]) {
+    assert.equal((await app.inject({method:"PATCH",url,headers,payload})).statusCode,400);
+  }
+  assert.equal(writes,0);assert.deepEqual(state,playlist);
+  assert.equal((await app.inject({method:"PATCH",url,headers,payload:{name:"rename",expectedVersion:2}})).statusCode,409);
+  assert.equal((await app.inject({method:"PATCH",url,headers:{authorization:`Bearer ${app.jwt.sign({sub:other})}`},payload:{name:"rename",expectedVersion:1}})).statusCode,404);
+  outage=true;
+  assert.equal((await app.inject({method:"PATCH",url,headers,payload:{name:"rename",expectedVersion:1}})).statusCode,503);
+  assert.equal(writes,0);assert.deepEqual(state,playlist);outage=false;
+  const updated=await app.inject({method:"PATCH",url,headers,payload:{name:" Renamed ",description:" Notes ",expectedVersion:1}});
+  assert.equal(updated.statusCode,200);assert.deepEqual(updated.json(),{...playlist,name:"Renamed",description:"Notes",version:2});
+  const descriptionOnly=await app.inject({method:"PATCH",url,headers,payload:{description:"",expectedVersion:2}});
+  assert.equal(descriptionOnly.statusCode,200);assert.equal(descriptionOnly.json().name,"Renamed");assert.equal(descriptionOnly.json().version,3);
+});
+
 test("remove targets one occurrence, checks version and never requires Catalogue", async t => {
   const item1="60000000-0000-4000-8000-000000000001",item2="60000000-0000-4000-8000-000000000002";
   const foreignItem="60000000-0000-4000-8000-000000000003";

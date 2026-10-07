@@ -35,6 +35,18 @@ export function createInput(value: unknown): PlaylistInput | null {
   return [...description].length <= 2000 ? { name, description } : null;
 }
 
+export function editInput(value: unknown): { changes: Partial<PlaylistInput>; expectedVersion: number } | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const body = value as Record<string, unknown>;
+  if (Object.keys(body).some(key => !["name", "description", "expectedVersion"].includes(key)) ||
+    !("name" in body || "description" in body)) return null;
+  const expectedVersion = versionInput({ expectedVersion: body.expectedVersion });
+  const fields = createInput({ name: "name" in body ? body.name : "Unchanged", description: body.description });
+  if (expectedVersion === null || !fields) return null;
+  return { expectedVersion, changes: { ...("name" in body ? { name: fields.name } : {}),
+    ...("description" in body ? { description: fields.description } : {}) } };
+}
+
 export function toPlaylist(row: { id: string; name: string; description: string | null; version: bigint; items: PlaylistItem[] }): Playlist {
   if (row.version < 1n || row.version > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error("Unsupported playlist version");
   return { id: row.id, name: row.name, description: row.description ?? "", version: Number(row.version),
