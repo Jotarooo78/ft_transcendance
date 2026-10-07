@@ -260,3 +260,16 @@ Les critères de compréhension restent personnels.
 - Vérification documentaire réalisée ; aucune route Library implémentée ici.
 - Note Notion du contrat créée ; application du modèle encore asynchrone.
   Sa documentation et son lien restent à finaliser avant le bilan global.
+- Synchronisation LIB-1 : 0d785c1 publié, aucun apport distant ni conflit.
+
+## LIB-2 — Lectures privées authentifiées
+
+- JWT vérifié avant les lecteurs ; sujet UUID utilisé dans chaque filtre SQL.
+  Lecture privée seulement, listes bornées et ordre stable ; compte et page
+  dans un instantané RepeatableRead. Conversion sûre des versions BigInt.
+- @fastify/jwt 10.2.2 ajouté avec lockfile ; aucun secret de secours.
+- Build Docker et deux tests Library réussis : tokens invalides sans lecture,
+  comptes A/B, pagination, pannes et DTO. Stockage injecté dans les tests ;
+  la preuve PostgreSQL réelle reste LIB-13.
+- Six notes Notion par fichier créées ; leurs modèles sont encore en attente.
+  La documentation préparée et les liens seront finalisés avant le bilan.
