@@ -1,5 +1,7 @@
 import { buildApp } from "./app.js";
 import { toPlaylist } from "./playlist.js";
+import { catalogReader } from "./catalog.js";
+import { addItem } from "./database/mutations.js";
 import { disconnectPrisma, prisma } from "./database/prisma.js";
 
 const app = buildApp({
@@ -7,6 +9,8 @@ const app = buildApp({
   logger: true,
   ready: async () => { await prisma.$queryRaw`SELECT 1`; },
   close: disconnectPrisma,
+  isTrackPublished: catalogReader(process.env.CATALOG_SERVICE_URL ?? "http://catalog-service:4002"),
+  addItem,
   createPlaylist: async (ownerUserId, input) => toPlaylist(await prisma.playlist.create({
     data: { ...input, ownerUserId, visibility: "private", version: 1n }, include: { items: true },
   })),

@@ -1,11 +1,63 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { createServer } from "node:http";
+import { catalogReader } from "./catalog.js";
 import { buildApp } from "./app.js";
-import { createInput, pageQuery, toPlaylist } from "./playlist.js";
+import { createInput, pageQuery, PlaylistError, toPlaylist, type Playlist } from "./playlist.js";
 
 const owner = "40000000-0000-4000-8000-000000000001", other = "40000000-0000-4000-8000-000000000002";
 const id = "50000000-0000-4000-8000-000000000001";
 const playlist = { id, name: "Private", description: "", version: 1, items: [] };
+
+test("adding an occurrence checks owner, version and Catalogue before writing", async t => {
+  const trackId = "20000000-0000-4000-8000-000000000001";
+  let state: Playlist = { ...playlist, items: [] }; let lookups = 0, writes = 0;
+  let available = true, outage = false, conflict = false;
+  const app = buildApp({ jwtSecret: "test-only-library-secret", ready: async () => {},
+    readPlaylists: async () => ({ page: 1, pageSize: 20, total: 1, items: [state] }),
+    readPlaylist: async subject => subject === owner ? state : null,
+    isTrackPublished: async () => { lookups++; if (outage) throw new Error("timeout"); return available; },
+    addItem: async (subject, playlistId, track, version) => {
+      assert.equal(subject,owner); assert.equal(playlistId,id); assert.equal(track,trackId);
+      if (conflict || version !== state.version) throw new PlaylistError(409,"version_conflict");
+      writes++; state = { ...state, version: state.version+1,
+        items: [...state.items, {id:`item-${writes}`,trackId:track,position:writes}] }; return state;
+    },
+  });
+  t.after(() => app.close()); await app.ready();
+  const headers = {authorization:`Bearer ${app.jwt.sign({sub:owner})}`};
+  const url = `/playlists/${id}/items`, payload = {trackId,expectedVersion:1};
+  assert.equal((await app.inject({method:"POST",url,headers:{authorization:`Bearer ${app.jwt.sign({sub:other})}`},payload})).statusCode,404);
+  assert.equal((await app.inject({method:"POST",url,headers,payload:{...payload,expectedVersion:2}})).statusCode,409);
+  assert.equal(lookups,0); assert.equal(writes,0);
+  for (const invalid of [{trackId}, {...payload,trackId:"no"}, {...payload,expectedVersion:0}, {...payload,expectedVersion:1.5}, {...payload,ownerUserId:other}]) {
+    assert.equal((await app.inject({method:"POST",url,headers,payload:invalid})).statusCode,400);
+  }
+  available = false; assert.equal((await app.inject({method:"POST",url,headers,payload})).statusCode,404);
+  available = true; outage = true; assert.equal((await app.inject({method:"POST",url,headers,payload})).statusCode,503);
+  outage = false; conflict = true; assert.equal((await app.inject({method:"POST",url,headers,payload})).statusCode,409);
+  assert.equal(writes,0); conflict = false;
+  assert.equal((await app.inject({method:"POST",url,headers,payload})).statusCode,200);
+  const second = await app.inject({method:"POST",url,headers,payload:{...payload,expectedVersion:2}});
+  assert.equal(second.statusCode,200); assert.equal(second.json().version,3);
+  assert.deepEqual(second.json().items.map((item: {trackId:string})=>item.trackId),[trackId,trackId]);
+  assert.notEqual(second.json().items[0].id,second.json().items[1].id);
+});
+
+test("Catalogue client distinguishes absent, malformed and timed-out tracks", async t => {
+  let mode = "ok"; const trackId = "20000000-0000-4000-8000-000000000001";
+  const server = createServer((_request,response) => {
+    if (mode === "timeout") return;
+    response.statusCode = mode === "missing" ? 404 : mode === "failure" ? 503 : 200;
+    response.end(JSON.stringify({id:mode === "bad" ? "other" : trackId}));
+  });
+  await new Promise<void>(resolve=>server.listen(0,"127.0.0.1",resolve));
+  t.after(()=>{server.closeAllConnections();server.close();});
+  const address = server.address(); assert.ok(address && typeof address !== "string");
+  const read = catalogReader(`http://127.0.0.1:${address.port}`,100);
+  assert.equal(await read(trackId),true); mode="missing"; assert.equal(await read(trackId),false);
+  for(mode of ["bad","failure","timeout"]) await assert.rejects(read(trackId));
+});
 
 test("create empty private playlist uses authenticated owner and validates the entire body", async t => {
   let writes = 0; let failure = false; let saved: typeof playlist | null = null;

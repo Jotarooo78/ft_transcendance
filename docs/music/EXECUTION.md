@@ -287,3 +287,20 @@ Les critères de compréhension restent personnels.
 - Rôles des fichiers : app route/identité ; playlist validation/DTO ; index
   création Prisma ; app.test refus et confirmation. Amendements Notion
   préparés, application des modèles LIB-1/2 toujours en attente externe.
+- Synchronisation LIB-3 : 771ede0 publié, aucun apport distant ni conflit.
+
+## LIB-4 — Ajout d’une occurrence
+
+- Propriétaire/version contrôlés avant appel Catalogue HTTP, borné à 2 s.
+  La transaction SQL revérifie les deux sous verrou SELECT FOR UPDATE,
+  calcule max(position)+1 et crée une occurrence avec identité propre.
+- Mise à jour de version/updatedAt et insertion atomiques ; bornes position
+  int32 et version JSON sûre. Aucun réseau sous verrou ni SQL interschéma.
+- Build et cinq tests Library passent : refus avant Catalogue, absence,
+  timeout, conflit, double occurrence ; vrai client HTTP sur serveur local.
+  La concurrence SQL réelle reste à prouver en LIB-13.
+- Nouveaux fichiers : catalog.ts client HTTP ; database/mutations.ts verrou
+  et écriture ; app orchestre les refus, playlist valide, index branche,
+  app.test distingue contrôles injectés et HTTP réel.
+- Deux nouvelles notes Notion créées, documentation/amendements préparés ;
+  les modèles Notion restent en attente, suivis pour finalisation globale.

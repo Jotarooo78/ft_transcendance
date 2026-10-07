@@ -4,6 +4,18 @@ export type Playlist = { id: string; name: string; description: string; version:
 export type PageQuery = { page: number; pageSize: number };
 export type PlaylistPage = PageQuery & { items: Playlist[]; total: number };
 export type PlaylistInput = { name: string; description: string };
+export class PlaylistError extends Error {
+  constructor(public readonly status: number, public readonly code: string) { super(code); }
+}
+
+export function addItemInput(value: unknown): { trackId: string; expectedVersion: number } | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const body = value as Record<string, unknown>;
+  if (Object.keys(body).some(key => !["trackId", "expectedVersion"].includes(key)) ||
+    typeof body.trackId !== "string" || !uuidPattern.test(body.trackId) ||
+    typeof body.expectedVersion !== "number" || !Number.isSafeInteger(body.expectedVersion) || body.expectedVersion < 1) return null;
+  return { trackId: body.trackId.toLowerCase(), expectedVersion: body.expectedVersion };
+}
 
 export function createInput(value: unknown): PlaylistInput | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;

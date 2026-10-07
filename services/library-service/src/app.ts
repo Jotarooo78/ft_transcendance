@@ -1,7 +1,7 @@
 import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
 import jwt from "@fastify/jwt";
 import client from "prom-client";
-import { createInput, pageQuery, uuidPattern, type PageQuery, type Playlist, type PlaylistInput, type PlaylistPage } from "./playlist.js";
+import { addItemInput, createInput, pageQuery, PlaylistError, uuidPattern, type PageQuery, type Playlist, type PlaylistInput, type PlaylistPage } from "./playlist.js";
 
 declare module "fastify" { interface FastifyRequest { authenticatedUserId?: string } }
 declare module "@fastify/jwt" {
@@ -12,6 +12,8 @@ type Options = {
   readPlaylists: (owner: string, query: PageQuery) => Promise<PlaylistPage>;
   readPlaylist: (owner: string, id: string) => Promise<Playlist | null>;
   createPlaylist?: (owner: string, input: PlaylistInput) => Promise<Playlist>;
+  isTrackPublished?: (trackId: string) => Promise<boolean>;
+  addItem?: (owner: string, id: string, trackId: string, expectedVersion: number) => Promise<Playlist>;
   ready: () => Promise<void>; close?: () => Promise<void>; logger?: boolean;
 };
 
@@ -58,6 +60,22 @@ export function buildApp(options: Options) {
       if (!options.createPlaylist) throw new Error("Missing playlist writer");
       return reply.code(201).send(await options.createPlaylist(request.authenticatedUserId!, input));
     } catch { return reply.code(503).send({ error: "library_unavailable" }); }
+  });
+  app.post<{ Params: { id: string } }>("/playlists/:id/items", { onRequest: authenticate }, async (request, reply) => {
+    const input = addItemInput(request.body);
+    if (!input || !uuidPattern.test(request.params.id)) return reply.code(400).send({ error: "invalid_request" });
+    try {
+      const owner = request.authenticatedUserId!, id = request.params.id.toLowerCase();
+      const current = await options.readPlaylist(owner, id);
+      if (!current) throw new PlaylistError(404, "playlist_not_found");
+      if (current.version !== input.expectedVersion) throw new PlaylistError(409, "version_conflict");
+      if (!options.isTrackPublished || !options.addItem) throw new Error("Missing add dependencies");
+      if (!await options.isTrackPublished(input.trackId)) throw new PlaylistError(404, "track_not_found");
+      return await options.addItem(owner, id, input.trackId, input.expectedVersion);
+    } catch (error) {
+      if (error instanceof PlaylistError) return reply.code(error.status).send({ error: error.code });
+      return reply.code(503).send({ error: "library_unavailable" });
+    }
   });
   app.addHook("onClose", async () => { registry.clear(); await options.close?.(); });
   return app;
