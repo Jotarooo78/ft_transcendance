@@ -140,5 +140,71 @@ services:
       timeout: 3s
       retries: 30
 
+  auth-service:
+    build: ../../services/auth-service
+    environment:
+      AUTH_DATABASE_URL: postgresql://auth_runtime:e2e_auth_runtime_test_only@db:5432/transcendence_music?schema=auth
+      JWT_SECRET: e2e_test_only_jwt_secret_with_sufficient_length
+      INTERNAL_SERVICE_TOKEN: e2e_test_only_internal_token_with_sufficient_length
+      USER_SERVICE_URL: http://user-service:4001
+    depends_on:
+      apply-permissions:
+        condition: service_completed_successfully
+      user-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  user-service:
+    build: ../../services/user-service
+    environment:
+      USER_DATABASE_URL: postgresql://users_runtime:e2e_users_runtime_test_only@db:5432/transcendence_music?schema=users
+      JWT_SECRET: e2e_test_only_jwt_secret_with_sufficient_length
+      INTERNAL_SERVICE_TOKEN: e2e_test_only_internal_token_with_sufficient_length
+      AVATAR_STORAGE_DIR: /data/avatars
+    volumes:
+      - music_avatar_data:/data/avatars
+    depends_on:
+      apply-permissions:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4001/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  frontend:
+    build: ../../frontend
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5173/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  nginx:
+    build: ../../nginx
+    ports:
+      - "127.0.0.1:3443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      catalog-service:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-check-certificate -q -O /dev/null https://127.0.0.1/api/auth/ready && wget --no-check-certificate -q -O /dev/null https://127.0.0.1/api/users/ready"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
 volumes:
+  music_avatar_data:
   music_db_data:

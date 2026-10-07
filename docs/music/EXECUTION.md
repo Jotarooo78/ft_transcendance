@@ -63,4 +63,14 @@ Les critères de compréhension restent personnels.
   trois tris, total 3, genres, absence du brouillon, recherche littérale %/_ et
   insensible à la casse, recherche absente et page vide. Aucune lecture Media.
 - Notes de documentation existantes actualisées et lecteur SQL documenté.
-- Synchronisation à effectuer avant CAT-6.
+- Synchronisation CAT-5 : 0537b43 publié, aucun nouveau commit ni conflit.
+
+## CAT-6 — Catalogue par HTTPS
+
+- Routage Catalogue identique dans Nginx principal et Nginx de test, résolution
+  dynamique Docker et métriques interdites. Pile de développement inchangée.
+- Configuration Compose valide ; démarrage sain de Nginx, Auth/Users/frontend
+  isolés. Liste/détail HTTPS concordent avec SQL, total 3 ; métriques 403 ;
+  nginx -t réussi dans le conteneur de test.
+- Documentation Notion du routage et de Compose liée à CAT-6.
+- Synchronisation à effectuer avant CAT-7.
