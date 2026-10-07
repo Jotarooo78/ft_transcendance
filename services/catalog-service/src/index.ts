@@ -7,6 +7,9 @@ const app = buildApp({
   logger: true,
   close: disconnectPrisma,
   listTracks,
+  isAssetPublished: async audioAssetId => !!await prisma.track.findFirst({
+    where: { audioAssetId, status: "published" }, select: { id: true },
+  }),
   ready: async () => {
     await prisma.$queryRaw`SELECT 1`;
   },

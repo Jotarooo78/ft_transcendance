@@ -162,3 +162,17 @@ Les critères de compréhension restent personnels.
 - Volume principal configuré seulement ; aucun seed de développement exécuté.
   Garde du runner étendue aux trois volumes isolés ; bash -n passe.
 - Documentation Notion par fichier produite et reliée à MED-2.
+- Synchronisation MED-2 : 76bb210 publié, aucun apport distant ni conflit.
+
+## MED-3 — Lecture complète autorisée
+
+- Media sépare application et dépendances ; ouvre un fichier régulier validé
+  sans suivre de symlink, diffuse son descripteur et le ferme à l’abandon.
+- Catalogue expose un booléen de publication par asset ; client HTTP Media
+  borné à deux secondes, sans cache ni lecture SQL interschéma.
+- Deux tests Media passent : fichier WAV réel, octets/en-têtes, refus,
+  erreurs et vrai serveur HTTP local pour corps invalide/503/timeout.
+- Cinq tests Catalogue passent, dont publication minimale et pannes.
+  Ce sont des tests de service ; HTTPS et vraie base Media seront prouvés
+  en MED-5/7. HEAD et Range restent MED-4.
+- Notes Notion par fichier produites et reliées à MED-3.

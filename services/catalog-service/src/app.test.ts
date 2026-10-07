@@ -7,6 +7,18 @@ const id = "20000000-0000-4000-8000-000000000001";
 const row = { id, title: "Aube", artistName: "Atelier Demo", albumTitle: "", genre: "Demo",
   durationMs: 6000n, audioAssetId: "30000000-0000-4000-8000-000000000001" };
 
+test("asset publication reveals only a boolean and distinguishes outages", async t => {
+  let failed = false;
+  const app = buildApp({ ready: async () => {}, readTrack: async () => null,
+    isAssetPublished: async value => { if (failed) throw new Error("SQL"); return value === row.audioAssetId; } });
+  t.after(() => app.close());
+  assert.equal((await app.inject('/assets/no/publication')).statusCode, 400);
+  assert.deepEqual((await app.inject(`/assets/${row.audioAssetId}/publication`)).json(), { published: true });
+  assert.deepEqual((await app.inject(`/assets/${id}/publication`)).json(), { published: false });
+  failed = true;
+  assert.equal((await app.inject(`/assets/${id}/publication`)).statusCode, 503);
+});
+
 test("list bounds and malformed parameters reject before reading", async t => {
   let calls = 0;
   const app = buildApp({ ready: async () => {}, readTrack: async () => null,

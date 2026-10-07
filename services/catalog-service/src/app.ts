@@ -5,6 +5,7 @@ import { parseTrackQuery, uuidPattern, type TrackDto, type TrackList, type Track
 type Options = {
   readTrack: (id: string) => Promise<TrackDto | null>;
   listTracks?: (query: TrackQuery) => Promise<TrackList>;
+  isAssetPublished?: (id: string) => Promise<boolean>;
   ready: () => Promise<void>;
   close?: () => Promise<void>;
   logger?: boolean;
@@ -48,6 +49,14 @@ export function buildApp(options: Options) {
     } catch {
       return reply.code(503).send({ error: "catalog_unavailable" });
     }
+  });
+  app.get<{ Params: { id: string } }>("/assets/:id/publication", async (request, reply) => {
+    reply.header("Cache-Control", "no-store");
+    if (!uuidPattern.test(request.params.id)) return reply.code(400).send({ error: "invalid_request" });
+    try {
+      if (!options.isAssetPublished) throw new Error("Missing publication reader");
+      return { published: await options.isAssetPublished(request.params.id.toLowerCase()) };
+    } catch { return reply.code(503).send({ error: "catalog_unavailable" }); }
   });
   app.addHook("onClose", async () => {
     registry.clear();
