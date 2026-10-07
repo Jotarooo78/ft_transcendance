@@ -1,0 +1,191 @@
+# Test-only credentials; this Compose never reads the development .env.
+services:
+  db:
+    image: docker.io/library/postgres:16-alpine
+    environment:
+      POSTGRES_USER: e2e_admin
+      POSTGRES_PASSWORD: e2e_admin_test_only
+      POSTGRES_DB: transcendence_e2e
+      AUTH_MIGRATION_PASSWORD: e2e_auth_migration_test_only
+      AUTH_RUNTIME_PASSWORD: e2e_auth_runtime_test_only
+      USERS_MIGRATION_PASSWORD: e2e_users_migration_test_only
+      USERS_RUNTIME_PASSWORD: e2e_users_runtime_test_only
+      CATALOG_MIGRATION_PASSWORD: e2e_catalog_migration_test_only
+      CATALOG_RUNTIME_PASSWORD: e2e_catalog_runtime_test_only
+      MEDIA_MIGRATION_PASSWORD: e2e_media_migration_test_only
+      MEDIA_RUNTIME_PASSWORD: e2e_media_runtime_test_only
+      LIBRARY_MIGRATION_PASSWORD: e2e_library_migration_test_only
+      LIBRARY_RUNTIME_PASSWORD: e2e_library_runtime_test_only
+      PLAYBACK_MIGRATION_PASSWORD: e2e_playback_migration_test_only
+      PLAYBACK_RUNTIME_PASSWORD: e2e_playback_runtime_test_only
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U e2e_admin -d transcendence_e2e"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - e2e_db_data:/var/lib/postgresql/data
+      - ../../database/init/10-bootstrap-roles.sh:/docker-entrypoint-initdb.d/10-bootstrap-roles.sh:ro
+      - ../../database/permissions:/permissions:ro
+
+  migrate-auth:
+    build:
+      context: ../../services/auth-service
+      target: build
+    environment:
+      AUTH_MIGRATION_DATABASE_URL: postgresql://auth_migration:e2e_auth_migration_test_only@db:5432/transcendence_e2e?schema=auth
+    command: ["npm", "run", "prisma:migrate:deploy"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  migrate-users:
+    build:
+      context: ../../services/user-service
+      target: build
+    environment:
+      USER_MIGRATION_DATABASE_URL: postgresql://users_migration:e2e_users_migration_test_only@db:5432/transcendence_e2e?schema=users
+    command: ["npm", "run", "prisma:migrate:deploy"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  migrate-catalog:
+    build:
+      context: ../../services/catalog-service
+      target: build
+    environment:
+      CATALOG_MIGRATION_DATABASE_URL: postgresql://catalog_migration:e2e_catalog_migration_test_only@db:5432/transcendence_e2e?schema=catalog
+    command: ["npm", "run", "prisma:migrate:deploy"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  migrate-media:
+    build:
+      context: ../../services/media-service
+      target: build
+    environment:
+      MEDIA_MIGRATION_DATABASE_URL: postgresql://media_migration:e2e_media_migration_test_only@db:5432/transcendence_e2e?schema=media
+    command: ["npm", "run", "prisma:migrate:deploy"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  migrate-library:
+    build:
+      context: ../../services/library-service
+      target: build
+    environment:
+      LIBRARY_MIGRATION_DATABASE_URL: postgresql://library_migration:e2e_library_migration_test_only@db:5432/transcendence_e2e?schema=library
+    command: ["npm", "run", "prisma:migrate:deploy"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  migrate-playback:
+    build:
+      context: ../../services/playback-service
+      target: build
+    environment:
+      PLAYBACK_MIGRATION_DATABASE_URL: postgresql://playback_migration:e2e_playback_migration_test_only@db:5432/transcendence_e2e?schema=playback
+    command: ["npm", "run", "prisma:migrate:deploy"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  apply-permissions:
+    image: docker.io/library/postgres:16-alpine
+    environment:
+      PGHOST: db
+      PGUSER: e2e_admin
+      PGPASSWORD: e2e_admin_test_only
+      PGDATABASE: transcendence_e2e
+    volumes:
+      - ../../database/permissions:/permissions:ro
+    command:
+      - sh
+      - -ec
+      - |
+        psql --set ON_ERROR_STOP=1 --file /permissions/assign-owners.sql
+        psql --set ON_ERROR_STOP=1 --file /permissions/apply-grants.sql
+    depends_on:
+      migrate-auth:
+        condition: service_completed_successfully
+      migrate-users:
+        condition: service_completed_successfully
+      migrate-catalog:
+        condition: service_completed_successfully
+      migrate-media:
+        condition: service_completed_successfully
+      migrate-library:
+        condition: service_completed_successfully
+      migrate-playback:
+        condition: service_completed_successfully
+
+  auth-service:
+    build: ../../services/auth-service
+    environment:
+      AUTH_DATABASE_URL: postgresql://auth_runtime:e2e_auth_runtime_test_only@db:5432/transcendence_e2e?schema=auth
+      JWT_SECRET: e2e_test_only_jwt_secret_with_sufficient_length
+      INTERNAL_SERVICE_TOKEN: e2e_test_only_internal_token_with_sufficient_length
+      USER_SERVICE_URL: http://user-service:4001
+    depends_on:
+      apply-permissions:
+        condition: service_completed_successfully
+      user-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  user-service:
+    build: ../../services/user-service
+    environment:
+      USER_DATABASE_URL: postgresql://users_runtime:e2e_users_runtime_test_only@db:5432/transcendence_e2e?schema=users
+      JWT_SECRET: e2e_test_only_jwt_secret_with_sufficient_length
+      INTERNAL_SERVICE_TOKEN: e2e_test_only_internal_token_with_sufficient_length
+      AVATAR_STORAGE_DIR: /data/avatars
+    volumes:
+      - e2e_avatar_data:/data/avatars
+    depends_on:
+      apply-permissions:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4001/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  frontend:
+    build: ../../frontend
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5173/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  nginx:
+    build: ../../nginx
+    ports:
+      - "127.0.0.1:${E2E_HTTPS_PORT:-2443}:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-check-certificate -q -O /dev/null https://127.0.0.1/api/auth/ready && wget --no-check-certificate -q -O /dev/null https://127.0.0.1/api/users/ready"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  e2e_db_data:
+  e2e_avatar_data:
