@@ -88,6 +88,7 @@ services:
       - .env
     environment:
       MEDIA_STORAGE_DIR: /data/audio
+      CATALOG_SERVICE_URL: http://catalog-service:4002
     volumes:
       - media_data:/data/audio
     depends_on:

@@ -56,3 +56,24 @@ doit être long, aléatoire, identique dans les deux conteneurs et différent de
 La liste des tables, des propriétaires et des cardinalités est documentée dans
 [`docs/SCHEMA_DONNEES.md`](docs/SCHEMA_DONNEES.md). Les commandes Prisma sont
 documentées dans [`services/PRISMA.md`](services/PRISMA.md).
+
+## Catalogue et audio de démonstration
+
+Media utilise `MEDIA_STORAGE_DIR=/data/audio`, conservé dans le volume
+`media_data`, et `CATALOG_SERVICE_URL=http://catalog-service:4002` pour vérifier
+par HTTP qu’un asset appartient à une piste publiée. Il n’accède pas au schéma
+SQL Catalogue. Ces variables sont fournies par Compose, pas au navigateur.
+
+Après migrations et permissions, une installation volontaire des trois sons
+de démonstration se fait par `docker compose exec catalog-service npm run
+seed:demo`, puis `docker compose exec media-service npm run seed:demo`.
+Les seeds sont explicites et réutilisent seulement des données cohérentes.
+Aucun fichier audio n’est créé automatiquement au démarrage des serveurs.
+
+Le navigateur utilise `/api/media/assets/:id/audio` via HTTPS. Nginx transmet
+GET, HEAD et Range ; `/api/media/metrics` est refusé publiquement. Les fichiers
+WAV de six secondes ont leur contrat dans `docs/music/MEDIA_CONTRACT.md`.
+
+La pile `tests/music/compose.yml` utilise sa propre base et le volume
+`music_media_data`, avec le seul port local 3443 et sans `.env` de développement.
+Les preuves de cette branche sont exécutées dans cette pile isolée.

@@ -188,3 +188,15 @@ Les critères de compréhension restent personnels.
 - Trois tests Media passent après correction : octets complets/partiels,
   limites, en-têtes, HEAD autorisé/refusé et client publication HTTP borné.
 - Contrat et notes Notion actualisés ; preuve HTTPS à suivre en MED-5.
+- Synchronisation MED-4 : bb501ea publié, aucun apport distant ni conflit.
+
+## MED-5 — Audio par HTTPS
+
+- Nginx principal et test routent /api/media/ avec résolution Docker dynamique.
+  Media consulte l’origine interne Catalogue explicitement configurée.
+- Pile isolée reconstruite, tous services requis sains. curl HEAD public :
+  200 audio/wav, Content-Length 96044, no-store et Accept-Ranges bytes.
+- GET Range 0-43 public : 206, Content-Range bytes 0-43/96044 ; 44 octets
+  vérifiés et signature RIFF. Métriques publiques : 403.
+- Aucun seed rejoué : les fichiers de MED-2 ont survécu à la reconstruction.
+- ENVIRONMENT.md et notes Notion documentent variables, volumes et seeds.
