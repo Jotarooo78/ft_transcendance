@@ -140,6 +140,51 @@ async function main() {
     const state = JSON.parse(await readFile(stateFile, 'utf8'));
     await verify(await login(state.email), state);
     console.log('[PCE HTTP] PASS persisted login, profile and avatar');
+  } else if (mode === 'negative') {
+    const state = JSON.parse(await readFile(stateFile, 'utf8'));
+    const token = await login(state.email);
+    await verify(token, state);
+    phase = 'duplicate email';
+    expect(await request('/api/auth/signup', { method: 'POST', json: {
+      email, password, username: 'pce_duplicate', displayName: 'Duplicate',
+    } }), 409, 'ACCOUNT_ALREADY_EXISTS');
+    console.log('[PCE HTTP] PASS duplicate email refused');
+
+    phase = 'incorrect password';
+    await login(state.email);
+    const badPassword = expect(await request('/api/auth/login', {
+      method: 'POST', json: { email, password: 'deliberately-wrong-password' },
+    }), 401);
+    assert.equal(badPassword.error, 'invalid credentials');
+    console.log('[PCE HTTP] PASS incorrect password refused');
+
+    phase = 'missing JWT';
+    await verify(token, state);
+    assert.equal(expect(await request('/api/users/me'), 401).error, 'unauthorized');
+    console.log('[PCE HTTP] PASS missing JWT refused');
+
+    phase = 'username conflict';
+    const secondEmail = 'pce_second@example.invalid';
+    const signup = await request('/api/auth/signup', { method: 'POST', json: {
+      email: secondEmail, password, username: 'pce_second', displayName: 'PCE second',
+    } });
+    assert.ok([201, 202].includes(signup.status), 'Second signup failed');
+    if (signup.status === 202) expect(signup, 202, 'REGISTRATION_PENDING');
+    const secondToken = await login(secondEmail);
+    const secondBefore = expect(await request('/api/users/me', { token: secondToken }), 200);
+    expect(await request('/api/users/me/profile', { method: 'PUT', token: secondToken,
+      json: { ...values, displayName: 'Must not persist' } }), 409);
+    assert.deepEqual(expect(await request('/api/users/me', { token: secondToken }), 200), secondBefore);
+    await verify(token, state);
+    console.log('[PCE HTTP] PASS username conflict, both profiles unchanged');
+
+    phase = 'forbidden avatar MIME';
+    await verify(token, state);
+    assert.equal(expect(await request('/api/users/me/avatar', {
+      method: 'POST', token, ...multipart(Buffer.from('forbidden text'), 'text/plain'),
+    }), 415).error, 'unsupported avatar mime type');
+    await verify(await login(state.email), state);
+    console.log('[PCE HTTP] PASS forbidden avatar, valid image and profile retained');
   } else {
     throw new Error('Unknown scenario mode');
   }
