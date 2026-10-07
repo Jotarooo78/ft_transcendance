@@ -342,6 +342,7 @@ function App() {
           <CatalogPage
             key={currentUser.id}
             playlists={library.playlists}
+            onAddItem={library.addItem}
           />
         )}
 
@@ -353,6 +354,7 @@ function App() {
             error={library.error}
             onRetry={library.reload}
             onCreate={library.create}
+            onRemoveItem={library.removeItem}
           />
         )}
 

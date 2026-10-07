@@ -375,3 +375,20 @@ Les critères de compréhension restent personnels.
 - Script local /tmp/music-lib9-browser.mjs ; preuve durable prévue LIB-14.
 - Ordre des sections LIB-6/7/8 du suivi rectifié. Amendements Notion préparés,
   modèles de documentation toujours en attente externe.
+- Synchronisation LIB-9 : 68ca9c9 publié, aucun apport distant ni conflit.
+
+## LIB-10 — Occurrences dans les écrans
+
+- Ajout/retrait attendent le DTO serveur et sa version ; doublons autorisés,
+  clés et suppressions par itemId. Destination valable après chargement async.
+- Conflit 409 : relecture puis message explicite sans répétition du geste.
+  Erreur réseau : état conservé ; réponses d’une ancienne identité ignorées.
+- Métadonnées Catalogue réelles, occurrence indisponible toujours retirable ;
+  lecteur associé à l’occurrence et fermé lorsqu’elle disparaît.
+- Lint/build passent. Chromium réel : deux occurrences distinctes, ajout
+  concurrent par API puis 409 UI sans retrait, retrait exact après relecture.
+  Panne réseau et 404 Catalogue simulés : état conservé, ligne retirable.
+- Preuve locale : /tmp/music-lib10-browser.mjs ; intégration durable LIB-14.
+- Notion : les modèles retardés sont enfin appliqués. Documentation LIB-1 à
+  LIB-10 remplie et liée ; copies vides issues des reprises nettoyées. Statuts
+  CAT/MED et LIB-1 à LIB-9 rattrapés, compréhension laissée à l’utilisateur.

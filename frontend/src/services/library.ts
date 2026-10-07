@@ -47,3 +47,27 @@ export async function createPlaylist(name: string, description: string): Promise
   if (!isPlaylist(playlist)) throw new Error("Invalid playlist response.");
   return playlist;
 }
+
+export class LibraryMutationError extends Error {
+  readonly status: number;
+  constructor(status: number, message: string) { super(message); this.status = status; }
+}
+
+async function mutatePlaylist(path: string, method: string, body: object): Promise<PrivatePlaylist> {
+  const response = await authenticatedFetch(`/api/library/playlists/${path}`, {
+    method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  });
+  if (!response.ok) throw new LibraryMutationError(response.status,
+    response.status === 404 ? "The playlist, track or occurrence is no longer available." : "Unable to change playlist. Refresh its contents before trying again.");
+  const playlist: unknown = await response.json();
+  if (!isPlaylist(playlist)) throw new Error("Invalid playlist response. Refresh before trying again.");
+  return playlist;
+}
+
+export function addPlaylistItem(playlist: PrivatePlaylist, trackId: string) {
+  return mutatePlaylist(`${encodeURIComponent(playlist.id)}/items`, "POST", { trackId, expectedVersion: playlist.version });
+}
+
+export function removePlaylistItem(playlist: PrivatePlaylist, itemId: string) {
+  return mutatePlaylist(`${encodeURIComponent(playlist.id)}/items/${encodeURIComponent(itemId)}`, "DELETE", { expectedVersion: playlist.version });
+}

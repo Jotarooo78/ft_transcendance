@@ -8,11 +8,12 @@ import type { PrivatePlaylist as Playlist, Track } from "../types/music";
 
 type CatalogPageProps = {
   playlists: Playlist[];
+  onAddItem: (playlist: Playlist, trackId: string) => Promise<Playlist>;
 };
 
 const TRACKS_PER_PAGE = 2;
 
-function CatalogPage({ playlists }: CatalogPageProps) {
+function CatalogPage({ playlists, onAddItem }: CatalogPageProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [detailId, setDetailId] = useState<string | null>(null);
   const detailTrigger = useRef<HTMLButtonElement | null>(null);
@@ -32,6 +33,19 @@ function CatalogPage({ playlists }: CatalogPageProps) {
   const [sortOption, setSortOption] = useState<SortOption>("title");
 
   const [message, setMessage] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState("");
+  const destination = playlists.find(playlist => playlist.id === selectedPlaylistId) ?? playlists[0];
+
+  async function handleAdd(track: Track) {
+    if (!destination || adding) return;
+    setAdding(true); setMessage(""); setAddError("");
+    try {
+      const confirmed = await onAddItem(destination, track.id);
+      setMessage(`${track.title} added to ${confirmed.name}.`);
+    } catch (error) { setAddError(error instanceof Error ? error.message : "Unable to add track. Refresh before trying again."); }
+    finally { setAdding(false); }
+  }
 
   const [retry, setRetry] = useState(0);
   const requestKey = JSON.stringify([currentPage, searchQuery, selectedGenre, sortOption, retry]);
@@ -146,7 +160,7 @@ function CatalogPage({ playlists }: CatalogPageProps) {
               Add tracks to
               <select
                 id="playlist-destination"
-                value={selectedPlaylistId}
+                value={destination?.id ?? ""}
                 onChange={(event) => {
                   setSelectedPlaylistId(event.target.value);
                   setMessage("");
@@ -171,6 +185,9 @@ function CatalogPage({ playlists }: CatalogPageProps) {
               </p>
             )}
           </div>
+
+          {adding && <p role="status">Adding track…</p>}
+          {addError && <p role="alert">{addError}</p>}
 
           <p className="search-result-count" aria-live="polite">
             {loading ? "Loading catalogue…" : `${data?.total ?? 0} track(s) found`}
@@ -199,7 +216,8 @@ function CatalogPage({ playlists }: CatalogPageProps) {
                     <button
                       type="button"
                       className="track-action-button add-track-button"
-                      disabled
+                      disabled={!destination || adding}
+                      onClick={() => { void handleAdd(track); }}
                       aria-label={`Add ${track.title} to playlist`}
                       title="Add to playlist"
                     >
