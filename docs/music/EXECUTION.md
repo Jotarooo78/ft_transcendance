@@ -42,4 +42,15 @@ Les critères de compréhension restent personnels.
   passages assert-catalog.sql réussis : mêmes trois published, un draft,
   durées de six secondes, crédits et genres. Aucune route HTTP encore prouvée.
 - Documentation Notion créée et liée pour seed.ts, package.json et assertions.
-- Synchronisation à effectuer avant CAT-4.
+- Synchronisation CAT-3 : 85a856f publié, aucun nouveau commit ni conflit.
+
+## CAT-4 — Détail réel
+
+- buildApp sépare le contrat HTTP du lecteur Prisma réel ; DTO public partagé
+  dans catalog.ts pour centraliser la conversion des BigInt sans précision perdue.
+- Docker et deux tests node:test réussis : champs publics/unités, validation,
+  refus, panne injectée, readiness/métriques et fermeture.
+- Fetch interne sur PostgreSQL : détail Aube 200 avec artiste/genre/durée,
+  draft réellement présent et UUID absent 404, UUID mal formé 400.
+- Documentation Notion des cinq fichiers liée à CAT-4.
+- Synchronisation à effectuer avant CAT-5.
