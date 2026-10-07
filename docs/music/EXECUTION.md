@@ -214,3 +214,17 @@ Les critères de compréhension restent personnels.
   de piste puis réouverture après retrait de la panne décodent les vrais WAV.
 - Preuve locale : /tmp/music-med6-browser.mjs. Test durable ajouté en MED-8.
   Aucune donnée Playback envoyée avant ECO. Notes Notion actualisées.
+- Synchronisation MED-6 : ac82ed7 publié, aucun apport distant ni conflit.
+
+## MED-7 — Octets, refus et redémarrages
+
+- HTTPS réel compare les trois SHA-256 MED-2, tailles, RIFF, HEAD, plages
+  fermées/ouvertes/suffixes et limites 416 ; SQL confirme les mêmes empreintes.
+- Fixtures distinctes : pending avec fichier, ready retiré avec fichier,
+  ready publié sans fichier. GET et HEAD refusent les trois en 404.
+- Arrêt réel de Catalogue : Media répond 503. Après retour de Catalogue,
+  redémarrage Media puis DB séparément : mêmes empreintes relues sans seed.
+- `media`, `media-unavailable`, deux `media-verify` et assert-media.sql passent.
+- Fixtures SQL et deux copies de fichiers retirées ; `catalog-verify` passe.
+  Les fichiers de démonstration sont conservés pour la preuve navigateur.
+- Documentation Notion des contrôles et fixtures reliée à MED-7.

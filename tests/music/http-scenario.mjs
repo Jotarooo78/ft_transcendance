@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import https from 'node:https';
+import { createHash } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 
 export const base = new URL(process.env.MUSIC_BASE_URL ?? 'https://127.0.0.1:3443');
@@ -89,8 +90,57 @@ async function catalogEdge() {
   assert.deepEqual((await list('genre=Other')).items.map(t => t.id), [edge1, edge2]);
 }
 
+const hashes = [
+  '5677a050f387c21a475ab48574c58b694f895a4a892e6856e25ef89e8e4d6acb',
+  '2555a613adb120e97254d51e67841193f7481d5058450ef9e77b86d6088b5323',
+  'fd61a1cf5debdd360c057b20aaf36618ba6cced33536326ddf540e69bef0a882',
+];
+async function media(edge = false) {
+  await waitReady('media'); await waitReady('catalog');
+  for (let index = 0; index < 3; index++) {
+    const path = `/api/media/assets/30000000-0000-4000-8000-00000000000${index + 1}/audio`;
+    const full = await request(path);
+    assert.equal(full.status, 200); assert.equal(full.bytes.length, 96044);
+    assert.equal(full.headers['content-type'], 'audio/wav');
+    assert.equal(full.headers['content-length'], '96044');
+    assert.equal(full.headers['cache-control'], 'no-store');
+    assert.equal(full.headers['accept-ranges'], 'bytes');
+    assert.equal(createHash('sha256').update(full.bytes).digest('hex'), hashes[index]);
+    assert.equal(full.bytes.toString('ascii', 0, 4), 'RIFF');
+    assert.equal(full.bytes.toString('ascii', 8, 16), 'WAVEfmt ');
+    assert.equal(full.bytes.readUInt32LE(24), 8000); assert.equal(full.bytes.readUInt16LE(34), 16);
+    for (const [range, start, end] of [['bytes=0-43',0,43],['bytes=96043-',96043,96043],['bytes=-9',96035,96043],['bytes=20-999999',20,96043],['bytes=-999999',0,96043]]) {
+      const r = await request(path, {headers:{Range:range}});
+      assert.equal(r.status,206); assert.deepEqual(r.bytes,full.bytes.subarray(start,end+1));
+      assert.equal(r.headers['content-range'],`bytes ${start}-${end}/96044`);
+      assert.equal(r.headers['content-length'],String(end-start+1));
+    }
+    for (const range of ['bytes=96044-','bytes=3-2','bytes=0-1,4-5','bytes=-0','bytes=9007199254740992-']) {
+      const r=await request(path,{headers:{Range:range}});
+      assert.equal(r.status,416); assert.equal(r.headers['content-range'],'bytes */96044');
+    }
+    const head=await request(path,{method:'HEAD',headers:{Range:'bytes=0-43'}});
+    assert.equal(head.status,200); assert.equal(head.bytes.length,0);
+    assert.equal(head.headers['content-length'],'96044'); assert.equal(head.headers['content-type'],'audio/wav');
+  }
+  assert.equal((await request('/api/media/assets/no/audio')).status,400);
+  assert.equal((await request('/api/media/assets/30000000-0000-4000-8000-000000000099/audio')).status,404);
+  assert.equal((await request('/api/media/metrics')).status,403);
+  if (edge) for(const suffix of ['001','002','003']) for(const method of ['GET','HEAD']) {
+    const r=await request(`/api/media/assets/32000000-0000-4000-8000-000000000${suffix}/audio`,{method});
+    assert.equal(r.status,404,`edge ${suffix} ${method}`);
+    if(method==='HEAD') assert.equal(r.bytes.length,0);
+    else assert.deepEqual(r.json(),{error:'media_not_found'});
+  }
+}
+
 const mode = process.argv[2];
 if (mode === 'catalog' || mode === 'catalog-verify') await catalog();
 else if (mode === 'catalog-edge') await catalogEdge();
-else throw new Error('Expected catalog, catalog-verify or catalog-edge');
+else if (mode === 'media' || mode === 'media-verify') await media(mode === 'media');
+else if (mode === 'media-unavailable') {
+  const r=await request('/api/media/assets/30000000-0000-4000-8000-000000000001/audio');
+  assert.equal(r.status,503); assert.deepEqual(r.json(),{error:'media_unavailable'});
+}
+else throw new Error('Unknown music scenario');
 console.log(`PASS ${mode}: HTTPS assertions, no fixture reinstallation`);
