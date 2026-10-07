@@ -569,3 +569,16 @@ Les critères de compréhension restent personnels.
   simulée, coalescence, retries, changement de piste, ouverture incertaine,
   déconnexion avant/après ouverture. Lint/build verts ; SQL/Chromium ECO-11/12.
 - Quatre notes de fichiers actualisées et liées dans Notion.
+- Synchronisation ECO-9 : fbd6904 publié, aucun apport distant ni conflit.
+
+## ECO-10 — Historique dans l’interface
+
+- Onglet privé History, lecture serveur paginée avec date, durée créditée,
+  dernière position, durée de référence et état ouvert/clos.
+- Métadonnées Catalogue chargées séparément : un morceau indisponible garde
+  les faits visibles et sa lecture désactivée. Aucun seuil calculé ni reprise
+  automatique. Chargement/vide/erreur/retry et actualisation explicites.
+- Réponse contrôlée contre token/tentative et annulée au démontage ; composant
+  rattaché au compte dans App. Lecteur disponible pour un morceau valide.
+- Dix tests frontend, lint/build passent ; frontend isolé reconstruit sain.
+  Preuve navigateur complète prévue ECO-12. Trois notes actualisées et liées.

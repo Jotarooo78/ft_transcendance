@@ -31,3 +31,13 @@ export async function openPlayback(trackId: string) {
 }
 export const savePlaybackProgress = (id: string, payload: ProgressPayload) => writeSession(`/${encodeURIComponent(id)}/progress`, "PUT", payload);
 export const closePlayback = (id: string) => writeSession(`/${encodeURIComponent(id)}/close`, "POST", {});
+
+export type PlaybackHistory = { items: PlaybackSession[]; page: number; pageSize: number; total: number };
+export async function getPlaybackHistory(page: number, signal?: AbortSignal): Promise<PlaybackHistory> {
+  const response = await authenticatedFetch(`/api/playback/sessions?page=${page}&pageSize=20`, { signal });
+  if (!response.ok) throw new Error("Unable to load listening history. Please retry.");
+  const data = await response.json();
+  if (!data || !Array.isArray(data.items) || !data.items.every(isPlaybackSession) || data.page !== page || data.pageSize !== 20 ||
+    !Number.isSafeInteger(data.total) || data.total < 0) throw new Error("Invalid listening history response.");
+  return data;
+}

@@ -6,6 +6,7 @@ import RegisterPage from "./pages/RegisterPage";
 import CatalogPage from "./pages/CatalogPage";
 import PlaylistsPage from "./pages/PlaylistsPage";
 import UsersPage from "./pages/UsersPage";
+import HistoryPage from "./pages/HistoryPage";
 
 import type { AuthenticatedUser, PublicUser } from "./types/auth";
 import { useLibrary } from "./hooks/useLibrary";
@@ -26,7 +27,7 @@ import "./App.css";
 
 type PublicPage = "register" | "login";
 
-type PrivatePage = "profile" | "catalog" | "playlists" | "users";
+type PrivatePage = "profile" | "catalog" | "playlists" | "history" | "users";
 
 function getErrorMessage(error: unknown, fallbackMessage: string): string {
   if (error instanceof Error) {
@@ -251,6 +252,8 @@ function App() {
           <strong className="site-title">FT Music</strong>
 
           <nav className="main-navigation" aria-label="User navigation">
+            <button type="button" className={privatePage === "history" ? "navigation-button active" : "navigation-button"}
+              aria-pressed={privatePage === "history"} onClick={() => setPrivatePage("history")}>History</button>
             <button
               type="button"
               className={
@@ -359,6 +362,8 @@ function App() {
             onDelete={library.remove}
           />
         )}
+
+        {privatePage === "history" && <HistoryPage key={currentUser.id} />}
 
         {privatePage === "users" && (
           <UsersPage
