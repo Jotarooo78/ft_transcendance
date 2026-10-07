@@ -146,4 +146,19 @@ Les critères de compréhension restent personnels.
   limite du retrait pendant un flux en cours.
 - Contrôle documentaire contre schémas/contrat Catalogue réalisé ; format de
   démonstration déterministe précisé. Aucune route Media encore implémentée.
-- Synchronisation à effectuer avant MED-2.
+- Synchronisation MED-1 : b1ecd7b publié, aucun apport distant ni conflit.
+
+## MED-2 — Fichiers et volume audio
+
+- Trois WAV PCM mono 16 bits, 8 kHz, six secondes (96 044 octets), associés
+  aux UUID Catalogue ; installation explicite avec vérification des collisions.
+- Publication du temporaire complet par lien atomique sans remplacement,
+  plutôt que rename qui peut écraser une destination concurrente. SQL ready
+  est écrit ensuite ; un éventuel fichier orphelin reste privé.
+- Build et démarrage isolés Catalogue/Media réussis. Double seed Media réussi,
+  octets comparés et empreintes identiques ; assert-media.sql passe.
+- Premier essai corrigé : le retour void du verrou PostgreSQL doit être
+  converti en texte pour $queryRaw. Les deux seeds validés sont post-correction.
+- Volume principal configuré seulement ; aucun seed de développement exécuté.
+  Garde du runner étendue aux trois volumes isolés ; bash -n passe.
+- Documentation Notion par fichier produite et reliée à MED-2.

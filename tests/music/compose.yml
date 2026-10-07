@@ -140,6 +140,22 @@ services:
       timeout: 3s
       retries: 30
 
+  media-service:
+    build: ../../services/media-service
+    environment:
+      MEDIA_DATABASE_URL: postgresql://media_runtime:e2e_media_runtime_test_only@db:5432/transcendence_music?schema=media
+      MEDIA_STORAGE_DIR: /data/audio
+    volumes:
+      - music_media_data:/data/audio
+    depends_on:
+      apply-permissions:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4003/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
   auth-service:
     build: ../../services/auth-service
     environment:
@@ -208,3 +224,4 @@ services:
 volumes:
   music_avatar_data:
   music_db_data:
+  music_media_data:

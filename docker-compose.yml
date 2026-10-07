@@ -86,6 +86,10 @@ services:
       - "4003"
     env_file:
       - .env
+    environment:
+      MEDIA_STORAGE_DIR: /data/audio
+    volumes:
+      - media_data:/data/audio
     depends_on:
       apply-permissions:
         condition: service_completed_successfully
@@ -325,3 +329,4 @@ volumes:
   prometheus_data:
   grafana_data:
   avatar_data:
+  media_data:

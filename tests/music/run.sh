@@ -51,7 +51,7 @@ const config=JSON.parse(readFileSync(process.argv[2],'utf8'));
 const raw=readFileSync(process.argv[3],'utf8');
 assert.ok(!/^\s*(env_file|container_name|external):/m.test(raw));
 assert.equal(config.name,'transcendence_music');
-assert.deepEqual(Object.keys(config.volumes).sort(),['music_avatar_data','music_db_data']);
+assert.deepEqual(Object.keys(config.volumes).sort(),['music_avatar_data','music_db_data','music_media_data']);
 for (const [key,v] of Object.entries(config.volumes)) assert.ok(!v.external&&v.name===`transcendence_music_${key}`);
 for (const n of Object.values(config.networks)) assert.ok(!n.external&&n.name.startsWith('transcendence_music_'));
 for (const s of Object.values(config.services)) assert.ok(!s.container_name&&!s.env_file);
