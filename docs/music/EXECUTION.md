@@ -490,3 +490,15 @@ Les critères de compréhension restent personnels.
   position arrière, plafonds, séquence sautée, total décroissant, session close
   et horloge arrière. Ces tests injectés ne remplacent pas ECO-11 PostgreSQL.
 - Build Docker vert ; notes produites et amendées, liées dans Notion.
+- Synchronisation ECO-3 : e5cc938 publié, aucun apport distant ni conflit.
+
+## ECO-4 — Renvois sans double comptage
+
+- Cherche l’événement existant sous verrou avant de refuser une session close.
+  Position/total identiques : résumé courant sans écriture ; divergence : 409.
+  Renvoi d’un ancien événement retourne la dernière position confirmée.
+- Six tests passent : réponse perdue après écriture, doublon courant/ancien,
+  fixture close et concurrence sous verrou simulé ; une seule paire d’écritures.
+  Aucun double crédit ; PostgreSQL réel reste à éprouver dans ECO-11.
+- L’adaptation se limite au calcul transactionnel et ses tests ; les routes et
+  le point d’entrée utilisent déjà cette fonction. Notes Notion actualisées.

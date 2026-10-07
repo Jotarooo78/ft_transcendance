@@ -11,6 +11,16 @@ export type SessionTransaction = {
 // The caller holds the owner's session row lock for this entire operation.
 export async function recordProgress(tx: SessionTransaction, input: Progress, clock: () => number = Date.now): Promise<Session> {
   const row = tx.session;
+  const existing = await tx.getEvent(input.sequence);
+  if (existing) {
+    if (existing.positionMs !== BigInt(input.positionMs) || existing.listenedMsTotal !== BigInt(input.listenedMsTotal)) {
+      throw new PlaybackError(409, "progress_conflict");
+    }
+    const latest = input.sequence === row.lastSequence ? existing : await tx.getEvent(row.lastSequence);
+    if (!latest) throw new Error("Missing latest event");
+    // Confirm even an older event or a now-closed session without a second write.
+    return toSession(row, latest.positionMs);
+  }
   if (row.endedAt || input.sequence !== row.lastSequence + 1) throw new PlaybackError(409, "progress_conflict");
   if (input.positionMs > safeNumber(row.trackDurationMs)) throw new PlaybackError(400, "invalid_request");
   const previous = row.lastSequence === 0 ? null : await tx.getEvent(row.lastSequence);

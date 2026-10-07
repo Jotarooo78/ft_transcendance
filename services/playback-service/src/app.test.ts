@@ -21,6 +21,39 @@ function memoryTransaction(initial: SessionRow = row) {
   return { tx, events, state: () => state, summaries: () => summaries };
 }
 
+test("exact retransmissions confirm one event even when older or closed; divergent content conflicts", async () => {
+  const memory = memoryTransaction(), start = row.startedAt.getTime();
+  const input = { sequence: 1, positionMs: 1000, listenedMsTotal: 1000 };
+  const first = await recordProgress(memory.tx, input, () => start + 1000);
+  // Pretend the first response was lost after both writes.
+  assert.deepEqual(await recordProgress(memory.tx, input, () => start + 3000), first);
+  assert.equal(memory.events.size, 1); assert.equal(memory.summaries(), 1);
+  const second = await recordProgress(memory.tx, { sequence: 2, positionMs: 2000, listenedMsTotal: 2000 }, () => start + 2000);
+  assert.deepEqual(await recordProgress(memory.tx, input), second);
+  for (const divergent of [{ ...input, positionMs: 1001 }, { ...input, listenedMsTotal: 1001 }]) {
+    await assert.rejects(recordProgress(memory.tx, divergent), PlaybackError);
+  }
+  assert.equal(memory.events.size, 2); assert.equal(memory.summaries(), 2); assert.equal(memory.state().listenedMs, 2000n);
+  const closed = memoryTransaction({ ...memory.state(), endedAt: new Date(start + 2500) });
+  for (const [key, event] of memory.events) closed.events.set(key, event);
+  const confirmed = await recordProgress(closed.tx, input);
+  assert.equal(confirmed.endedAt, new Date(start + 2500).toISOString()); assert.equal(confirmed.positionMs, 2000);
+  assert.equal(closed.summaries(), 0); assert.equal(closed.events.size, 2);
+  await assert.rejects(recordProgress(closed.tx, { sequence: 3, positionMs: 2000, listenedMsTotal: 2000 }), PlaybackError);
+});
+
+test("two equal requests under a simulated lock cause one write pair", async () => {
+  const memory = memoryTransaction(); let tail = Promise.resolve();
+  const input = { sequence: 1, positionMs: 1000, listenedMsTotal: 1000 };
+  const locked = () => {
+    const run = tail.then(() => recordProgress(memory.tx, input, () => row.startedAt.getTime() + 1000));
+    tail = run.then(() => {}); return run;
+  };
+  const replies = await Promise.all([locked(), locked()]);
+  assert.deepEqual(replies[0], replies[1]); assert.equal(memory.events.size, 1); assert.equal(memory.summaries(), 1);
+  // Real PostgreSQL contention and rollback are proved separately in ECO-11.
+});
+
 test("progress validates request shape before the writer and preserves business errors", async t => {
   let writes = 0;
   const app = buildApp({ jwtSecret: "test-only-playback-secret", ready: async () => {}, readTrackDuration: async () => 6000,
