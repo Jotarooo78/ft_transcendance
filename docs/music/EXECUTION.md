@@ -176,3 +176,15 @@ Les critères de compréhension restent personnels.
   Ce sont des tests de service ; HTTPS et vraie base Media seront prouvés
   en MED-5/7. HEAD et Range restent MED-4.
 - Notes Notion par fichier produites et reliées à MED-3.
+- Synchronisation MED-3 : 9801f68 publié, aucun apport distant ni conflit.
+  La suite Catalogue a fini après ce push ; succès confirmé avant MED-4.
+
+## MED-4 — HEAD et plages
+
+- GET accepte plage fermée, ouverte et suffixe ; bornes inclusives et entiers
+  sûrs. 206 contient la portion exacte ; plages invalides/multiples : 416.
+- HEAD partage les contrôles, ignore Range et ne crée aucun flux. Une erreur
+  HEAD supprime explicitement son corps, correction détectée par le test.
+- Trois tests Media passent après correction : octets complets/partiels,
+  limites, en-têtes, HEAD autorisé/refusé et client publication HTTP borné.
+- Contrat et notes Notion actualisés ; preuve HTTPS à suivre en MED-5.

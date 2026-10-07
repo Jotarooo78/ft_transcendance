@@ -73,6 +73,11 @@ Les erreurs ont un corps JSON `{ "error": "invalid_request" }`,
 `media_not_found`, `invalid_range` ou `media_unavailable`, selon le statut.
 HEAD supprime le corps aussi sur erreur. Les métriques ne sont pas publiques.
 
+Implémentation MED-4 : un gestionnaire commun contrôle GET et HEAD avant le
+traitement de Range. HEAD ouvre et vérifie le descripteur mais ne crée pas de
+flux. Les tests comparent les portions, dont le dernier octet et les suffixes
+surdimensionnés ; publication et stockage restent requis pour chaque méthode.
+
 ## Fixtures et persistance
 
 Trois fichiers WAV PCM mono 16 bits little-endian, 8000 échantillons/seconde,
