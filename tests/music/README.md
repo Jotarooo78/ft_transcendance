@@ -37,3 +37,15 @@ Depuis CAT-6 : `up -d --build --wait nginx`, puis
 Le certificat autosigné justifie --insecure uniquement dans cette pile locale.
 Le détail utilise /api/catalog/tracks/{UUID} ; /api/catalog/metrics est refusé
 par 403. `exec -T nginx nginx -t` vérifie la configuration de cette passerelle.
+
+## Contrôles Catalogue
+
+`node tests/music/http-scenario.mjs catalog` vérifie les réponses réelles.
+`catalog-verify` rejoue les mêmes assertions sans réinstallation après arrêt/
+relance de Catalogue ou `restart db`. La disponibilité est attendue de façon
+bornée. `assert-catalog.sql` confirme en SQL le draft réellement présent.
+
+Pour les cas de tri : passer catalog-edge.sql à psql dans cette pile avec
+`-v cleanup=false`, exécuter `node tests/music/http-scenario.mjs catalog-edge`,
+puis le même SQL avec `-v cleanup=true`. La garde du script refuse les autres
+bases ; le nettoyage vise seulement les UUID des deux fixtures supplémentaires.

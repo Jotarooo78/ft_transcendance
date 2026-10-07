@@ -97,4 +97,15 @@ Les critères de compréhension restent personnels.
   erreur 404 simulée sans perte de liste puis retry vers le vrai serveur.
   Script ponctuel /tmp/music-cat8-browser.mjs, à intégrer en CAT-10.
 - Notes client/page réutilisées et TrackDetails documenté dans Notion.
-- Synchronisation à effectuer avant CAT-9.
+- Synchronisation CAT-8 : 01c611e publié, aucun nouveau commit ni conflit.
+
+## CAT-9 — Preuves HTTPS/SQL et redémarrages
+
+- Scénario durable borné à 127.0.0.1:3443 : listes/détail, erreurs, champs publics,
+  total/pagination, trois tris, recherches littérales et invisibilité du draft.
+- catalog puis catalog-edge réussis. Les deux fixtures supplémentaires ont été
+  installées/retirées explicitement dans la seule base transcendence_music.
+- Catalogue arrêté/redémarré puis DB redémarrée : catalog-verify réussi après
+  chaque phase, sans seed supplémentaire. assert-catalog.sql final réussi.
+- Aucun redémarrage de Nginx nécessaire, données et UUID conservés.
+- Documentation Notion liée à CAT-9 ; synchronisation avant CAT-10.
