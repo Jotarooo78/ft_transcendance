@@ -405,3 +405,15 @@ Les critères de compréhension restent personnels.
   serveur du nom/description/version 3. Le premier accès après reconstruction
   a reçu 502 pendant le démarrage ; relecture après disponibilité réussie.
 - Preuve locale /tmp/music-lib11-browser.mjs ; notes Notion mises à jour.
+- Synchronisation LIB-11 : 65b7752 publié, aucun apport distant ni conflit.
+
+## LIB-12 — Suppression confirmée dans l’écran
+
+- Confirmation de la personne avant DELETE versionné, attente du 204 avant
+  retrait, sélection de repli et démontage du lecteur lié à la playlist.
+- Panne : carte/lecteur conservés ; 409 : relecture et geste explicite requis.
+  Les réponses sont toujours contrôlées contre l’identité courante.
+- Lint/build et Chromium passent : annulation sans DELETE, panne simulée,
+  conflit réel après PATCH externe, puis suppression et GET 404 confirmés.
+  Une autre playlist reste sélectionnée et le lecteur disparaît au succès.
+- Preuve locale /tmp/music-lib12-browser.mjs ; notes Notion mises à jour.

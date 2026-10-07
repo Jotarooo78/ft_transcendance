@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { addPlaylistItem, createPlaylist, getPlaylist, getPlaylists, LibraryMutationError, removePlaylistItem, updatePlaylist } from "../services/library";
+import { addPlaylistItem, createPlaylist, deletePlaylist, getPlaylist, getPlaylists, LibraryMutationError, removePlaylistItem, updatePlaylist } from "../services/library";
 import { getAccessToken, onSessionCleared } from "../services/session";
 import type { PrivatePlaylist } from "../types/music";
 
@@ -36,11 +36,12 @@ export function useLibrary(ownerId: string | null) {
     setResult(previous => previous.key === key ? { ...previous,
       items: previous.items.map(item => item.id === playlist.id && item.version <= playlist.version ? playlist : item) } : previous);
   }
-  async function mutate(playlist: PrivatePlaylist, operation: () => Promise<PrivatePlaylist>) {
+  async function mutate<T extends PrivatePlaylist | void>(playlist: PrivatePlaylist, operation: () => Promise<T>) {
     requireCurrentAccount();
     try {
       const confirmed = await operation();
-      replace(confirmed);
+      requireCurrentAccount();
+      if (confirmed) replace(confirmed);
       return confirmed;
     } catch (error) {
       requireCurrentAccount();
@@ -52,8 +53,13 @@ export function useLibrary(ownerId: string | null) {
       throw error;
     }
   }
+  async function remove(playlist: PrivatePlaylist) {
+    await mutate(playlist, () => deletePlaylist(playlist));
+    requireCurrentAccount();
+    setResult(previous => previous.key === key ? { ...previous, items: previous.items.filter(item => item.id !== playlist.id) } : previous);
+  }
   return { playlists: current ? result.items : [], loading: ownerId !== null && !current,
-    error: current ? result.error : undefined, reload: () => setRetry(value => value + 1), create,
+    error: current ? result.error : undefined, reload: () => setRetry(value => value + 1), create, remove,
     addItem: (playlist: PrivatePlaylist, trackId: string) => mutate(playlist, () => addPlaylistItem(playlist, trackId)),
     update: (playlist: PrivatePlaylist, name: string, description: string) => mutate(playlist, () => updatePlaylist(playlist, name, description)),
     removeItem: (playlist: PrivatePlaylist, itemId: string) => mutate(playlist, () => removePlaylistItem(playlist, itemId)) };

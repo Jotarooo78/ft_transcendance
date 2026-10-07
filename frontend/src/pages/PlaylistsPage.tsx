@@ -10,6 +10,7 @@ type Props = {
   onCreate: (name: string, description: string) => Promise<PrivatePlaylist>;
   onRemoveItem: (playlist: PrivatePlaylist, itemId: string) => Promise<PrivatePlaylist>;
   onUpdate: (playlist: PrivatePlaylist, name: string, description: string) => Promise<PrivatePlaylist>;
+  onDelete: (playlist: PrivatePlaylist) => Promise<void>;
 };
 
 function PlaylistEditor({ playlist, onUpdate, onClose }: { playlist: PrivatePlaylist; onUpdate: Props["onUpdate"]; onClose: () => void }) {
@@ -34,14 +35,26 @@ function PlaylistEditor({ playlist, onUpdate, onClose }: { playlist: PrivatePlay
   </form>;
 }
 
-export default function PlaylistsPage({ playlists, loading, error, onRetry, onCreate, onRemoveItem, onUpdate }: Props) {
+export default function PlaylistsPage({ playlists, loading, error, onRetry, onCreate, onRemoveItem, onUpdate, onDelete }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<{ id: string; message: string } | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
   const selected = playlists.find(playlist => playlist.id === selectedId) ?? playlists[0];
+  async function handleDelete(playlist: PrivatePlaylist) {
+    if (deleting || !window.confirm(`Delete playlist "${playlist.name}"?`)) return;
+    setDeleting(true); setDeleteError(null);
+    try {
+      await onDelete(playlist);
+      setSelectedId(id => id === playlist.id ? null : id);
+      setEditingId(id => id === playlist.id ? null : id);
+    } catch (error) { setDeleteError({ id: playlist.id, message: error instanceof Error ? error.message : "Unable to delete playlist." }); }
+    finally { setDeleting(false); }
+  }
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (creating || name.trim() === "") return;
@@ -79,8 +92,12 @@ export default function PlaylistsPage({ playlists, loading, error, onRetry, onCr
     </section>
     {!loading && !error && selected && <section className="playlist-section" aria-labelledby="playlist-tracks-title">
       <div className="playlist-heading"><h2 id="playlist-tracks-title">Tracks in {selected.name}</h2>
-        <div className="playlist-heading-actions"><button type="button" onClick={() => setEditingId(selected.id)} disabled={editingId === selected.id}>Edit playlist</button><button type="button" disabled>Delete playlist</button></div>
+        <div className="playlist-heading-actions">
+          <button type="button" onClick={() => setEditingId(selected.id)} disabled={editingId === selected.id || deleting}>Edit playlist</button>
+          <button type="button" disabled={deleting} onClick={() => { void handleDelete(selected); }}>{deleting ? "Deleting…" : "Delete playlist"}</button>
+        </div>
       </div>
+      {deleteError?.id === selected.id && <p role="alert">{deleteError.message}</p>}
       {editingId === selected.id && <PlaylistEditor key={`editor:${selected.id}`} playlist={selected} onUpdate={onUpdate} onClose={() => setEditingId(null)} />}
       <PlaylistTracks key={`tracks:${selected.id}`} playlist={selected} onRemove={onRemoveItem} />
     </section>}

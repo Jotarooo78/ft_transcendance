@@ -356,6 +356,7 @@ function App() {
             onCreate={library.create}
             onRemoveItem={library.removeItem}
             onUpdate={library.update}
+            onDelete={library.remove}
           />
         )}
 

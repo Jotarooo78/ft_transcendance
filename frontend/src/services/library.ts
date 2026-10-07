@@ -75,3 +75,11 @@ export function removePlaylistItem(playlist: PrivatePlaylist, itemId: string) {
 export function updatePlaylist(playlist: PrivatePlaylist, name: string, description: string) {
   return mutatePlaylist(encodeURIComponent(playlist.id), "PATCH", { name, description, expectedVersion: playlist.version });
 }
+
+export async function deletePlaylist(playlist: PrivatePlaylist): Promise<void> {
+  const response = await authenticatedFetch(`/api/library/playlists/${encodeURIComponent(playlist.id)}`, {
+    method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expectedVersion: playlist.version }),
+  });
+  if (response.status !== 204) throw new LibraryMutationError(response.status,
+    "Unable to delete playlist. Refresh its contents before trying again.");
+}
