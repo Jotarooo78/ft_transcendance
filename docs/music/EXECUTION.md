@@ -464,3 +464,16 @@ Les critères de compréhension restent personnels.
 - Renvoi exact, divergence, ordre, clôture idempotente et historique définis.
   Qualification R15 explicitement non activée ; fermeture brutale au mieux.
 - Documentation Notion remplie et liée. Les routes restent à produire ensuite.
+- Synchronisation ECO-1 : 462921f publié, aucun apport distant ni conflit.
+
+## ECO-2 — Ouverture authentifiée
+
+- Fastify injectable, JWT signé/expiré/sujet UUID, corps trackId exact.
+  Durée copiée depuis Catalogue HTTP (timeout 2 s), aucune lecture Media/SQL
+  interservice. Ouverture vide ; qualification absente du DTO.
+- Point d’entrée réel avec JWT_SECRET obligatoire et Prisma Playback propre.
+  Routes techniques, readiness et fermeture conservées. JWT 10.2.2 verrouillé.
+- Construction Docker et 2 tests passent : refus sans écriture, champs forgés,
+  durée invalide, 404/503 et vrai client HTTP local avec timeout. Les écritures
+  PostgreSQL réelles seront vérifiées dans ECO-11.
+- Sept notes de fichiers créées, remplies et liées dans Notion.
