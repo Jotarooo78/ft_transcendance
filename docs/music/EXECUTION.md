@@ -452,3 +452,15 @@ Les critères de compréhension restent personnels.
 - Log /tmp/music-lib14-campaign.log, base d22d598 avec changements LIB-14
   explicitement signalés. Documentation Notion actualisée ; compréhension
   personnelle laissée à l’utilisateur. Aucun changement de migration/grants.
+- Synchronisation LIB-14 : fb3caff publié, aucun apport distant ni conflit.
+
+## ECO-1 — Contrat de progression
+
+- Contrat confronté aux modèles Session/Event et aux contraintes SQL existantes.
+  Position, total déclaré et crédit serveur séparés ; séquence Int32 et durées
+  JSON sûres, durée de référence issue de Catalogue.
+- Exemple théorique relu : 2 s actives puis seek à 5 s ne crédite pas 5 s.
+  Plafonds par durée, temps global et intervalle serveur, tolérance ajoutée 0 ms.
+- Renvoi exact, divergence, ordre, clôture idempotente et historique définis.
+  Qualification R15 explicitement non activée ; fermeture brutale au mieux.
+- Documentation Notion remplie et liée. Les routes restent à produire ensuite.
