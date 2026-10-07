@@ -124,5 +124,55 @@ création/édition/retrait/suppression et le 404 Catalogue sont des simulations
 explicitement délimitées ; les succès et la persistance utilisent le serveur.
 La suppression attend une confirmation puis 204 avant fermeture du lecteur.
 
-Les sessions d’écoute restent à réaliser.
+## Campagne Playback complète
+
+```sh
+tests/music/run.sh playback
+```
+
+Cette phase inclut Catalogue, Media et Library puis les huit tests Playback,
+les dix tests frontend de mesure/file et lint/build. Le scénario HTTP Playback
+contrôle validation/JWT, propriété A/B, pagination, ordre, doublons identiques
+et divergents concurrents, crédit plafonné et clôture répétée. L'oracle SQL
+compare les événements exacts et recalcule indépendamment le temps crédité.
+Il vérifie aussi que playback_runtime ne peut lire les autres schémas métier.
+
+Pendant l'arrêt réel de Catalogue, l'ouverture renvoie 503 ; l'historique et
+la clôture déjà enregistrée restent disponibles. Redémarrages Playback puis
+DB séparés : mêmes IDs et valeurs sans seed. Le navigateur utilise de vrais
+octets audio et compare en SQL les mêmes sessions que dans History. Les cinq
+scénarios Chromium couvrent les quatre domaines. Les contrôles Playback
+incluent pause, seek, réponse perdue après écriture, retries bornés, panne de
+sauvegarde avec audio actif, reconnexion et réponse périmée d'un autre compte.
+
+Pour reprendre les contrôles sur une pile prête et initialisée :
+
+```sh
+node tests/music/http-scenario.mjs playback
+docker compose -p transcendence_music --env-file /dev/null -f tests/music/compose.yml exec -T db psql -U e2e_admin -d transcendence_music -v ON_ERROR_STOP=1 -v fixture="$(cat /tmp/transcendence-music-playback-state.json)" -f /dev/stdin < tests/music/assert-playback.sql
+docker compose -p transcendence_music --env-file /dev/null -f tests/music/compose.yml restart playback-service
+node tests/music/http-scenario.mjs playback-verify
+docker compose -p transcendence_music --env-file /dev/null -f tests/music/compose.yml restart db
+node tests/music/http-scenario.mjs playback-verify
+npm test --prefix tests/music -- --grep 'playback:'
+```
+
+Le fichier de preuve contient seulement comptes de test, IDs, DTO et événements
+attendus. Les comptes des scénarios portent des suffixes distincts. Les tests
+navigateur Playback nécessitent Docker accessible pour leur oracle SQL en
+lecture seule. La pause laisse le crédit strictement inchangé pendant 1200 ms ;
+le seek à 4500 ms laisse le même crédit. La reprise des 1500 ms restantes
+autorise 700–1800 ms supplémentaires pour la cadence et le plafond serveur.
+
+`run.sh` accepte catalog/media/library/playback, produit PASS et code 0
+uniquement après ses contrôles et son nettoyage, et affiche versions et base
+Git (sources modifiées signalées). Il utilise compose.yml, les seeds explicites,
+les scénarios HTTP, les fichiers SQL et Playwright verrouillé. Les trois volumes
+jetables sont recréés à chaque campagne ; exécuter les campagnes séquentiellement.
+Ce README fournit les prérequis et commandes ; le README racine présente les
+comportements disponibles et docs/music-plan/README.md relie les preuves au plan.
+
+Le suivi ne prouve pas l'attention humaine et n'active pas R15. Une fermeture
+brutale reste au mieux, sans garantie de clôture ni de sauvegarde des dernières
+secondes. Aucune reprise automatique, royalties ou statistique qualifiée.
 `docs/music/EXECUTION.md` conserve les résultats et les révisions observées.

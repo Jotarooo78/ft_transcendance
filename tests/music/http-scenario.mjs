@@ -272,6 +272,7 @@ async function playbackCall(token, suffix = '', method = 'GET', body, status = 2
 }
 async function playback() {
   await waitReady('playback');
+  assert.equal((await request('/api/playback/metrics')).status, 403);
   const a = await createFixtureUser('eco_a'), b = await createFixtureUser('eco_b');
   const ta = await loginFixture(a), tb = await loginFixture(b);
   const history = () => playbackCall(ta);
@@ -344,13 +345,19 @@ async function playback() {
     [session.id]: [first, second, variants[winner]], [capped.id]: [excessive],
   } }), { mode: 0o600 });
 }
-async function playbackVerify() {
+async function playbackVerify(unavailable = false) {
   await waitReady('playback'); await waitReady('auth');
   const f = JSON.parse(await readFile(playbackStatePath, 'utf8'));
   const ta = await loginFixture(f.a), tb = await loginFixture(f.b);
   assert.deepEqual((await playbackCall(ta)).items, f.sessions);
   assert.equal((await playbackCall(ta)).total, 2);
   assert.deepEqual((await playbackCall(tb)).items, []);
+  if (unavailable) {
+    await playbackCall(ta, '', 'POST', { trackId: trackIds[0] }, 503);
+    assert.deepEqual((await playbackCall(ta)).items, f.sessions);
+    const closed = f.sessions.find(s => s.endedAt !== null);
+    assert.deepEqual(await playbackCall(ta, `/${closed.id}/close`, 'POST', {}), closed);
+  }
 }
 
 const mode = process.argv[2];
@@ -360,6 +367,7 @@ else if (mode === 'media' || mode === 'media-verify') await media(mode === 'medi
 else if (mode === 'library') await library();
 else if (mode === 'playback') await playback();
 else if (mode === 'playback-verify') await playbackVerify();
+else if (mode === 'playback-unavailable') await playbackVerify(true);
 else if (['library-verify', 'library-unavailable', 'library-cleanup'].includes(mode)) await libraryVerify(mode);
 else if (mode === 'media-unavailable') {
   const r=await request('/api/media/assets/30000000-0000-4000-8000-000000000001/audio');

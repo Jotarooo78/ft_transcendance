@@ -634,3 +634,45 @@ Les critères de compréhension restent personnels.
   32,7 s (inclut le scénario Media dont le titre contient aussi playback).
   Aucun timeupdate ni succès serveur fabriqué. Trace/vidéo désactivées ;
   les captures d'échec éventuelles restent ignorées. Fermeture brutale : au mieux.
+- Contrôle propriétaire SQL ajouté : scénario nominal rejoué avec succès en
+  16,6 s. Un filtre Playwright ancré ne sélectionnait aucun test ; corrigé avant
+  validation et push. Synchronisation ECO-12 : `0630f76` publié, aucun apport
+  distant ni conflit.
+
+## ECO-13 — Campagnes finales et audit ECO
+
+- Runner étendu à playback : 5 tests Catalogue, 3 Media, 8 Library, 8 Playback
+  et 10 frontend, lint/build, doubles seeds et six migrations/permissions,
+  HTTP/SQL, pannes Catalogue, redémarrages et cinq scénarios Chromium.
+  Gardes et nettoyage conservés. Ajout de playback-unavailable : ouverture
+  503 sans écriture quand Catalogue est arrêté, historique et clôture toujours
+  lisibles. Métriques Playback refusées en 403.
+- Première campagne `tests/music/run.sh playback` : PASS playback et code 0,
+  nettoyage compris. Chromium : 5 tests en 45,4 s. Journal local
+  `/tmp/eco13-music-run1.log`. Après nettoyage : zéro conteneur, volume ou
+  réseau portant le label du projet transcendence_music.
+- Deuxième campagne identique depuis volumes neufs : PASS playback et code 0,
+  nettoyage compris ; Chromium : 5 tests en 45,7 s. Journal local
+  `/tmp/eco13-music-run2.log`. `nginx -t` musical réussi pendant ce passage.
+  PCE : PASS ALL et code 0, 6 tests Auth, 49 Users, lint/build frontend,
+  HTTP/SQL avant/après redémarrages, refus et Chromium (1 test, 7,7 s).
+  Nettoyage réussi ; journal local `/tmp/eco13-pce.log`.
+- Révision de base : `0630f76`, runner/scénario HTTP alors modifiés et signalés.
+  Les résultats décrivent ces sources, sans attribuer la preuve à un commit
+  futur. Les permissions, six migrations et schémas Prisma ne sont pas modifiés
+  depuis `182c75e` ; PER ne nécessite donc pas de campagne séparée ici.
+- Audit ECO-1 à ECO-12 : contrat et implémentation relus ; 23 notes de fichiers
+  ECO-1 à ECO-10 retrouvées et renseignées, notes ECO-11/12 produites et relues.
+  La matrice [du plan](../music-plan/README.md) relie les treize résultats aux
+  preuves. Les acquis des étapes précédentes n'ont pas été réimplémentés.
+- Les 23 notes antérieures ont aussi reçu leurs commandes de contrôle finales,
+  dépendances et limites ; l'audit ne repose pas seulement sur leur existence.
+- Documentation ECO-13 : runner (entrées/phases/gardes/sortie), README des tests
+  (dépendances/commandes/limites), README racine (comportements/liens) et index
+  local du plan (source canonique/matrice/état), avec une note Notion par fichier.
+- Hors promesse : fermeture brutale garantie, reprise automatique, worker de
+  clôture, statistiques qualifiées/royalties et antifraude absolue. Les cases
+  de compréhension restent à la personne ; aucune validation automatique.
+- ECO-13 est validé techniquement ; ce commit rassemble le runner testé,
+  le scénario HTTP et le bilan. Sa publication et le résultat du pull sont
+  consignés dans la sous-action Notion après git-sync.

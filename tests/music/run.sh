@@ -7,7 +7,7 @@ readonly project_name=transcendence_music
 compose_file="$script_dir/compose.yml"
 compose=(docker compose -p "$project_name" --env-file /dev/null -f "$compose_file")
 campaign="${1:-catalog}"
-[[ "$campaign" == catalog || "$campaign" == media || "$campaign" == library ]] || { echo 'Expected campaign: catalog, media or library' >&2; exit 2; }
+[[ "$campaign" == catalog || "$campaign" == media || "$campaign" == library || "$campaign" == playback ]] || { echo 'Expected campaign: catalog, media, library or playback' >&2; exit 2; }
 phase=guard
 cleanup_enabled=false
 complete=false
@@ -70,9 +70,15 @@ if [[ "$campaign" != catalog ]]; then
   phase=media-unit
   "${compose[@]}" run --rm --no-deps migrate-media npm test
 fi
-if [[ "$campaign" == library ]]; then
+if [[ "$campaign" == library || "$campaign" == playback ]]; then
   phase=library-unit
   "${compose[@]}" run --rm --no-deps migrate-library npm test
+fi
+if [[ "$campaign" == playback ]]; then
+  phase=playback-unit
+  "${compose[@]}" run --rm --no-deps migrate-playback npm test
+  phase=frontend-music-unit
+  "${compose[@]}" run --rm --no-deps frontend npm run test:music
 fi
 phase=frontend-lint-build
 "${compose[@]}" run --rm --no-deps frontend sh -ec 'npm run lint && npm run build'
@@ -134,7 +140,7 @@ if [[ "$campaign" != catalog ]]; then
   node "$script_dir/http-scenario.mjs" catalog-verify
   browser_pattern='catalog|media'
 fi
-if [[ "$campaign" == library ]]; then
+if [[ "$campaign" == library || "$campaign" == playback ]]; then
   phase=library-http
   node "$script_dir/http-scenario.mjs" library
   library_fixture="$(cat /tmp/transcendence-music-library-state.json)"
@@ -153,6 +159,25 @@ if [[ "$campaign" == library ]]; then
   node "$script_dir/http-scenario.mjs" library-cleanup
   sql_file -v cleanup=true -v fixture="$library_fixture" < "$script_dir/assert-library.sql"
   browser_pattern='catalog|media|library'
+fi
+if [[ "$campaign" == playback ]]; then
+  phase=playback-http
+  node "$script_dir/http-scenario.mjs" playback
+  playback_fixture="$(cat /tmp/transcendence-music-playback-state.json)"
+  sql_file -v fixture="$playback_fixture" < "$script_dir/assert-playback.sql"
+  phase=playback-catalogue-outage
+  "${compose[@]}" stop catalog-service
+  node "$script_dir/http-scenario.mjs" playback-unavailable
+  "${compose[@]}" up -d --no-deps --wait catalog-service
+  phase=playback-restart
+  "${compose[@]}" restart playback-service
+  node "$script_dir/http-scenario.mjs" playback-verify
+  sql_file -v fixture="$playback_fixture" < "$script_dir/assert-playback.sql"
+  phase=playback-database-restart
+  "${compose[@]}" restart db
+  node "$script_dir/http-scenario.mjs" playback-verify
+  sql_file -v fixture="$playback_fixture" < "$script_dir/assert-playback.sql"
+  browser_pattern='catalog|media|library|playback'
 fi
 phase=browser
 npm test --prefix "$script_dir" -- --grep "$browser_pattern"
