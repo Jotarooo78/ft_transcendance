@@ -31,4 +31,15 @@ Les critères de compréhension restent personnels.
   réussis ; up --build --wait catalog-service réussi, six migrations/permissions
   terminées et GET /ready interne répond 200 ready. Routes musicales non produites.
 - Documentation Notion liée à CAT-2 pour compose.yml et README.
-- Synchronisation CAT-2 à effectuer avant CAT-3.
+- Synchronisation CAT-2 : `29ad931` publié ; aucun nouveau commit distant,
+  aucun conflit.
+
+## CAT-3 — Fixtures reproductibles
+
+- Seed explicite et transactionnel avec identités stables, garde de collision
+  et sérialisation des installations ; aucune initialisation au démarrage.
+- Construction Docker/TypeScript réussie. Deux commandes seed:demo et deux
+  passages assert-catalog.sql réussis : mêmes trois published, un draft,
+  durées de six secondes, crédits et genres. Aucune route HTTP encore prouvée.
+- Documentation Notion créée et liée pour seed.ts, package.json et assertions.
+- Synchronisation à effectuer avant CAT-4.

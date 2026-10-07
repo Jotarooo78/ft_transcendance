@@ -8,6 +8,7 @@
   },
   "scripts": {
     "start": "node dist/index.js",
+    "seed:demo": "node dist/database/seed.js",
     "dev": "tsx watch src/index.ts",
     "prebuild": "npm run prisma:generate",
     "build": "tsc -p tsconfig.json",
