@@ -101,5 +101,28 @@ Seule la panne 404 est simulée ; changement de piste et nouvelle tentative
 retournent ensuite aux octets du serveur. Les contrôles HTTP prouvent le
 transport, les empreintes après redémarrage le stockage, Chromium le décodage.
 
-Les playlists persistées et sessions d’écoute restent à réaliser.
+## Campagne Library
+
+`tests/music/run.sh library` inclut Catalogue/Media, huit tests Library,
+les contrôles HTTP/SQL des propriétaires, occurrences, versions, concurrence
+réelle, cascade et redémarrages sans seed. `library-unavailable` attend 503
+pour l’ajout pendant la panne Catalogue et conserve les mutations locales.
+`library-verify` se reconnecte avec les comptes de test et relit les mêmes UUID.
+`library-cleanup` supprime uniquement leurs playlists et SQL vérifie la cascade.
+Le fichier `/tmp/transcendence-music-library-state.json` contient seulement
+les identités de test et DTO de preuve, jamais les tokens ni mots de passe.
+Pour exécuter SQL seul, passer son contenu à psql via
+`-v fixture="$(cat /tmp/transcendence-music-library-state.json)" -v cleanup=false`
+puis fournir `assert-library.sql` sur stdin. Utiliser `cleanup=true` après
+le mode cleanup.
+
+Le navigateur crée une playlist vide, répète un morceau, retire une occurrence,
+édite avec conflit réel puis retrouve les mêmes identités après reconnexion
+et dans un contexte neuf. B reste isolé malgré une vraie réponse A retardée.
+Une valeur localStorage témoin est conservée sans import. Les pannes réseau
+création/édition/retrait/suppression et le 404 Catalogue sont des simulations
+explicitement délimitées ; les succès et la persistance utilisent le serveur.
+La suppression attend une confirmation puis 204 avant fermeture du lecteur.
+
+Les sessions d’écoute restent à réaliser.
 `docs/music/EXECUTION.md` conserve les résultats et les révisions observées.

@@ -1,5 +1,122 @@
 import { test, expect } from '@playwright/test';
 
+test('library: confirmed gestures, failures, persistence and account isolation', async ({ page, browser }) => {
+  const loginResponse = page.waitForResponse(r => r.url().endsWith('/api/auth/login') && r.status() === 200);
+  const userA = await createAccount(page, 'library_a');
+  const tokenA = (await (await loginResponse).json()).token;
+  const witness = JSON.stringify([{ id: 'legacy-local', name: 'Local witness only', description: 'preserve', trackIds: [] }]);
+  await page.evaluate(value => localStorage.setItem('ft-music:playlists:v1', value), witness);
+  await page.getByRole('button', { name: 'Playlists', exact: true }).click();
+  await expect(page.getByText('No playlists yet.', { exact: true })).toBeVisible();
+  const create = page.locator('.playlist-form');
+  await create.getByLabel('Name', { exact: true }).fill('Browser library');
+  await create.getByLabel('Description', { exact: true }).fill('Keep draft');
+  // Labelled network failures exercise UI behavior, not server persistence.
+  await page.route('**/api/library/playlists', route => route.request().method() === 'POST' ? route.abort() : route.continue());
+  await create.getByRole('button', { name: 'Create playlist', exact: true }).click();
+  await expect(create.getByRole('alert')).toBeVisible();
+  await expect(create.getByLabel('Name', { exact: true })).toHaveValue('Browser library');
+  await expect(create.getByLabel('Description', { exact: true })).toHaveValue('Keep draft');
+  await page.unroute('**/api/library/playlists');
+  const creation = page.waitForResponse(r => r.url().endsWith('/api/library/playlists') && r.request().method() === 'POST' && r.status() === 201);
+  await create.getByRole('button', { name: 'Create playlist', exact: true }).click();
+  const empty = await (await creation).json(); expect(empty.items).toEqual([]); expect(empty.version).toBe(1);
+  await expect(page.getByRole('heading', { name: 'Tracks in Browser library', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Catalog', exact: true }).click();
+  const add = page.getByRole('button', { name: 'Add Aube — demo to playlist', exact: true });
+  for (let n = 0; n < 2; n++) {
+    const response = page.waitForResponse(r => r.url().endsWith(`/${empty.id}/items`) && r.request().method() === 'POST' && r.status() === 200);
+    await add.click(); await response; await expect(add).toBeEnabled();
+  }
+  await page.getByRole('button', { name: 'Playlists', exact: true }).click();
+  const rows = page.locator('[data-item-id]'); await expect(rows).toHaveCount(2);
+  const ids = await rows.evaluateAll(elements => elements.map(e => e.dataset.itemId)); expect(new Set(ids).size).toBe(2);
+  const itemPattern = `**/api/library/playlists/${empty.id}/items/*`;
+  await page.route(itemPattern, route => route.abort());
+  await rows.first().getByRole('button', { name: 'Remove track', exact: true }).click();
+  await expect(page.getByRole('alert')).toBeVisible(); await expect(rows).toHaveCount(2); await page.unroute(itemPattern);
+  await rows.first().getByRole('button', { name: 'Remove track', exact: true }).click();
+  await expect(rows).toHaveCount(1); await expect(rows.first()).toHaveAttribute('data-item-id', ids[1]);
+  await page.getByRole('button', { name: 'Edit playlist', exact: true }).click();
+  const edit = page.getByRole('form', { name: 'Edit playlist', exact: true });
+  await edit.getByLabel('Name', { exact: true }).fill('Renamed library');
+  await edit.getByLabel('Description', { exact: true }).fill('Saved description');
+  const detailPattern = `**/api/library/playlists/${empty.id}`;
+  await page.route(detailPattern, route => route.request().method() === 'PATCH' ? route.abort() : route.continue());
+  await edit.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await expect(edit.getByRole('alert')).toBeVisible();
+  await expect(edit.getByLabel('Name', { exact: true })).toHaveValue('Renamed library');
+  await expect(edit.getByLabel('Description', { exact: true })).toHaveValue('Saved description');
+  await page.unroute(detailPattern);
+  const headers = { Authorization: `Bearer ${tokenA}` };
+  const changed = await page.request.patch(`/api/library/playlists/${empty.id}`, { headers, data: { name: 'Changed elsewhere', expectedVersion: 4 } });
+  expect(changed.status()).toBe(200);
+  await edit.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await expect(edit.getByRole('alert')).toContainText('Your action was not applied');
+  await expect(page.getByRole('heading', { name: 'Tracks in Changed elsewhere', exact: true })).toBeVisible();
+  await expect(edit.getByLabel('Name', { exact: true })).toHaveValue('Renamed library');
+  const updated = page.waitForResponse(r => r.request().method() === 'PATCH' && r.status() === 200);
+  await edit.getByRole('button', { name: 'Save changes', exact: true }).click();
+  const persisted = await (await updated).json(); await expect(edit).toHaveCount(0);
+  expect(persisted.id).toBe(empty.id); expect(persisted.items[0].id).toBe(ids[1]); expect(persisted.version).toBe(6);
+  // A new login after reload must issue a fresh Library read with the same identities.
+  await page.reload(); await login(page, userA);
+  await page.getByRole('button', { name: 'Playlists', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Tracks in Renamed library', exact: true })).toBeVisible();
+  await expect(rows.first()).toHaveAttribute('data-item-id', ids[1]);
+  const fresh = await browser.newContext({ baseURL: 'https://127.0.0.1:3443', ignoreHTTPSErrors: true });
+  try {
+    const other = await fresh.newPage(); await other.goto('/'); await login(other, userA);
+    await other.getByRole('button', { name: 'Playlists', exact: true }).click();
+    await expect(other.getByRole('heading', { name: 'Tracks in Renamed library', exact: true })).toBeVisible();
+    await expect(other.locator('[data-item-id]')).toHaveAttribute('data-item-id', ids[1]);
+  } finally { await fresh.close(); }
+  // Delay a real A response across logout/login B; release only after B's list is visible.
+  let release, received;
+  const held = new Promise(resolve => { release = resolve; });
+  const captured = new Promise(resolve => { received = resolve; });
+  let first = true;
+  await page.route('**/api/library/playlists?*', async route => {
+    if (!first) return route.continue(); first = false;
+    const response = await route.fetch(); received(); await held; await route.fulfill({ response });
+  });
+  await page.getByRole('button', { name: 'Refresh playlists', exact: true }).click(); await captured;
+  await page.getByRole('button', { name: 'Log out', exact: true }).click();
+  await page.getByRole('button', { name: 'Register', exact: true }).click();
+  const userB = await createAccount(page, 'library_b');
+  await page.getByRole('button', { name: 'Playlists', exact: true }).click();
+  await expect(page.getByText('No playlists yet.', { exact: true })).toBeVisible();
+  release(); await page.unrouteAll({ behavior: 'wait' });
+  await expect(page.locator('.playlist-card')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Log out', exact: true }).click(); await login(page, userA);
+  await page.getByRole('button', { name: 'Playlists', exact: true }).click();
+  await expect(rows.first()).toHaveAttribute('data-item-id', ids[1]);
+  expect(await page.evaluate(() => localStorage.getItem('ft-music:playlists:v1'))).toBe(witness);
+  // Unavailable Catalogue details keep the stored occurrence and its Remove control.
+  const trackPattern = '**/api/catalog/tracks/20000000-0000-4000-8000-000000000001';
+  await page.route(trackPattern, route => route.fulfill({ status: 404, body: '{}' }));
+  await page.getByRole('button', { name: 'Catalog', exact: true }).click();
+  await page.getByRole('button', { name: 'Playlists', exact: true }).click();
+  await expect(rows.first()).toContainText('This track is no longer available.');
+  await expect(rows.first().getByRole('button', { name: 'Remove track', exact: true })).toBeEnabled();
+  await page.unroute(trackPattern); await page.getByRole('button', { name: 'Retry track details', exact: true }).click();
+  await page.getByRole('button', { name: 'Play Aube — demo', exact: true }).click(); await expect(page.locator('audio')).toHaveCount(1);
+  let deleteCount = 0; page.on('request', r => { if (r.method() === 'DELETE') deleteCount++; });
+  page.once('dialog', dialog => dialog.dismiss()); await page.getByRole('button', { name: 'Delete playlist', exact: true }).click(); expect(deleteCount).toBe(0);
+  await page.route(detailPattern, route => route.request().method() === 'DELETE' ? route.abort() : route.continue());
+  page.once('dialog', dialog => dialog.accept()); await page.getByRole('button', { name: 'Delete playlist', exact: true }).click();
+  await expect(page.getByRole('alert')).toBeVisible(); await expect(page.locator('.playlist-card')).toHaveCount(1); await expect(page.locator('audio')).toHaveCount(1);
+  await page.unroute(detailPattern);
+  const deletion = page.waitForResponse(r => r.request().method() === 'DELETE' && r.url().endsWith(`/${empty.id}`) && r.status() === 204);
+  page.once('dialog', dialog => dialog.accept()); await page.getByRole('button', { name: 'Delete playlist', exact: true }).click(); await deletion;
+  await expect(page.locator('.playlist-card')).toHaveCount(0); await expect(page.locator('audio')).toHaveCount(0);
+  const relogin = await page.request.post('/api/auth/login', { data: { email: userA.email, password: userA.password } });
+  const latestToken = (await relogin.json()).token;
+  expect((await page.request.get(`/api/library/playlists/${empty.id}`, { headers: { Authorization: `Bearer ${latestToken}` } })).status()).toBe(404);
+  expect(userB.email).not.toBe(userA.email);
+  expect(await page.evaluate(() => localStorage.getItem('ft-music:playlists:v1'))).toBe(witness);
+});
+
 export async function createAccount(page, prefix) {
   const name=`${prefix}_${Date.now().toString(36)}`;
   const user={username:name,email:`${name}@example.test`,password:'MusicTestOnly_123!'};

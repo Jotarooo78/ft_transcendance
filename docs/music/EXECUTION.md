@@ -435,3 +435,20 @@ Les critères de compréhension restent personnels.
 - Client de test corrigé pour donner Content-Length aux corps DELETE.
   Fichier temporaire de preuve sans token ; notes Notion remplies et liées.
 - Compose Library était déjà raccordé en LIB-8 ; aucune adaptation nécessaire.
+- Synchronisation LIB-13 : d22d598 publié, aucun apport distant ni conflit.
+
+## LIB-14 — Campagne Library complète
+
+- Scénario durable : création vide, occurrences répétées, retrait, édition
+  avec panne et 409 réel, reconnexion et contexte neuf avec mêmes UUID.
+- Changement A/B/A et vraie réponse A retardée ignorée ; témoin localStorage
+  conservé sans import. Pannes réseau explicites et 404 Catalogue simulé.
+  Annulation sans DELETE, erreur conservant le lecteur puis 204/404 réels.
+- Test Library seul : 1 succès en 14,2 s. Campagne complète depuis volumes
+  neufs : 5 tests Catalogue, 3 Media, 8 Library, lint/build, double seeds,
+  HTTPS/SQL, pannes Catalogue, redémarrages et nettoyage ciblé des fixtures.
+- Trois scénarios Chromium passent en 20,3 s. PASS library et PASS cleanup,
+  code 0 ; aucun conteneur ni volume du projet musical restant.
+- Log /tmp/music-lib14-campaign.log, base d22d598 avec changements LIB-14
+  explicitement signalés. Documentation Notion actualisée ; compréhension
+  personnelle laissée à l’utilisateur. Aucun changement de migration/grants.

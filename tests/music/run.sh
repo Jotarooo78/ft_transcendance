@@ -7,7 +7,7 @@ readonly project_name=transcendence_music
 compose_file="$script_dir/compose.yml"
 compose=(docker compose -p "$project_name" --env-file /dev/null -f "$compose_file")
 campaign="${1:-catalog}"
-[[ "$campaign" == catalog || "$campaign" == media ]] || { echo 'Expected campaign: catalog or media' >&2; exit 2; }
+[[ "$campaign" == catalog || "$campaign" == media || "$campaign" == library ]] || { echo 'Expected campaign: catalog, media or library' >&2; exit 2; }
 phase=guard
 cleanup_enabled=false
 complete=false
@@ -66,9 +66,13 @@ phase=build
 "${compose[@]}" build
 phase=catalog-unit
 "${compose[@]}" run --rm --no-deps migrate-catalog npm test
-if [[ "$campaign" == media ]]; then
+if [[ "$campaign" != catalog ]]; then
   phase=media-unit
   "${compose[@]}" run --rm --no-deps migrate-media npm test
+fi
+if [[ "$campaign" == library ]]; then
+  phase=library-unit
+  "${compose[@]}" run --rm --no-deps migrate-library npm test
 fi
 phase=frontend-lint-build
 "${compose[@]}" run --rm --no-deps frontend sh -ec 'npm run lint && npm run build'
@@ -103,7 +107,7 @@ node "$script_dir/http-scenario.mjs" catalog-verify
 sql_file < "$script_dir/assert-catalog.sql"
 phase=browser
 browser_pattern=catalog
-if [[ "$campaign" == media ]]; then
+if [[ "$campaign" != catalog ]]; then
   phase=media-seed
   for pass in 1 2; do
     "${compose[@]}" exec -T media-service npm run seed:demo
@@ -129,6 +133,26 @@ if [[ "$campaign" == media ]]; then
   "${compose[@]}" exec -T media-service node --input-type=module -e 'import {unlink} from "node:fs/promises"; for(const name of ["edge-pending.wav","edge-private.wav"]) await unlink("/data/audio/"+name);'
   node "$script_dir/http-scenario.mjs" catalog-verify
   browser_pattern='catalog|media'
+fi
+if [[ "$campaign" == library ]]; then
+  phase=library-http
+  node "$script_dir/http-scenario.mjs" library
+  library_fixture="$(cat /tmp/transcendence-music-library-state.json)"
+  sql_file -v cleanup=false -v fixture="$library_fixture" < "$script_dir/assert-library.sql"
+  phase=library-catalogue-outage
+  "${compose[@]}" stop catalog-service
+  node "$script_dir/http-scenario.mjs" library-unavailable
+  "${compose[@]}" up -d --no-deps --wait catalog-service
+  phase=library-restarts
+  "${compose[@]}" restart library-service
+  node "$script_dir/http-scenario.mjs" library-verify
+  "${compose[@]}" restart db
+  node "$script_dir/http-scenario.mjs" library-verify
+  sql_file -v cleanup=false -v fixture="$library_fixture" < "$script_dir/assert-library.sql"
+  phase=library-fixtures-cleanup
+  node "$script_dir/http-scenario.mjs" library-cleanup
+  sql_file -v cleanup=true -v fixture="$library_fixture" < "$script_dir/assert-library.sql"
+  browser_pattern='catalog|media|library'
 fi
 phase=browser
 npm test --prefix "$script_dir" -- --grep "$browser_pattern"
