@@ -527,3 +527,15 @@ Les critères de compréhension restent personnels.
   invalides, position enregistrée et panne SQL. Contrat précise le décalage
   Int32 ; vraie pagination PostgreSQL prévue ECO-11.
 - Documentation Notion des fichiers amendée et liée.
+- Synchronisation ECO-6 : 03aa867 publié, aucun apport distant ni conflit.
+
+## ECO-7 — Playback par HTTPS
+
+- Upstream dynamique port 4005 et /api/playback/ dans les deux passerelles,
+  Authorization conservé et métriques publiques refusées.
+- Playback isolé : JWT Auth commun, connexion playback_runtime propre,
+  Catalogue HTTP à la demande et readiness SQL. Aucun changement de grants.
+- Compose validé ; stack recréée après LIB-14, six migrations/permissions et
+  seeds Catalogue/Media explicites. Nginx -t passe, /sessions anonyme 401,
+  /metrics 403 et /ready 200 par HTTPS. Log /tmp/music-eco7.log.
+- Variables et niveaux de disponibilité documentés ; notes Notion actualisées.

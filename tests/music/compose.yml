@@ -176,6 +176,21 @@ services:
       timeout: 3s
       retries: 30
 
+  playback-service:
+    build: ../../services/playback-service
+    environment:
+      PLAYBACK_DATABASE_URL: postgresql://playback_runtime:e2e_playback_runtime_test_only@db:5432/transcendence_music?schema=playback
+      JWT_SECRET: e2e_test_only_jwt_secret_with_sufficient_length
+      CATALOG_SERVICE_URL: http://catalog-service:4002
+    depends_on:
+      apply-permissions:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4005/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
   auth-service:
     build: ../../services/auth-service
     environment:
@@ -228,6 +243,8 @@ services:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       library-service:
+        condition: service_healthy
+      playback-service:
         condition: service_healthy
       media-service:
         condition: service_healthy

@@ -122,6 +122,14 @@ services:
       - "4005"
     env_file:
       - .env
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      CATALOG_SERVICE_URL: http://catalog-service:4002
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4005/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
     depends_on:
       apply-permissions:
         condition: service_completed_successfully
