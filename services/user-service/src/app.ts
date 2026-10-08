@@ -49,7 +49,41 @@ export type AvatarWriter = (userId: string, fileName: string, bytes: Buffer) => 
 export type AvatarReader = (fileName: string) => Promise<Buffer | null>;
 export const maxAvatarBytes = 2 * 1024 * 1024;
 const avatarTypes = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" } as const;
+type AvatarMimeType = keyof typeof avatarTypes;
+const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const avatarFilePattern = /^[0-9a-f-]{36}-[0-9a-f-]{36}\.(png|jpg|webp)$/i;
+
+function isAvatarMimeType(value: string): value is AvatarMimeType {
+  return Object.prototype.hasOwnProperty.call(avatarTypes, value);
+}
+
+function detectAvatarMimeType(bytes: Buffer): AvatarMimeType | null {
+  if (
+    bytes.length >= pngSignature.length &&
+    bytes.subarray(0, pngSignature.length).equals(pngSignature)
+  ) {
+    return "image/png";
+  }
+
+  if (
+    bytes.length >= 3 &&
+    bytes[0] === 0xff &&
+    bytes[1] === 0xd8 &&
+    bytes[2] === 0xff
+  ) {
+    return "image/jpeg";
+  }
+
+  if (
+    bytes.length >= 12 &&
+    bytes.subarray(0, 4).toString("ascii") === "RIFF" &&
+    bytes.subarray(8, 12).toString("ascii") === "WEBP"
+  ) {
+    return "image/webp";
+  }
+
+  return null;
+}
 
 export class UsernameConflictError extends Error {
   constructor() {
@@ -357,11 +391,17 @@ export function buildApp({
       if (!file || file.fieldname !== "avatar") {
         return reply.code(400).send({ error: "avatar field is required" });
       }
-      const extension = avatarTypes[file.mimetype as keyof typeof avatarTypes];
-      if (!extension) {
+      if (!isAvatarMimeType(file.mimetype)) {
         return reply.code(415).send({ error: "unsupported avatar mime type" });
       }
       const bytes = await file.toBuffer();
+      const detectedMimeType = detectAvatarMimeType(bytes);
+      if (detectedMimeType !== file.mimetype) {
+        return reply.code(415).send({
+          error: "avatar content does not match its declared mime type",
+        });
+      }
+      const extension = avatarTypes[detectedMimeType];
       const userId = request.authenticatedUserId!;
       const fileName = `${userId}-${randomUUID()}.${extension}`;
       const profile = await writeAvatar(userId, fileName, bytes);

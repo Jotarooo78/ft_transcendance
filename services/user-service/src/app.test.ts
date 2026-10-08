@@ -563,6 +563,19 @@ function avatarMultipart(bytes: Buffer, mime = "image/png", field = "avatar") {
   };
 }
 
+const validAvatarBytes: Record<string, Buffer> = {
+  "image/png": Buffer.from([
+    0x89, 0x50, 0x4e, 0x47,
+    0x0d, 0x0a, 0x1a, 0x0a,
+  ]),
+  "image/jpeg": Buffer.from([0xff, 0xd8, 0xff]),
+  "image/webp": Buffer.from([
+    0x52, 0x49, 0x46, 0x46,
+    0x00, 0x00, 0x00, 0x00,
+    0x57, 0x45, 0x42, 0x50,
+  ]),
+};
+
 async function avatarApp() {
   const userId = randomUUID();
   const files = new Map<string, Buffer>();
@@ -592,7 +605,7 @@ async function avatarApp() {
 for (const mime of ["image/png", "image/jpeg", "image/webp"]) {
   test(`avatar accepts ${mime} and serves exactly the uploaded bytes`, async () => {
     const { app, token, profile } = await avatarApp();
-    const bytes = Buffer.from([137, 80, 78, 71, 0, 1, 2, 255]);
+    const bytes = validAvatarBytes[mime]!;
     try {
       const body = avatarMultipart(bytes, mime);
       const uploaded = await app.inject({ method: "POST", url: "/me/avatar", ...body,
@@ -607,6 +620,20 @@ for (const mime of ["image/png", "image/jpeg", "image/webp"]) {
   });
 }
 
+test("avatar rejects content that does not match its MIME type", async () => {
+  const { app, token, writes } = await avatarApp();
+  try {
+    const body = avatarMultipart(Buffer.from("ceci est du texte"), "image/png");
+    const response = await app.inject({ method: "POST", url: "/me/avatar", ...body,
+      headers: { ...body.headers, authorization: `Bearer ${token}` } });
+    assert.equal(response.statusCode, 415);
+    assert.deepEqual(response.json(), {
+      error: "avatar content does not match its declared mime type",
+    });
+    assert.deepEqual(writes, []);
+  } finally { await app.close(); }
+});
+
 for (const [label, field, mime, size, status] of [
   ["wrong field", "photo", "image/png", 1, 400],
   ["forbidden MIME", "avatar", "text/plain", 1, 415],
@@ -616,7 +643,9 @@ for (const [label, field, mime, size, status] of [
   test(`avatar handles ${label} with status ${status}`, async () => {
     const { app, token, writes, files } = await avatarApp();
     try {
-      const body = avatarMultipart(Buffer.alloc(size), mime, field);
+      const bytes = Buffer.alloc(size);
+      if (label === "exact size limit") validAvatarBytes["image/png"]!.copy(bytes);
+      const body = avatarMultipart(bytes, mime, field);
       const response = await app.inject({ method: "POST", url: "/me/avatar", ...body,
         headers: { ...body.headers, authorization: `Bearer ${token}` } });
       assert.equal(response.statusCode, status);
