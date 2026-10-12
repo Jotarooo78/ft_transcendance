@@ -98,6 +98,11 @@ Volume principal media_data ; volume de test music_media_data dans le seul
 projet transcendence_music. Aucun seed automatique au démarrage du serveur,
 aucun upload, transcodage, CDN ou URL signée dans ce parcours.
 
+Le parcours distinct de fichiers personnels est défini dans
+[FILES_CONTRACT.md](FILES_CONTRACT.md) : uploads privés, validation et aperçus
+à produire. Il ne publie pas de nouveaux morceaux et ne change pas les règles
+de cette lecture publique ni la protection des fichiers de démonstration.
+
 ## Contrôle réalisé à MED-1
 
 Références comparées à CATALOG_CONTRACT.md et au schéma Prisma Media : l'UUID
