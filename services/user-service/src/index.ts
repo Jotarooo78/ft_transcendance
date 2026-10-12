@@ -16,7 +16,7 @@ import {
   ProfileConflictError,
   type ProfileProvisioner,
   UsernameTakenError,
-} from "./profile-provisioning.js";
+} from "./profile-creation-definitions.js";
 
 const jwtSecret = process.env.JWT_SECRET;
 const internalServiceToken = process.env.INTERNAL_SERVICE_TOKEN;

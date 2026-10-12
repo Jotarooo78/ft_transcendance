@@ -13,7 +13,7 @@ Port interne : `4001`. Nginx l'expose sous `/api/users/`.
 - `src/app.ts` construit l'application Fastify et définit les routes.
 - `src/index.ts` raccorde l'application au client Prisma de Users et démarre le
   serveur.
-- `src/profile-provisioning.ts` décrit le contrat interne reçu depuis Auth.
+- `src/profile-creation-definitions.ts` décrit le contrat interne reçu depuis Auth.
 - `src/database/prisma.ts` crée l'instance Prisma unique.
 - `prisma/schema.prisma` mappe `Profile` vers `users.profiles` et
   `InboxMessage` vers `users.inbox_messages`.

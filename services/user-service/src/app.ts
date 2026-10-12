@@ -14,7 +14,7 @@ import {
   type ProfileProvisioner,
   UsernameTakenError,
   profileProvisionType,
-} from "./profile-provisioning.js";
+} from "./profile-creation-definitions.js";
 
 declare module "fastify" {
   interface FastifyRequest {

@@ -1,8 +1,8 @@
 import { buildApp } from "./app.js";
 import { PrismaRegistrationStore } from "./database/registration-store.js";
 import { disconnectPrisma } from "./database/prisma.js";
-import { createHttpProfileProvisioner } from "./http-profile-provisioner.js";
-import { deliverProfileProvision } from "./provisioning.js";
+import { createHttpProfileProvisioner } from "./request-profile-creation.js";
+import { deliverProfileProvision } from "./handle-profile-creation-result.js";
 
 const jwtSecret = process.env.JWT_SECRET;
 const internalServiceToken = process.env.INTERNAL_SERVICE_TOKEN;

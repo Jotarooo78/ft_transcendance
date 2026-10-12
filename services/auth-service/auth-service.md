@@ -72,8 +72,8 @@ Le claim JWT `sub` contient l'UUID commun au compte et au profil.
 - `src/app.ts` : routes HTTP, validation et états du signup/login ;
 - `src/database/registration-store.ts` : transaction compte + outbox et
   transitions d'état ;
-- `src/http-profile-provisioner.ts` : appel HTTP interne ;
-- `src/provisioning.ts` : contrat et classification temporaire/permanente ;
+- `src/request-profile-creation.ts` : appel HTTP interne ;
+- `src/handle-profile-creation-result.ts` : contrat et classification temporaire/permanente ;
 - `src/index.ts` : câblage runtime et worker de rejeu ;
 - `src/app.test.ts` : réussite, indisponibilité, rejeu et conflit permanent.
 

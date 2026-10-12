@@ -15,7 +15,7 @@ import {
   type ProfileProvisionCommand,
   UsernameTakenError,
   profileProvisionType,
-} from "./profile-provisioning.js";
+} from "./profile-creation-definitions.js";
 
 const jwtSecret = "test-only-user-service-secret-with-sufficient-length";
 const internalServiceToken =

@@ -3,7 +3,7 @@ import {
   type PermanentProvisionCode,
   type ProfileProvisioner,
   profileProvisionType,
-} from "./provisioning.js";
+} from "./handle-profile-creation-result.js";
 
 type Fetch = typeof fetch;
 

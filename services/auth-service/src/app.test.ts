@@ -12,7 +12,7 @@ import {
   type PermanentProvisionCode,
   type RegistrationStore,
   deliverProfileProvision,
-} from "./provisioning.js";
+} from "./handle-profile-creation-result.js";
 
 const jwtSecret = "test-only-auth-service-secret-with-sufficient-length";
 

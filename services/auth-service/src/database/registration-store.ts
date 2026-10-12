@@ -9,7 +9,7 @@ import {
   type PermanentProvisionCode,
   type RegistrationStore,
   profileProvisionType,
-} from "../provisioning.js";
+} from "../handle-profile-creation-result.js";
 import { prisma } from "./prisma.js";
 
 type ProfilePayload = {

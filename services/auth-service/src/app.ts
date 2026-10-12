@@ -9,7 +9,7 @@ import {
   type ProfileProvisioner,
   type RegistrationStore,
   deliverProfileProvision,
-} from "./provisioning.js";
+} from "./handle-profile-creation-result.js";
 
 declare module "fastify" {
   interface FastifyRequest {
