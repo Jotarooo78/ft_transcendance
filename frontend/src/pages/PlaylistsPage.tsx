@@ -1,360 +1,105 @@
 import { useState, type SubmitEvent } from "react";
+import type { PrivatePlaylist } from "../types/music";
+import PlaylistTracks from "../components/PlaylistTracks";
 
-import AudioPlayer from "../components/AudioPlayer";
-import TrackCard from "../components/TrackCard";
-import { mockTracks } from "../data/tracks";
-import type { Playlist, Track } from "../types/music";
-
-type PlaylistsPageProps = {
-  playlists: Playlist[];
-  onCreatePlaylist: (playlist: Playlist) => void;
-  onRemoveTrack: (playlistId: string, trackId: string) => void;
-  onDeletePlaylist: (playlistId: string) => void;
-  onUpdatePlaylist: (
-    playlistId: string,
-    name: string,
-    description: string,
-  ) => void;
+type Props = {
+  playlists: PrivatePlaylist[];
+  loading: boolean;
+  error?: string;
+  onRetry: () => void;
+  onCreate: (name: string, description: string) => Promise<PrivatePlaylist>;
+  onRemoveItem: (playlist: PrivatePlaylist, itemId: string) => Promise<PrivatePlaylist>;
+  onUpdate: (playlist: PrivatePlaylist, name: string, description: string) => Promise<PrivatePlaylist>;
+  onDelete: (playlist: PrivatePlaylist) => Promise<void>;
 };
 
-function PlaylistsPage({
-  playlists,
-  onCreatePlaylist,
-  onRemoveTrack,
-  onDeletePlaylist,
-  onUpdatePlaylist,
-}: PlaylistsPageProps) {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-
-  const [selectedTrackIds, setSelectedTrackIds] = useState<string[]>([]);
-
-  const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(
-    playlists[0]?.id ?? null,
-  );
-
-  const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editName, setEditName] = useState("");
-  const [editDescription, setEditDescription] = useState("");
-
-  const selectedPlaylist =
-    playlists.find((playlist) => playlist.id === selectedPlaylistId) ?? null;
-
-  /*
-   * Finds the Track objects whose identifiers are present
-   * in the selected playlist.
-   */
-  const playlistTracks = selectedPlaylist
-    ? mockTracks.filter((track) => selectedPlaylist.trackIds.includes(track.id))
-    : [];
-
-  /*
-   * Adds or removes a track from the form selection.
-   */
-  function handleTrackSelection(trackId: string) {
-    setSelectedTrackIds((currentIds) =>
-      currentIds.includes(trackId)
-        ? currentIds.filter((id) => id !== trackId)
-        : [...currentIds, trackId],
-    );
-  }
-
-  function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
+function PlaylistEditor({ playlist, onUpdate, onClose }: { playlist: PrivatePlaylist; onUpdate: Props["onUpdate"]; onClose: () => void }) {
+  const [name, setName] = useState(playlist.name);
+  const [description, setDescription] = useState(playlist.description);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-
-    const trimmedName = name.trim();
-
-    if (trimmedName === "" || selectedTrackIds.length === 0) {
-      return;
-    }
-
-    const newPlaylist: Playlist = {
-      id: crypto.randomUUID(),
-      name: trimmedName,
-      description: description.trim(),
-      trackIds: selectedTrackIds,
-    };
-
-    onCreatePlaylist(newPlaylist);
-
-    setSelectedPlaylistId(newPlaylist.id);
-
-    setName("");
-    setDescription("");
-    setSelectedTrackIds([]);
+    if (saving || name.trim() === "") return;
+    setSaving(true); setError("");
+    try { await onUpdate(playlist, name.trim(), description.trim()); onClose(); }
+    catch (error) { setError(error instanceof Error ? error.message : "Unable to save playlist."); }
+    finally { setSaving(false); }
   }
-
-  function handleRemoveTrack(track: Track) {
-    if (!selectedPlaylist) {
-      return;
-    }
-
-    onRemoveTrack(selectedPlaylist.id, track.id);
-
-    if (selectedTrack?.id === track.id) {
-      setSelectedTrack(null);
-    }
-  }
-
-  function handleDeletePlaylist() {
-    if (!selectedPlaylist) {
-      return;
-    }
-
-    const shouldDelete = window.confirm(
-      `Delete the playlist "${selectedPlaylist.name}"?`,
-    );
-
-    if (!shouldDelete) {
-      return;
-    }
-
-    const nextPlaylist = playlists.find(
-      (playlist) => playlist.id !== selectedPlaylist.id,
-    );
-
-    onDeletePlaylist(selectedPlaylist.id);
-    setSelectedPlaylistId(nextPlaylist?.id ?? null);
-    setSelectedTrack(null);
-    setIsEditing(false);
-  }
-
-  function handleStartEditing() {
-    if (!selectedPlaylist) {
-      return;
-    }
-
-    setEditName(selectedPlaylist.name);
-    setEditDescription(selectedPlaylist.description);
-    setIsEditing(true);
-  }
-
-  function handleUpdateSubmit(event: SubmitEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!selectedPlaylist) {
-      return;
-    }
-
-    const trimmedName = editName.trim();
-
-    if (trimmedName === "") {
-      return;
-    }
-
-    onUpdatePlaylist(selectedPlaylist.id, trimmedName, editDescription.trim());
-    setIsEditing(false);
-  }
-
-  return (
-    <>
-      <main className="playlists-page">
-        <header>
-          <p className="page-label">Your library</p>
-
-          <h1>Playlists</h1>
-
-          <p>Create a temporary playlist from the mock catalog.</p>
-        </header>
-
-        <section
-          className="playlist-section"
-          aria-labelledby="create-playlist-title"
-        >
-          <h2 id="create-playlist-title">Create a playlist</h2>
-
-          <form className="playlist-form" onSubmit={handleSubmit}>
-            <label>
-              Name
-              <input
-                type="text"
-                value={name}
-                onChange={(event) => {
-                  setName(event.target.value);
-                }}
-                required
-              />
-            </label>
-
-            <label>
-              Description
-              <input
-                type="text"
-                value={description}
-                onChange={(event) => {
-                  setDescription(event.target.value);
-                }}
-              />
-            </label>
-
-            <fieldset>
-              <legend>Tracks</legend>
-
-              {mockTracks.map((track) => (
-                <label className="track-choice" key={track.id}>
-                  <input
-                    type="checkbox"
-                    checked={selectedTrackIds.includes(track.id)}
-                    onChange={() => {
-                      handleTrackSelection(track.id);
-                    }}
-                  />
-                  {track.title} — {track.artistName}
-                </label>
-              ))}
-            </fieldset>
-
-            <button
-              type="submit"
-              disabled={name.trim() === "" || selectedTrackIds.length === 0}
-            >
-              Create playlist
-            </button>
-          </form>
-        </section>
-
-        <section
-          className="playlist-section"
-          aria-labelledby="my-playlists-title"
-        >
-          <h2 id="my-playlists-title">My playlists</h2>
-
-          <div className="playlist-list">
-            {playlists.map((playlist) => (
-              <button
-                type="button"
-                className={
-                  playlist.id === selectedPlaylistId
-                    ? "playlist-card active"
-                    : "playlist-card"
-                }
-                key={playlist.id}
-                onClick={() => {
-                  setSelectedPlaylistId(playlist.id);
-                  setIsEditing(false);
-                }}
-              >
-                <strong>{playlist.name}</strong>
-
-                <span>{playlist.description || "No description"}</span>
-
-                <span>{playlist.trackIds.length} track(s)</span>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {selectedPlaylist && (
-          <section
-            className="playlist-section"
-            aria-labelledby="playlist-tracks-title"
-          >
-            <div className="playlist-heading">
-              <h2 id="playlist-tracks-title">
-                Tracks in {selectedPlaylist.name}
-              </h2>
-
-              <div className="playlist-heading-actions">
-                <button
-                  type="button"
-                  className="edit-playlist-button"
-                  onClick={handleStartEditing}
-                >
-                  Edit playlist
-                </button>
-
-                <button
-                  type="button"
-                  className="delete-playlist-button"
-                  onClick={handleDeletePlaylist}
-                >
-                  Delete playlist
-                </button>
-              </div>
-            </div>
-
-            {isEditing && (
-              <form
-                className="edit-playlist-form"
-                onSubmit={handleUpdateSubmit}
-              >
-                <label>
-                  Name
-                  <input
-                    type="text"
-                    value={editName}
-                    onChange={(event) => setEditName(event.target.value)}
-                    required
-                  />
-                </label>
-
-                <label>
-                  Description
-                  <input
-                    type="text"
-                    value={editDescription}
-                    onChange={(event) => setEditDescription(event.target.value)}
-                  />
-                </label>
-
-                <div className="edit-playlist-actions">
-                  <button
-                    type="button"
-                    className="cancel-edit-button"
-                    onClick={() => setIsEditing(false)}
-                  >
-                    Cancel
-                  </button>
-
-                  <button type="submit" disabled={editName.trim() === ""}>
-                    Save changes
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {playlistTracks.length === 0 ? (
-              <p className="empty-playlist-message">
-                This playlist does not contain any tracks yet.
-              </p>
-            ) : (
-              <div className="track-list">
-                {playlistTracks.map((track) => (
-                  <div className="playlist-track" key={track.id}>
-                    <TrackCard
-                      track={track}
-                      isSelected={selectedTrack?.id === track.id}
-                      onPlay={setSelectedTrack}
-                    />
-
-                    <button
-                      type="button"
-                      className="track-action-button remove-track-button"
-                      onClick={() => handleRemoveTrack(track)}
-                      aria-label={`Remove ${track.title} from playlist`}
-                      title="Remove from playlist"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-        )}
-      </main>
-
-      {selectedTrack && (
-        <AudioPlayer
-          track={selectedTrack}
-          onClose={() => {
-            setSelectedTrack(null);
-          }}
-        />
-      )}
-    </>
-  );
+  return <form className="playlist-edit-form" onSubmit={submit} aria-label="Edit playlist">
+    <label>Name<input value={name} onChange={event => setName(event.target.value)} disabled={saving} required /></label>
+    <label>Description<input value={description} onChange={event => setDescription(event.target.value)} disabled={saving} /></label>
+    <button type="submit" disabled={saving || name.trim() === ""}>{saving ? "Saving…" : "Save changes"}</button>
+    <button type="button" disabled={saving} onClick={onClose}>Cancel edit</button>
+    {error && <p role="alert">{error}</p>}
+  </form>;
 }
 
-export default PlaylistsPage;
+export default function PlaylistsPage({ playlists, loading, error, onRetry, onCreate, onRemoveItem, onUpdate, onDelete }: Props) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<{ id: string; message: string } | null>(null);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
+  const selected = playlists.find(playlist => playlist.id === selectedId) ?? playlists[0];
+  async function handleDelete(playlist: PrivatePlaylist) {
+    if (deleting || !window.confirm(`Delete playlist "${playlist.name}"?`)) return;
+    setDeleting(true); setDeleteError(null);
+    try {
+      await onDelete(playlist);
+      setSelectedId(id => id === playlist.id ? null : id);
+      setEditingId(id => id === playlist.id ? null : id);
+    } catch (error) { setDeleteError({ id: playlist.id, message: error instanceof Error ? error.message : "Unable to delete playlist." }); }
+    finally { setDeleting(false); }
+  }
+  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (creating || name.trim() === "") return;
+    setCreating(true); setCreateError("");
+    try {
+      const playlist = await onCreate(name.trim(), description.trim());
+      setSelectedId(playlist.id); setName(""); setDescription("");
+    } catch (error) { setCreateError(error instanceof Error ? error.message : "Unable to create playlist."); }
+    finally { setCreating(false); }
+  }
+  return <main className="playlists-page">
+    <header><p className="page-label">Your library</p><h1>Playlists</h1><p>Your private playlists.</p></header>
+    <section className="playlist-section" aria-labelledby="create-playlist-title">
+      <h2 id="create-playlist-title">Create a playlist</h2>
+      <form className="playlist-form" onSubmit={handleSubmit}>
+        <label>Name<input type="text" value={name} onChange={event => setName(event.target.value)} required disabled={creating} /></label>
+        <label>Description<input type="text" value={description} onChange={event => setDescription(event.target.value)} disabled={creating} /></label>
+        <button type="submit" disabled={creating || loading || !!error || name.trim() === ""}>{creating ? "Creating…" : "Create playlist"}</button>
+        {createError && <p role="alert">{createError}</p>}
+      </form>
+    </section>
+    <section className="playlist-section" aria-labelledby="my-playlists-title">
+      <h2 id="my-playlists-title">My playlists</h2>
+      <button type="button" onClick={onRetry} disabled={loading}>Refresh playlists</button>
+      {loading ? <p role="status">Loading playlists…</p> : error ?
+        <div role="alert"><p>{error}</p><button type="button" onClick={onRetry}>Retry playlists</button></div> : <>
+          {playlists.length === 0 && <p>No playlists yet.</p>}
+          <div className="playlist-list">{playlists.map(playlist => <button type="button" key={playlist.id}
+            className={playlist.id === selected?.id ? "playlist-card active" : "playlist-card"}
+            onClick={() => { setSelectedId(playlist.id); setEditingId(null); }}>
+            <strong>{playlist.name}</strong><span>{playlist.description || "No description"}</span>
+            <span>{playlist.items.length} track(s)</span>
+          </button>)}</div>
+        </>}
+    </section>
+    {!loading && !error && selected && <section className="playlist-section" aria-labelledby="playlist-tracks-title">
+      <div className="playlist-heading"><h2 id="playlist-tracks-title">Tracks in {selected.name}</h2>
+        <div className="playlist-heading-actions">
+          <button type="button" onClick={() => setEditingId(selected.id)} disabled={editingId === selected.id || deleting}>Edit playlist</button>
+          <button type="button" disabled={deleting} onClick={() => { void handleDelete(selected); }}>{deleting ? "Deleting…" : "Delete playlist"}</button>
+        </div>
+      </div>
+      {deleteError?.id === selected.id && <p role="alert">{deleteError.message}</p>}
+      {editingId === selected.id && <PlaylistEditor key={`editor:${selected.id}`} playlist={selected} onUpdate={onUpdate} onClose={() => setEditingId(null)} />}
+      <PlaylistTracks key={`tracks:${selected.id}`} playlist={selected} onRemove={onRemoveItem} />
+    </section>}
+  </main>;
+}

@@ -36,6 +36,25 @@ pile isolée vide, HTTPS, SQL, redémarrages et parcours Chromium.
 Les prérequis, les ressources ciblées et le diagnostic sont décrits dans
 [tests/e2e/README.md](tests/e2e/README.md).
 
+## Parcours musicaux et historique privé
+
+Le catalogue vient de PostgreSQL, les fichiers audio de Media et les playlists
+du compte authentifié. Une lecture ouvre une session Playback ; la progression
+ordonnée et les renvois identiques conservent un seul effet. L'onglet History
+relit le temps crédité, la dernière position et l'état ouvert ou clos du compte.
+
+`tests/music/run.sh playback` reconstruit la pile isolée sur le port 3443,
+teste les quatre services musicaux et le frontend, puis vérifie HTTPS, SQL,
+redémarrages et Chromium avant nettoyage. Prérequis et commandes dans
+[tests/music/README.md](tests/music/README.md), suivi du plan dans
+[docs/music-plan/README.md](docs/music-plan/README.md) et preuves observées dans
+[docs/music/EXECUTION.md](docs/music/EXECUTION.md).
+
+Le temps déclaré par le lecteur est plafonné par le serveur. Un déplacement
+dans le morceau ne représente pas une durée écoutée. Une fermeture brutale
+peut perdre les dernières mesures et laisser une session ouverte ; aucune
+qualification R15, statistique commerciale ou reprise automatique n'est activée.
+
 ## 📝 Repartition des modules
 
 ### Tiphaine

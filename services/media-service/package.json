@@ -6,6 +6,8 @@
   "engines": { "node": "22.x" },
   "scripts": {
     "start": "node dist/index.js",
+    "seed:demo": "node dist/database/seed.js",
+    "test": "npm run build && node --test dist/*.test.js",
     "dev": "tsx watch src/index.ts",
     "prebuild": "npm run prisma:generate",
     "build": "tsc -p tsconfig.json",

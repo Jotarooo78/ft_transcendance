@@ -19,7 +19,8 @@ export async function authenticatedFetch(
   });
 
   if (response.status === 401) {
-    clearAccessToken();
+    // A late response from a previous login must not invalidate the new one.
+    if (getAccessToken() === token) clearAccessToken();
     throw new Error("Your session is invalid or expired. Please log in again.");
   }
 

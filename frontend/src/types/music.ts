@@ -4,9 +4,11 @@ export type Track = {
   artistName: string;
   albumTitle: string;
   genre: string;
-  durationSeconds: number;
-  audioUrl: string; // /audio/xxx.mp3
-  mimeType: string; // mpeg
+  durationSeconds: number | null;
+  durationMs?: number | null;
+  audioAssetId?: string | null;
+  audioUrl: string | null;
+  mimeType?: string;
 };
 
 export type Playlist = {
@@ -14,4 +16,14 @@ export type Playlist = {
   name: string;
   description: string;
   trackIds: string[];
+};
+
+// Server representation; the legacy Playlist type remains for unused local files.
+export type PlaylistItem = { id: string; trackId: string; position: number };
+export type PrivatePlaylist = {
+  id: string;
+  name: string;
+  description: string;
+  version: number;
+  items: PlaylistItem[];
 };

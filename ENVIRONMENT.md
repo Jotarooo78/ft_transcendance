@@ -56,3 +56,45 @@ doit être long, aléatoire, identique dans les deux conteneurs et différent de
 La liste des tables, des propriétaires et des cardinalités est documentée dans
 [`docs/SCHEMA_DONNEES.md`](docs/SCHEMA_DONNEES.md). Les commandes Prisma sont
 documentées dans [`services/PRISMA.md`](services/PRISMA.md).
+
+## Catalogue et audio de démonstration
+
+Media utilise `MEDIA_STORAGE_DIR=/data/audio`, conservé dans le volume
+`media_data`, et `CATALOG_SERVICE_URL=http://catalog-service:4002` pour vérifier
+par HTTP qu’un asset appartient à une piste publiée. Il n’accède pas au schéma
+SQL Catalogue. Ces variables sont fournies par Compose, pas au navigateur.
+
+Après migrations et permissions, une installation volontaire des trois sons
+de démonstration se fait par `docker compose exec catalog-service npm run
+seed:demo`, puis `docker compose exec media-service npm run seed:demo`.
+Les seeds sont explicites et réutilisent seulement des données cohérentes.
+Aucun fichier audio n’est créé automatiquement au démarrage des serveurs.
+
+Le navigateur utilise `/api/media/assets/:id/audio` via HTTPS. Nginx transmet
+GET, HEAD et Range ; `/api/media/metrics` est refusé publiquement. Les fichiers
+WAV de six secondes ont leur contrat dans `docs/music/MEDIA_CONTRACT.md`.
+
+La pile `tests/music/compose.yml` utilise sa propre base et le volume
+`music_media_data`, avec le seul port local 3443 et sans `.env` de développement.
+Les preuves de cette branche sont exécutées dans cette pile isolée.
+
+## Bibliothèque et suivi d’écoute
+
+Library et Playback reçoivent le même `JWT_SECRET` qu’Auth pour vérifier le
+compte courant. Chaque service conserve sa connexion runtime propre :
+`LIBRARY_DATABASE_URL` et `PLAYBACK_DATABASE_URL`. Les URL de migration ne
+sont jamais utilisées pour servir les routes métier.
+
+`CATALOG_SERVICE_URL=http://catalog-service:4002` permet de vérifier le morceau
+avant ajout à une playlist ou ouverture de session. Playback y copie la durée
+de référence ; il ne lit aucune table Catalogue ni aucun octet Media.
+Son processus démarre sans exiger Catalogue disponible. `/health` décrit le
+processus, `/ready` vérifie PostgreSQL ; une panne Catalogue refuse seulement
+les nouvelles ouvertures par 503. Progression, clôture et historique utilisent
+le stockage Playback, sans nouvelle consultation Catalogue.
+
+Le navigateur utilise `/api/library/` et `/api/playback/` sur le même HTTPS.
+Nginx conserve Authorization, résout dynamiquement les services et refuse leurs
+`/metrics` publics. Sans JWT, `/api/playback/sessions` retourne 401.
+La pile musicale configure ses propres valeurs de test et n’utilise pas le
+fichier `.env` de développement. Aucun déploiement distant n’est impliqué.

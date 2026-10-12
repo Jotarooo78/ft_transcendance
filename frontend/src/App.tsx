@@ -6,10 +6,10 @@ import RegisterPage from "./pages/RegisterPage";
 import CatalogPage from "./pages/CatalogPage";
 import PlaylistsPage from "./pages/PlaylistsPage";
 import UsersPage from "./pages/UsersPage";
+import HistoryPage from "./pages/HistoryPage";
 
 import type { AuthenticatedUser, PublicUser } from "./types/auth";
-import type { Playlist } from "./types/music";
-import { loadPlaylists, savePlaylists } from "./storage/playlistsStorage";
+import { useLibrary } from "./hooks/useLibrary";
 
 import { clearAccessToken, onSessionCleared } from "./services/session";
 import {
@@ -27,7 +27,7 @@ import "./App.css";
 
 type PublicPage = "register" | "login";
 
-type PrivatePage = "profile" | "catalog" | "playlists" | "users";
+type PrivatePage = "profile" | "catalog" | "playlists" | "history" | "users";
 
 function getErrorMessage(error: unknown, fallbackMessage: string): string {
   if (error instanceof Error) {
@@ -48,17 +48,13 @@ function App() {
 
   const [privatePage, setPrivatePage] = useState<PrivatePage>("profile");
 
-  const [playlists, setPlaylists] = useState<Playlist[]>(loadPlaylists);
+  const library = useLibrary(currentUser?.id ?? null);
 
   const [friends, setFriends] = useState<PublicUser[]>([]);
 
   const friendIds = friends.map((friend) => friend.id);
 
   const [errorMessage, setErrorMessage] = useState("");
-
-  useEffect(() => {
-    savePlaylists(playlists);
-  }, [playlists]);
 
   useEffect(() => {
     const unsubscribe = onSessionCleared(() => {
@@ -183,62 +179,6 @@ function App() {
     }
   }
 
-  function handleCreatePlaylist(playlist: Playlist) {
-    setPlaylists((currentPlaylists) => [...currentPlaylists, playlist]);
-  }
-
-  function handleAddTrackToPlaylist(playlistId: string, trackId: string) {
-    setPlaylists((currentPlaylists) =>
-      currentPlaylists.map((playlist) => {
-        if (playlist.id !== playlistId) {
-          return playlist;
-        }
-
-        if (playlist.trackIds.includes(trackId)) {
-          return playlist;
-        }
-
-        return {
-          ...playlist,
-          trackIds: [...playlist.trackIds, trackId],
-        };
-      }),
-    );
-  }
-
-  function handleRemoveTrackFromPlaylist(playlistId: string, trackId: string) {
-    setPlaylists((currentPlaylists) =>
-      currentPlaylists.map((playlist) =>
-        playlist.id === playlistId
-          ? {
-              ...playlist,
-              trackIds: playlist.trackIds.filter((id) => id !== trackId),
-            }
-          : playlist,
-      ),
-    );
-  }
-
-  function handleDeletePlaylist(playlistId: string) {
-    setPlaylists((currentPlaylists) =>
-      currentPlaylists.filter((playlist) => playlist.id !== playlistId),
-    );
-  }
-
-  function handleUpdatePlaylist(
-    playlistId: string,
-    name: string,
-    description: string,
-  ) {
-    setPlaylists((currentPlaylists) =>
-      currentPlaylists.map((playlist) =>
-        playlist.id === playlistId
-          ? { ...playlist, name, description }
-          : playlist,
-      ),
-    );
-  }
-
   async function handleUpdateProfile(
     displayName: string,
     username: string,
@@ -312,6 +252,8 @@ function App() {
           <strong className="site-title">FT Music</strong>
 
           <nav className="main-navigation" aria-label="User navigation">
+            <button type="button" className={privatePage === "history" ? "navigation-button active" : "navigation-button"}
+              aria-pressed={privatePage === "history"} onClick={() => setPrivatePage("history")}>History</button>
             <button
               type="button"
               className={
@@ -401,20 +343,27 @@ function App() {
 
         {privatePage === "catalog" && (
           <CatalogPage
-            playlists={playlists}
-            onAddTrackToPlaylist={handleAddTrackToPlaylist}
+            key={currentUser.id}
+            playlists={library.playlists}
+            onAddItem={library.addItem}
           />
         )}
 
         {privatePage === "playlists" && (
           <PlaylistsPage
-            playlists={playlists}
-            onCreatePlaylist={handleCreatePlaylist}
-            onRemoveTrack={handleRemoveTrackFromPlaylist}
-            onDeletePlaylist={handleDeletePlaylist}
-            onUpdatePlaylist={handleUpdatePlaylist}
+            key={currentUser.id}
+            playlists={library.playlists}
+            loading={library.loading}
+            error={library.error}
+            onRetry={library.reload}
+            onCreate={library.create}
+            onRemoveItem={library.removeItem}
+            onUpdate={library.update}
+            onDelete={library.remove}
           />
         )}
+
+        {privatePage === "history" && <HistoryPage key={currentUser.id} />}
 
         {privatePage === "users" && (
           <UsersPage
