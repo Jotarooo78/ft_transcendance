@@ -4,7 +4,8 @@ export type ListeningSnapshot = {
   /** Position dans le morceau en millisecondes ; un déplacement ne vaut pas du temps écouté. */
   positionMs: number;
   /** Cumul local déclaré en millisecondes ; le serveur borne le crédit réellement retenu. */
-  listenedMsTotal: number };
+  listenedMsTotal: number;
+};
 /**
  * Observation du lecteur : horloge monotone, position en millisecondes, lecture active et éventuelle
  * rupture de position.
@@ -17,7 +18,8 @@ export type ClockReading = {
   /** Indique qu’une lecture effective est observée, hors pause et attente. */
   playing: boolean;
   /** Signale un déplacement ou une rupture empêchant de créditer l’intervalle précédent. */
-  discontinuity?: boolean };
+  discontinuity?: boolean;
+};
 
 /**
  * Accumule seulement les intervalles cohérents entre temps écoulé et avance audio ; ignore pauses,
@@ -35,15 +37,30 @@ export class ListeningClock {
    * une mesure invalide.
    */
   sample(reading: ClockReading): ListeningSnapshot {
-    if (!Number.isFinite(reading.nowMs) || reading.nowMs < 0 || !Number.isFinite(reading.positionMs) ||
-      reading.positionMs < 0 || reading.positionMs > Number.MAX_SAFE_INTEGER) throw new Error("Invalid audio clock reading");
+    if (
+      !Number.isFinite(reading.nowMs) ||
+      reading.nowMs < 0 ||
+      !Number.isFinite(reading.positionMs) ||
+      reading.positionMs < 0 ||
+      reading.positionMs > Number.MAX_SAFE_INTEGER
+    )
+      throw new Error("Invalid audio clock reading");
     const previous = this.previous;
     if (previous?.playing && !reading.discontinuity) {
-      const elapsed = reading.nowMs - previous.nowMs, advance = reading.positionMs - previous.positionMs;
+      const elapsed = reading.nowMs - previous.nowMs,
+        advance = reading.positionMs - previous.positionMs;
       // Discard suspended intervals and jumps. The 250 ms tolerance detects
       // sampling jitter; it never adds credit beyond elapsed time or audio advance.
-      if (elapsed >= 0 && elapsed <= 2500 && advance >= 0 && advance <= elapsed + 250) {
-        this.total = Math.min(Number.MAX_SAFE_INTEGER, this.total + Math.min(elapsed, advance));
+      if (
+        elapsed >= 0 &&
+        elapsed <= 2500 &&
+        advance >= 0 &&
+        advance <= elapsed + 250
+      ) {
+        this.total = Math.min(
+          Number.MAX_SAFE_INTEGER,
+          this.total + Math.min(elapsed, advance),
+        );
       }
     }
     this.previous = { ...reading };
@@ -55,9 +72,15 @@ export class ListeningClock {
    * l’horloge.
    */
   snapshot(): ListeningSnapshot {
-    return { positionMs: Math.floor(this.previous?.positionMs ?? 0), listenedMsTotal: Math.floor(this.total) };
+    return {
+      positionMs: Math.floor(this.previous?.positionMs ?? 0),
+      listenedMsTotal: Math.floor(this.total),
+    };
   }
 
   /** Oublie l’observation précédente et remet le cumul à zéro pour une nouvelle session. */
-  reset() { this.previous = null; this.total = 0; }
+  reset() {
+    this.previous = null;
+    this.total = 0;
+  }
 }

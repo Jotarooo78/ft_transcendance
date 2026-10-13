@@ -34,7 +34,8 @@ export type PlaylistItem = {
   /** UUID du morceau Catalogue, distinct de l’occurrence de playlist ou de la session. */
   trackId: string;
   /** Ordre d’une occurrence dans la playlist ; les trous après suppression sont conservés. */
-  position: number };
+  position: number;
+};
 /**
  * Playlist persistante privée du compte, avec version de concurrence et occurrences renvoyées par
  * Library.
