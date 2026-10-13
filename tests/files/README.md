@@ -111,6 +111,62 @@ Les comptes créés pour la campagne sont conservés tant qu’aucun nettoyage
 ciblé des références Auth/Users/Library/Playback n’est produit et vérifié.
 Ne jamais supprimer globalement des tables, des comptes ou des volumes.
 
+## Valider le contenu réel — étape 5
+
+`services/media-service/src/validate-file.ts` lance `decode-file.ts` dans un
+processus Linux isolé. La fonction reçoit un temporaire interne et le MIME
+annoncé, puis renvoie type confirmé, octets, SHA-256 et durée décodée ; une
+image reçoit aussi ses dimensions. Elle ne publie ni fichier ni ligne SQL.
+Le nom et les métadonnées du client ne servent pas à calculer ces valeurs.
+
+FFmpeg 8.1.2 (paquet Alpine 8.1.2-r0 observé) et sharp 0.34.5 sont utilisés
+dans les images de construction et de production. Le protocole FFmpeg `fd`
+lit un descripteur de fichier régulier déjà ouvert sans suivre de symlink,
+avec recherche dans le fichier pour M4A. Les protocoles de chemins, réseau
+et playlists sont exclus ; les entrées vidéo et les audios à plusieurs flux
+sont refusés dans cette première version. Aucun filtre par extension audio
+n'est appliqué. Les MIME usuels des conteneurs testés et leurs alias sont
+contrôlés ; `application/octet-stream` permet la reconnaissance serveur
+d'un format audio dont le navigateur ignore le MIME. Les autres conteneurs
+décodables reçoivent un type `audio/x-<format FFmpeg>`. La compatibilité reste
+celle des décodeurs installés, sans promesse pour tous les codecs possibles.
+
+La validation audio parcourt complètement le fichier vers un flux PCM jeté
+progressivement ; le nombre d'échantillons donne la durée, comparée à celle
+du conteneur quand elle existe. Les erreurs de décodage font échouer la
+validation. sharp parcourt les pixels PNG/JPEG/WebP avec erreurs strictes,
+refuse animation/pages et vérifie 8 192 par côté et 25 millions de pixels.
+
+Le budget porte sur le worker JS et ses descendants : somme de leurs mémoires
+résidentes via `/proc`, contrôlée toutes les 20 ms, arrêt du groupe de
+processus à dépassement. Le délai couvre tout le traitement, sans remise à
+zéro entre décodeurs. Audio : 300 s/512 Mio ; image : 30 s/256 Mio. La
+surveillance est échantillonnée, pas une réservation de mémoire du noyau ;
+un dépassement bref entre deux mesures reste une limite de cette preuve.
+Une deuxième validation simultanée reçoit 503 ; une annulation arrête aussi
+le groupe. Aucun contrôle ne charge les 500 Mo originaux en mémoire.
+
+```bash
+docker compose build migrate-media
+docker compose run --rm --no-deps migrate-media npm test
+node tests/files/fixtures/create-fixtures.mjs /tmp/files-fixtures
+```
+
+Les 10 tests Media passent : les 6 contrôles acquis et 4 groupes de validation
+sur de vrais fichiers. WAV, FLAC, MP3, AAC, M4A, Ogg/Vorbis et Opus sont
+décodés ; PNG/JPEG/WebP aussi, dont la borne de 5 000 × 5 000 pixels.
+Refus testés : MIME mensonger, vide, signature seule, troncature, durée WAV
+incohérente, formats actifs, références externes, animation, dimensions et
+tailles dépassées. Des fichiers creux vérifient les limites exactes +1 octet
+sans allocation de 500 Mo. Les tests de budget arrêtent de vrais workers,
+avec récupération de la capacité après erreur et annulation.
+Le générateur de fixtures réutilise le PNG existant et produit un WAV
+synthétique et leurs variantes invalides dans le dossier fourni.
+
+Ces contrôles ne prouvent pas encore un envoi HTTPS, le stockage SQL, un
+aperçu navigateur, ni la prise en charge de fichiers maximaux de tous formats.
+Les étapes suivantes apportent ces preuves et la variante audio d'aperçu.
+
 ## État du contrôle initial
 
 Le 13 octobre 2026, la configuration Compose est valide et la base démarre.
