@@ -57,6 +57,32 @@ qualification R15, statistique commerciale ou reprise automatique n'est activée
 
 ## 📝 Repartition des modules
 
+### File upload and management system — Minor, 1 point
+
+The private **Mes fichiers** screen lets an authenticated user upload audio
+and PNG/JPEG/WebP images, inspect real transfer progress, preview saved files
+and delete unused files. Media checks decoded contents, size, ownership and
+processing limits; Catalogue protects track, release-cover and artist-image
+references, including drafts. Files remain available after service/database
+restarts and from another device signed in to the same account.
+
+Audio originals are preserved, up to 500,000,000 bytes, with a separate MP3
+preview. Images are limited to 25,000,000 bytes, 25 million pixels and 8,192
+pixels per side. Personal uploads stay separate from catalogue publishing.
+The [file contract](docs/music/FILES_CONTRACT.md) records exact limits,
+errors and the scope of deletion protection.
+
+Work delivered in this pathway: Media validation/storage and authenticated
+file management, Catalogue reference checks, React upload/list/preview/delete
+screens, and reproducible service/HTTPS/PostgreSQL/disc/Chromium tests.
+`tests/files/run.sh` verifies all six requirements with the existing Compose
+stack on fresh disposable volumes, then restores the original volumes.
+Run it twice to demonstrate independence from previous campaign data.
+Commands, safeguards, observed results and compatibility limits are in the
+[file test guide](tests/files/README.md). The Minor is worth one point only
+when every required phase and cleanup passes; personal learning and the
+overall module score remain separate assessments.
+
 ### Tiphaine
 
 #### USER MANAGEMENT :

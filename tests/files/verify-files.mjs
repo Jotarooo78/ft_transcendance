@@ -67,10 +67,11 @@ export async function createAccount(campaign, suffix) {
   const profile = expect(await request('/api/users/me', { token }), 200);
   return { ...account, id: uuid(profile.userId) };
 }
-export function multipart(bytes, mime) {
+export function multipart(bytes, mime, field = 'file') {
+  assert.ok(field === 'file' || field === 'avatar');
   const boundary = `files-${randomUUID()}`;
   return { contentType: `multipart/form-data; boundary=${boundary}`, bytes: Buffer.concat([
-    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="../../untrusted"\r\nContent-Type: ${mime}\r\n\r\n`), bytes, Buffer.from(`\r\n--${boundary}--\r\n`) ]) };
+    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${field}"; filename="../../untrusted"\r\nContent-Type: ${mime}\r\n\r\n`), bytes, Buffer.from(`\r\n--${boundary}--\r\n`) ]) };
 }
 export async function upload(token, bytes, mime) {
   const file = expect(await request('/api/media/assets', { method: 'POST', token, ...multipart(bytes, mime) }), 201);
@@ -150,6 +151,38 @@ async function references(state) {
     delete state.references; await writeState(state.path, state);
   }
 }
+async function nonRegression(state) {
+  const token = await login(state.a); const other = await login(state.b);
+  const fixtures = await createFixtures(`${state.path}.fixtures`);
+  const profile = expect(await request('/api/users/me/avatar', { method:'POST',token,...multipart(fixtures['image.png'],'image/png','avatar') }),200);
+  assert.equal(profile.userId,state.a.id); assert.match(profile.avatarUrl,/^\/api\/users\/avatars\//);
+  const avatar = await request(profile.avatarUrl); expect(avatar,200); assert.deepEqual(avatar.bytes,fixtures['image.png']);
+  const large = Buffer.alloc(2*1024*1024+1); fixtures['image.png'].copy(large);
+  expect(await request('/api/users/me/avatar',{method:'POST',token,...multipart(large,'image/png','avatar')}),413);
+  assert.equal(expect(await request('/api/users/me',{token}),200).avatarUrl,profile.avatarUrl);
+  const catalog = expect(await request('/api/catalog/tracks'),200); assert.equal(catalog.total,3);
+  const trackId = '20000000-0000-4000-8000-000000000001';
+  const playlist = expect(await request('/api/library/playlists',{method:'POST',token,json:{name:'Files non-regression fixture',description:''}}),201);
+  try {
+    const edited = expect(await request(`/api/library/playlists/${uuid(playlist.id)}/items`,{method:'POST',token,json:{trackId,expectedVersion:playlist.version}}),200);
+    assert.equal(edited.items.length,1); assert.equal(edited.items[0].trackId,trackId);
+    expect(await request(`/api/library/playlists/${playlist.id}`,{token:other}),404);
+    expect(await request(`/api/library/playlists/${playlist.id}`,{method:'DELETE',token,json:{expectedVersion:edited.version}}),204);
+  } catch(error) {
+    const current = await request(`/api/library/playlists/${playlist.id}`,{token});
+    if(current.status===200) expect(await request(`/api/library/playlists/${playlist.id}`,{method:'DELETE',token,json:{expectedVersion:current.data.version}}),204);
+    throw error;
+  }
+  const session = expect(await request('/api/playback/sessions',{method:'POST',token,json:{trackId}}),201);
+  await delay(250);
+  const progress = expect(await request(`/api/playback/sessions/${uuid(session.id)}/progress`,{method:'PUT',token,json:{sequence:1,positionMs:200,listenedMsTotal:200}}),200);
+  assert.equal(progress.listenedMs,200); assert.equal(progress.lastSequence,1);
+  expect(await request(`/api/playback/sessions/${session.id}/close`,{method:'POST',token:other,json:{}}),404);
+  const closed = expect(await request(`/api/playback/sessions/${session.id}/close`,{method:'POST',token,json:{}}),200);
+  assert.ok(closed.endedAt); assert.equal(closed.listenedMs,200);
+  const history = expect(await request('/api/playback/sessions',{token}),200); assert.ok(history.items.some(item=>item.id===session.id));
+  console.log('[FILES HTTP] PASS avatar bytes/limit, catalogue, private Library and Playback non-regression');
+}
 export async function main(mode, statePath) {
   await waitReady();
   if (mode === 'initial') {
@@ -177,6 +210,7 @@ export async function main(mode, statePath) {
   } else {
     const state = await readState(statePath); assert.equal(state.path, statePath);
     if (mode === 'verify') { await verify(state); console.log('[FILES HTTP] PASS persisted UUIDs, checksums, private bytes and owner isolation'); }
+    else if(mode === 'non-regression') await nonRegression(state);
     else if (mode === 'catalog-down') {
       const token = await login(state.a); const file = state.files[0];
       compose(['stop', 'catalog-service']);

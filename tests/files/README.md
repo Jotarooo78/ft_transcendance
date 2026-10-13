@@ -1,8 +1,10 @@
 # Tests des fichiers sur la pile existante
 
-Ce parcours utilise `docker-compose.yml` à la racine du dépôt. Il ne crée pas
-de seconde pile. Les uploads privés ne sont pas encore implémentés : le guide
-décrit d’abord les prérequis, puis sera complété avec les scénarios produits.
+Ce parcours utilise `docker-compose.yml` à la racine du dépôt, le projet
+`common_repo` et HTTPS 1443. Il couvre envoi, validation, stockage, liste,
+aperçu et suppression des fichiers personnels audio/image. Les sections
+ci-dessous distinguent les preuves unitaires, HTTPS/SQL/disque et Chromium ;
+la campagne globale les reprend depuis des volumes neufs.
 
 ## Cibles
 
@@ -407,6 +409,61 @@ les seules références et fichiers de ces comptes via DELETE, en exigeant
 une liste vide. Les comptes et lignes deleted restent comme suivi.
 Les résultats Chromium complètent les preuves SQL/disque, sans certifier
 tous les formats, navigateurs ou charges.
+
+## Rejouer depuis des volumes neufs — étape 13
+
+```bash
+tests/files/run.sh
+tests/files/run.sh
+```
+
+Chaque lancement utilise les mêmes services/réseau/ports du Compose
+principal, avec une surcharge temporaire portant seulement sur les noms de
+db_data, media_data et avatar_data. Il vérifie les volumes d'origine, crée
+trois volumes uniques étiquetés jetables pour cette campagne, suspend les
+services applicatifs, puis démarre la pile sur ces nouveaux volumes.
+Les six migrations et les permissions précèdent la preuve de tables vides
+et les seeds explicitement exécutés. Les données existantes restent dans
+leurs volumes d'origine, qui sont ensuite remontés.
+
+La commande enchaîne 98 tests Auth/Users/Catalogue/Media/Library/Playback,
+lint/build et 10 tests music frontend, outils Chromium, preuves HTTPS/SQL/disque,
+redémarrages, panne Catalogue, avatars/Library/Playback, trois scénarios
+Chromium et suppression ciblée. La vérification finale du volume Media
+exige exactement les trois originaux de démonstration, sans upload résiduel.
+
+Le trap de sortie restaure les volumes d'origine, revérifie les montages
+effectifs et la disponibilité HTTPS, puis retire uniquement les volumes
+créés par ce lancement après contrôle de leurs labels de campagne/jetables.
+Il conserve les volumes originaux et ceux du monitoring. Un contrôle,
+une restauration ou un nettoyage en échec interdit le PASS global.
+En cas d'échec, le chemin local des cibles/preuves est affiché pour reprendre
+la restauration ; les configurations contenant l'environnement sont effacées.
+
+Le runner imprime révision Git, présence de changements locaux, versions
+Node/npm/Compose/Playwright/Chromium/FFmpeg et résultats, sans secrets. Les
+manifestes et fixtures locaux restent sous /tmp en accès privé. Deux lancements
+indépendants démontrent l'absence de dépendance aux données du premier.
+
+**Résultats du 13 octobre 2026 : deux campagnes complètes PASS**, chacune avec
+98 tests de services (Auth 6, Users 50, Catalogue 7, Media 19, Library 8,
+Playback 8), 10 tests frontend, lint/build verts, HTTPS/SQL/disque et
+3 scénarios Chromium (35,5 s puis 37,7 s). Chaque campagne a utilisé trois
+volumes nouveaux distincts, prouvé les tables vides après migrations,
+restauré les montages d'origine et retiré ses seuls volumes jetables.
+Node 22.23.2, npm 10.9.8, Compose 2.40.3, Playwright 1.63.0,
+Chromium 153.0.8010.12 et FFmpeg 8.1.2 sont les versions observées.
+Révision de base d87ebc9 avec les modifications locales du runner/guide.
+
+Un essai de préparation a échoué sur une garde visant auth.users, alors
+que la table réelle est auth.accounts. Le runner a restauré/nettoyé cet
+essai ; les deux campagnes complètes ont ensuite utilisé la garde corrigée.
+Le scénario de non-régression respecte aussi le vrai retour 200 de l'ajout
+d'un morceau à une playlist, vérifié dans le code existant.
+
+Cette preuve complète justifie le Minor « File upload and management system »
+de 1 point. Elle ne coche pas la compréhension de l'utilisateur ; le bilan
+global des autres modules est à réexaminer par tr-status.
 
 ## État du contrôle initial
 

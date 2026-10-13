@@ -1,8 +1,9 @@
 # Contrat des fichiers personnels
 
 Choix validés avec l’utilisateur le 12 octobre 2026. Ce document définit les
-comportements à produire ; il ne prouve pas leur implémentation. Il sert de
-référence commune pour l’interface, Media et les tests.
+comportements et limites retenus. Il sert de référence commune pour
+l’interface, Media et les tests ; les preuves d’exécution sont décrites
+dans [le guide des fichiers](../../tests/files/README.md).
 
 ## Périmètre
 
@@ -95,7 +96,7 @@ testée. Une ligne ready doit décrire un fichier réel et disponible.
 Conserver l’original audio sans altération. Le propriétaire peut écouter un
 aperçu ; si son format n’est pas lisible directement dans le navigateur,
 produire une variante compatible distincte avec les mêmes droits. Le format
-exact de cette variante sera fixé lors de la production et testé dans le
+exact de cette variante est fixé ci-dessous et testé dans le
 navigateur retenu. Aucun succès d’aperçu ne peut être revendiqué pour un format
 accepté mais non lisible. Les images validées ont un aperçu image.
 
@@ -103,8 +104,9 @@ Choix de production du 13 octobre 2026 : chaque audio validé reçoit un aperçu
 MP3 distinct à 128 kbit/s, 44,1 kHz stéréo, préparé dans le budget global
 audio. Sa taille est bornée à 500 000 000 octets (refus 422 si dépassée), pour
 borner aussi son téléchargement privé en Blob. L’original est conservé sans
-modification ; les images utilisent leur original validé. La preuve de
-lecture réelle dans Chromium reste requise avant la clôture du parcours.
+modification ; les images utilisent leur original validé. La lecture réelle
+dans Chromium est prouvée, y compris pour un original AIFF non lisible
+localement dont la variante MP3 fonctionne.
 
 Les lectures privées exigent une authentification et ne mettent jamais de JWT
 dans une URL. Utiliser Cache-Control: no-store ; libérer les copies et URL Blob
@@ -140,7 +142,7 @@ lecture SQL interservice. Une panne du contrôle empêche la suppression. Ce
 contrôle ne garantit pas une transaction avec une future association concurrente ;
 aucune écriture de publication utilisateur n’est ajoutée ici.
 
-## Interface HTTP à produire
+## Interface HTTP produite
 
 Toutes les routes passent par HTTPS. Le préfixe externe est /api/media ; les
 routes internes Media n’ont pas ce préfixe.
@@ -198,7 +200,11 @@ documentaire ne remplace pas les tests futurs :
 - Décodage trop lent ou trop gourmand : arrêt, refus 422 et nettoyage ; serveur
   indisponible ou occupé : 503, aucun faux succès.
 
-Les étapes suivantes devront démontrer ces cas sur une pile isolée, avec
-deux comptes, concordance SQL/disque, redémarrages et vrai parcours navigateur.
-Le Minor n’est acquis qu’après preuve des six exigences : types multiples,
-validation client/serveur, stockage et droits, aperçu, progression et suppression.
+Les campagnes `tests/files/run.sh` démontrent ces cas sur la pile existante
+avec trois volumes neufs par lancement, deux comptes, concordance SQL/disque,
+redémarrages et vrai parcours Chromium. Deux campagnes indépendantes ont
+réussi le 13 octobre 2026, avec restauration et nettoyage vérifiés.
+Les six exigences sont étayées : types multiples, validation client/serveur,
+stockage et droits, aperçu, progression et suppression. Les preuves portent
+sur les formats/scénarios documentés, pas sur tous les codecs ou toutes les
+charges possibles ; la validation de compréhension reste personnelle.
