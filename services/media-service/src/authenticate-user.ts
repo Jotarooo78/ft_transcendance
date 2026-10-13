@@ -19,5 +19,5 @@ export async function authenticateUser(request: FastifyRequest, reply: FastifyRe
       throw new Error("Invalid session");
     }
     request.authenticatedUserId = sub.toLowerCase();
-  } catch { return reply.code(401).send({ error: "unauthorized" }); }
+  } catch { return reply.code(401).send(request.method === "HEAD" ? undefined : { error: "unauthorized" }); }
 }

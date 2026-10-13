@@ -11,5 +11,6 @@ export async function readOwnedAsset(
   const owner = request.authenticatedUserId;
   // Fail closed even if a future caller forgets the authentication hook.
   if (typeof owner !== "string" || !uuidPattern.test(owner) || !uuidPattern.test(id)) return null;
-  return database.asset.findFirst({ where: { id: id.toLowerCase(), uploaderUserId: owner.toLowerCase() } });
+  return database.asset.findFirst({ where: { id: id.toLowerCase(), uploaderUserId: owner.toLowerCase() },
+    include: { variants: { where: { renditionKey: "private-preview" } } } });
 }

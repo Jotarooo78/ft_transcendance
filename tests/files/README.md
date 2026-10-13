@@ -214,6 +214,29 @@ compensation et commit incertain avec base simulée, reprise sur disque et
 collision, et abandon d'une vraie connexion HTTP. La preuve PostgreSQL/HTTPS
 reste à l'étape 11 ; la liste et la lecture privées restent à l'étape 7.
 
+## Retrouver et prévisualiser — étape 7
+
+GET /api/media/assets liste exclusivement les assets ready audio/cover
+du propriétaire JWT. La réponse contient items, total, page et pageSize ;
+page commence à 1 (maximum 9 999), pageSize vaut 50 par défaut et au plus
+100. L'ordre createdAt descendant puis UUID descendant est déterministe.
+Une pagination invalide donne 400 ; rafraîchir la liste après une mutation.
+Les réponses ne révèlent ni propriétaire, ni clé de stockage, ni checksum.
+
+GET et HEAD /api/media/assets/:id/private-content revérifient la connexion,
+l'UUID, la propriété et l'état ready. Les images livrent leur original ;
+l'audio livre sa variante MP3 privée. MIME et Content-Length décrivent les
+octets réellement livrés, avec Cache-Control no-store et nosniff. Un chemin
+non conforme, un symlink, un fichier non régulier, absent ou dont la taille
+ne correspond pas est refusé. Un autre propriétaire, seed ou état indisponible
+reçoit uniformément 404 ; absence de session : 401. HEAD omet tout corps,
+y compris lors d'un refus. La lecture publique /audio conserve ses règles.
+
+Les 16 tests Media passent : les deux nouveaux groupes vérifient la requête
+Prisma propriétaire/état, la pagination et les clés publiques, puis les
+octets image/variante et tous ces refus sur un dossier temporaire réel.
+La base des tests reste simulée ; le rendu navigateur est encore à prouver.
+
 ## État du contrôle initial
 
 Le 13 octobre 2026, la configuration Compose est valide et la base démarre.

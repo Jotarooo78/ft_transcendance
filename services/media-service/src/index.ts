@@ -3,6 +3,7 @@ import { publicationReader } from "./publication.js";
 import { disconnectPrisma, prisma } from "./database/prisma.js";
 import { fileStore } from "./database/save-file-record.js";
 import { recoverUploads } from "./save-file.js";
+import { fileReader } from "./database/list-files.js";
 
 const storageDir = process.env.MEDIA_STORAGE_DIR ?? "/data/audio";
 const files = fileStore(prisma);
@@ -13,6 +14,7 @@ const app = buildApp({
   logger: true,
   storageDir,
   files,
+  fileReads: fileReader(prisma),
   readAsset: id => prisma.asset.findUnique({ where: { id } }),
   isPublished: publicationReader(process.env.CATALOG_SERVICE_URL ?? "http://catalog-service:4002"),
   ready: async () => { await prisma.$queryRaw`SELECT 1`; },
