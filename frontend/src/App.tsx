@@ -7,7 +7,7 @@ import CatalogPage from "./pages/CatalogPage";
 import PlaylistsPage from "./pages/PlaylistsPage";
 import UsersPage from "./pages/UsersPage";
 import HistoryPage from "./pages/HistoryPage";
-import FileUploadForm from "./components/FileUploadForm";
+import FilesPage from "./pages/FilesPage";
 
 import type { AuthenticatedUser, PublicUser } from "./types/auth";
 import { useLibrary } from "./hooks/useLibrary";
@@ -367,7 +367,7 @@ function App() {
         )}
 
         {privatePage === "history" && <HistoryPage key={currentUser.id} />}
-        {privatePage === "files" && <main className="files-page" key={currentUser.id}><h1>Mes fichiers</h1><FileUploadForm /></main>}
+        {privatePage === "files" && <FilesPage key={currentUser.id} />}
 
         {privatePage === "users" && (
           <UsersPage

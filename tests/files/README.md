@@ -298,6 +298,28 @@ Lint et compilation frontend sont les contrôles de cette étape. La preuve
 de progressions intermédiaires sur réseau réellement ralenti, des refus
 visibles et de l'aperçu reste au scénario Chromium de l'étape 12.
 
+## Gérer ses fichiers dans l’interface — étape 10
+
+Mes fichiers utilise maintenant la liste paginée du serveur, par pages de
+20, et distingue chargement, liste vide et erreur. L'envoi confirmé actualise
+la première page ; une erreur d'envoi n'ajoute aucune ligne.
+Chaque fichier présente type, taille et durée éventuelle, un aperçu à ouvrir
+et un bouton de suppression. Le serveur peut confirmer 204 ou refuser 409 ;
+la ligne disparaît uniquement après succès. Un refus garde ligne et aperçu,
+avec un message exploitable et possibilité de réessayer.
+
+L'aperçu est téléchargé par authenticatedFetch avec signal d'annulation,
+MIME attendu et taille annoncée bornée. Les octets sont comptés pendant la
+lecture, puis un Blob local alimente img ou audio. Pas de jeton dans src,
+pas de session Playback pour ces fichiers privés. Fermeture, suppression,
+changement de compte et démontage libèrent les URL Blob et annulent les
+requêtes ; les réponses tardives d'une ancienne session sont ignorées.
+La liste n'est pas conservée dans localStorage.
+
+Lint et build frontend passent. Les preuves avec un vrai serveur, images
+décodées, lecture MP3, refus de suppression et changements de compte
+arrivent aux étapes 11/12 ; la compilation ne remplace pas ces preuves.
+
 ## État du contrôle initial
 
 Le 13 octobre 2026, la configuration Compose est valide et la base démarre.

@@ -68,9 +68,26 @@ main:has(> .profile-card) {
 
 .catalog-page,
 .playlists-page,
+.files-page,
 .users-page {
   width: min(100% - 40px, 1080px);
 }
+
+.file-upload-form, .file-card {
+  display: grid;
+  gap: 14px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+}
+.file-upload-form { margin-bottom: 32px; }
+.file-upload-form input, .file-upload-form progress { width: 100%; }
+.file-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 20px; padding: 0; list-style: none; }
+.file-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.file-id { font-size: .8rem; overflow-wrap: anywhere; }
+.file-image-preview { max-width: 100%; max-height: 320px; object-fit: contain; }
+.file-card audio { max-width: 100%; width: 100%; }
 
 .page-label,
 .track-genre {
