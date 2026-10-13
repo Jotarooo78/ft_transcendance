@@ -31,3 +31,10 @@ frontend/public/audio
 /tests/music/playwright-report/
 /tests/files/test-results/
 /tests/files/playwright-report/
+
+# matis 
+.claude
+.agent
+backend/packages/*/dist/
+backend/services/*/dist/
+backend/services/*/src/generated/prisma/
