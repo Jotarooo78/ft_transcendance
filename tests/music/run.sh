@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Orchestre la campagne décrite dans le README voisin ; les gardes et le traitement de sortie font partie de la preuve.
 set -Eeuo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -14,6 +15,7 @@ complete=false
 work_dir="$(mktemp -d /tmp/transcendence-music.XXXXXX)"
 revision="$(git -C "$repo_dir" rev-parse HEAD)"
 
+# Traitement de sortie : conserve le statut d’échec et nettoie uniquement les ressources de cette campagne.
 cleanup() {
   local status=$?
   trap - EXIT
@@ -29,6 +31,7 @@ cleanup() {
   fi
   exit "$status"
 }
+# Garantit que la sortie normale et les erreurs passent par le nettoyage prévu par ce runner.
 trap cleanup EXIT
 
 [[ "$(git -C "$repo_dir" rev-parse --show-toplevel)" == "$repo_dir" ]]
@@ -88,6 +91,7 @@ npm run install:browser --prefix "$script_dir"
 printf '[MUSIC] Playwright=%s\n' "$("$script_dir/node_modules/.bin/playwright" --version)"
 phase=migrations-permissions-readiness
 "${compose[@]}" up -d --wait nginx
+# Charge un fichier SQL de fixture ou d’assertion dans la seule base musicale isolée.
 sql_file() {
   "${compose[@]}" exec -T db psql -U e2e_admin -d transcendence_music -v ON_ERROR_STOP=1 "$@" -f /dev/stdin
 }

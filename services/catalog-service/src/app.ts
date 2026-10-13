@@ -1,19 +1,36 @@
+/** Routes de lecture du Catalogue et contrôle interne des références utilisé avant une suppression Media. */
 import Fastify from "fastify";
 import client from "prom-client";
 import { timingSafeEqual } from "node:crypto";
 import { parseTrackQuery, uuidPattern, type TrackDto, type TrackList, type TrackQuery } from "./catalog.js";
 
+/**
+ * Lecteurs injectés pour les routes ; les références privées exigent un token interne. ready contrôle
+ * PostgreSQL et close libère les ressources.
+ */
 type Options = {
+  /** Lecture d’un morceau publié ; une absence reste null. */
   readTrack: (id: string) => Promise<TrackDto | null>;
+  /** Lecture filtrée et paginée des morceaux publiés. */
   listTracks?: (query: TrackQuery) => Promise<TrackList>;
+  /** Vérifie qu’un morceau publié utilise cet audio. */
   isAssetPublished?: (id: string) => Promise<boolean>;
+  /** Vérifie toute référence audio, couverture ou artiste, y compris en brouillon. */
   isAssetReferenced?: (id: string) => Promise<boolean>;
+  /** Secret partagé entre services pour les routes internes ; distinct du JWT utilisateur. */
   internalServiceToken?: string;
+  /** Contrôle de disponibilité du stockage avant réponse de /ready. */
   ready: () => Promise<void>;
+  /** Libération des ressources à la fermeture, ou clôture de la session dans le transport Playback. */
   close?: () => Promise<void>;
+  /** Active ou désactive les journaux du serveur construit. */
   logger?: boolean;
 };
 
+/**
+ * Construit les lectures publiques, la disponibilité et les métriques. La route interne de références
+ * vérifie le secret ; une panne de lecteur devient 503 sans divulguer les détails SQL.
+ */
 export function buildApp(options: Options) {
   if (options.isAssetReferenced && !options.internalServiceToken?.trim()) throw new Error("INTERNAL_SERVICE_TOKEN is required");
   const app = Fastify({ logger: options.logger ?? false });
@@ -32,7 +49,11 @@ export function buildApp(options: Options) {
     reply.header("Content-Type", registry.contentType);
     return registry.metrics();
   });
-  app.get<{ Params: { id: string } }>("/tracks/:id", async (request, reply) => {
+  app.get<{
+    /** Paramètres extraits du chemin de la route, validés avant accès au stockage. */
+    Params: {
+    /** Identifiant de cette entité ; distinct des identifiants des objets liés. */
+    id: string } }>("/tracks/:id", async (request, reply) => {
     if (!uuidPattern.test(request.params.id)) {
       return reply.code(400).send({ error: "invalid_request" });
     }
@@ -44,7 +65,9 @@ export function buildApp(options: Options) {
       return reply.code(503).send({ error: "catalog_unavailable" });
     }
   });
-  app.get<{ Querystring: Record<string, unknown> }>("/tracks", async (request, reply) => {
+  app.get<{
+    /** Paramètres de recherche HTTP, validés avant leur conversion. */
+    Querystring: Record<string, unknown> }>("/tracks", async (request, reply) => {
     const query = parseTrackQuery(request.query);
     if (!query) return reply.code(400).send({ error: "invalid_request" });
     try {
@@ -54,7 +77,11 @@ export function buildApp(options: Options) {
       return reply.code(503).send({ error: "catalog_unavailable" });
     }
   });
-  app.get<{ Params: { id: string } }>("/assets/:id/publication", async (request, reply) => {
+  app.get<{
+    /** Paramètres extraits du chemin de la route, validés avant accès au stockage. */
+    Params: {
+    /** Identifiant de cette entité ; distinct des identifiants des objets liés. */
+    id: string } }>("/assets/:id/publication", async (request, reply) => {
     reply.header("Cache-Control", "no-store");
     if (!uuidPattern.test(request.params.id)) return reply.code(400).send({ error: "invalid_request" });
     try {
@@ -62,7 +89,11 @@ export function buildApp(options: Options) {
       return { published: await options.isAssetPublished(request.params.id.toLowerCase()) };
     } catch { return reply.code(503).send({ error: "catalog_unavailable" }); }
   });
-  app.get<{ Params: { id: string } }>("/internal/assets/:id/references", async (request, reply) => {
+  app.get<{
+    /** Paramètres extraits du chemin de la route, validés avant accès au stockage. */
+    Params: {
+    /** Identifiant de cette entité ; distinct des identifiants des objets liés. */
+    id: string } }>("/internal/assets/:id/references", async (request, reply) => {
     reply.header("Cache-Control", "no-store");
     const received = Buffer.from(request.headers.authorization ?? "");
     const expected = Buffer.from(`Bearer ${options.internalServiceToken ?? ""}`);

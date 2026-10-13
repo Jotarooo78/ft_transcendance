@@ -1,4 +1,6 @@
+-- Preuve SQL de les données et refus propres au scénario décrit dans le README voisin. Une assertion échouée arrête psql ; les fixtures ne doivent être exécutées que dans leur cible de test contrôlée.
 \set ON_ERROR_STOP on
+-- Encadre les écritures de fixture pour que le scénario puisse les valider ou les annuler explicitement.
 BEGIN;
 
 INSERT INTO users.profiles (user_id, username, display_name, bio)
@@ -34,4 +36,5 @@ WHERE user_id = '20000000-0000-4000-8000-000000000002'
 
 SELECT user_id, username, bio FROM users.profiles ORDER BY username;
 
+-- Retire les écritures d’essai de cette transaction après les assertions.
 ROLLBACK;

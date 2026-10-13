@@ -17,40 +17,72 @@ import {
 } from "./profile-creation-definitions.js";
 
 declare module "fastify" {
+  /** Champs ajoutés à Fastify pour mesurer la requête et porter l’identité vérifiée du compte. */
   interface FastifyRequest {
+    /** UUID provenant du JWT vérifié, jamais du corps fourni par le client. */
     authenticatedUserId?: string;
+    /** Repère haute résolution du début de requête, utilisé pour mesurer sa durée. */
     requestStart: bigint;
   }
 }
 
 declare module "@fastify/jwt" {
+  /** Forme du JWT attendu par les routes privées : sub porte l’identité du compte. */
   interface FastifyJWT {
-    payload: { sub?: unknown; [claim: string]: unknown };
-    user: { sub?: unknown; [claim: string]: unknown };
+    /** Données du jeton ou du message, à valider avant leur utilisation. */
+    payload: {
+      /** Sujet du JWT : UUID du compte, vérifié avant de servir des données privées. */
+      sub?: unknown; [claim: string]: unknown };
+    /** Informations du JWT décodées et signature vérifiée par le plugin Fastify. */
+    user: {
+      /** Sujet du JWT : UUID du compte, vérifié avant de servir des données privées. */
+      sub?: unknown; [claim: string]: unknown };
   }
 }
 
+/**
+ * Profil renvoyé au client ; bio est nullable et avatarUrl peut être absent, sans exposer les données
+ * de connexion.
+ */
 export type ProfileDto = {
+  /** UUID du compte auquel le profil ou la demande est rattaché. */
   userId: string;
+  /** Nom affiché du profil, distinct du username unique. */
   displayName: string;
+  /** Nom unique canonique : 3 à 24 caractères a-z, 0-9 ou _. */
   username: string;
+  /** Présentation facultative, au plus 160 caractères ; null représente son absence. */
   bio: string | null;
+  /** URL publique de l’avatar ; absence conservée pour permettre l’avatar par défaut. */
   avatarUrl: string | null;
 };
 
+/** Lit le profil d’un compte par UUID ; renvoie null lorsqu’il n’existe pas. */
 export type ProfileReader = (userId: string) => Promise<ProfileDto | null>;
 
+/**
+ * Enregistre les champs de profil validés pour le compte ; renvoie le profil confirmé et signale les
+ * conflits de username.
+ */
 export type ProfileUpdater = (
   userId: string,
   values: Pick<ProfileDto, "displayName" | "username" | "bio">,
 ) => Promise<ProfileDto>;
 
+/** Enregistre les octets de l’avatar et associe son nom au profil avant de confirmer le résultat. */
 export type AvatarWriter = (userId: string, fileName: string, bytes: Buffer) => Promise<ProfileDto>;
+/** Lit les octets de l’avatar demandé ; renvoie null si le fichier est absent. */
 export type AvatarReader = (fileName: string) => Promise<Buffer | null>;
+/** Limite d’avatar de 2 MiB, soit 2 097 152 octets ; distincte de la gestion générale des images Media. */
 export const maxAvatarBytes = 2 * 1024 * 1024;
+/** Correspondance des trois MIME d’avatar avec leur extension de stockage. */
 const avatarTypes = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" } as const;
 type AvatarMimeType = keyof typeof avatarTypes;
 const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+/**
+ * Accepte un nom d’avatar formé de l’UUID du compte et d’un UUID de fichier, avec extension image
+ * autorisée.
+ */
 const avatarFilePattern = /^[0-9a-f-]{36}-[0-9a-f-]{36}\.(png|jpg|webp)$/i;
 
 function isAvatarMimeType(value: string): value is AvatarMimeType {
@@ -85,29 +117,48 @@ function detectAvatarMimeType(bytes: Buffer): AvatarMimeType | null {
   return null;
 }
 
+/** Traduit un username déjà utilisé en conflit HTTP lors de la modification du profil. */
 export class UsernameConflictError extends Error {
+  /** Initialise le conflit métier de username, sans accès au stockage. */
   constructor() {
     super("username already in use");
     this.name = "UsernameConflictError";
   }
 }
 
+/**
+ * Opérations de profil injectables. Lecture et écriture d’avatar doivent être configurées ensemble,
+ * comme le token interne et la création de profil.
+ */
 type BuildAppOptions = {
+  /** Secret partagé entre services pour les routes internes ; distinct du JWT utilisateur. */
   internalServiceToken?: string;
+  /** Secret serveur pour vérifier ou signer les JWT ; ne doit pas être envoyé au navigateur. */
   jwtSecret: string;
+  /** Active ou désactive les journaux du serveur construit. */
   logger?: boolean;
+  /** Création transactionnelle du profil avec mémoire des événements déjà traités. */
   provisionProfile?: ProfileProvisioner;
+  /** Lecture du profil par UUID du compte. */
   readProfile: ProfileReader;
+  /** Écriture des champs de profil validés pour le compte. */
   profileUpdater: ProfileUpdater;
+  /** Écriture de l’avatar et de sa référence dans le profil. */
   writeAvatar?: AvatarWriter;
+  /** Lecture des octets d’un avatar par son nom contrôlé. */
   readAvatar?: AvatarReader;
 };
 
+/** Reconnaît le format UUID accepté par ce contrat avant les lectures ou écritures. */
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const usernamePattern = /^[a-z0-9_]{3,24}$/;
 
+/**
+ * Normalise le username selon le contrat commun a-z, 0-9 et _, de 3 à 24 caractères ; renvoie null en
+ * cas de refus.
+ */
 export function normalizeUsername(value: unknown): string | null {
   if (typeof value !== "string") {
     return null;
@@ -117,10 +168,15 @@ export function normalizeUsername(value: unknown): string | null {
   return usernamePattern.test(normalizedUsername) ? normalizedUsername : null;
 }
 
+/** Accepte uniquement un objet non null qui n’est pas un tableau avant d’inspecter une entrée inconnue. */
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/**
+ * Valide identité, version, date et champs d’une commande Auth ; renvoie une commande normalisée ou
+ * null sans écrire en base.
+ */
 function parseProfileProvisionCommand(
   body: unknown,
 ): ProfileProvisionCommand | null {
@@ -163,6 +219,10 @@ function parseProfileProvisionCommand(
   };
 }
 
+/**
+ * Compare le token Bearer au secret interne avec une comparaison à durée constante lorsque les
+ * longueurs sont identiques.
+ */
 function hasValidInternalToken(
   authorization: string | undefined,
   expectedToken: string,
@@ -177,6 +237,10 @@ function hasValidInternalToken(
   return received.length === expected.length && timingSafeEqual(received, expected);
 }
 
+/**
+ * Assemble les routes de profil avec leurs dépendances injectées pour les tests. Vérifie les couples
+ * d’options, le JWT et les champs avant les écritures ; retourne l’application sans ouvrir de port.
+ */
 export function buildApp({
   internalServiceToken,
   jwtSecret,
@@ -246,7 +310,13 @@ export function buildApp({
   });
 
   if (internalServiceToken && provisionProfile) {
-    app.put<{ Params: { userId: string }; Body: unknown }>(
+    app.put<{
+      /** Paramètres extraits du chemin de la route, validés avant accès au stockage. */
+      Params: {
+      /** UUID du compte auquel le profil ou la demande est rattaché. */
+      userId: string };
+      /** Corps HTTP typé pour cette route ; la validation réelle reste effectuée à l’exécution. */
+      Body: unknown }>(
       "/internal/profiles/:userId",
       async (request, reply) => {
         if (
@@ -294,6 +364,10 @@ export function buildApp({
     );
   }
 
+  /**
+   * Vérifie le JWT et son sujet UUID avant de renseigner authenticatedUserId ; répond 401 si le jeton ou
+   * le sujet est invalide.
+   */
   async function authenticate(
     request: FastifyRequest,
     reply: FastifyReply,
@@ -334,7 +408,9 @@ export function buildApp({
     },
   );
 
-  app.put<{ Body: unknown }>(
+  app.put<{
+    /** Corps HTTP typé pour cette route ; la validation réelle reste effectuée à l’exécution. */
+    Body: unknown }>(
     "/me/profile",
     { onRequest: authenticate },
     async (request, reply) => {
@@ -411,7 +487,11 @@ export function buildApp({
       } satisfies ProfileDto;
     });
 
-    app.get<{ Params: { fileName: string } }>("/avatars/:fileName", async (request, reply) => {
+    app.get<{
+      /** Paramètres extraits du chemin de la route, validés avant accès au stockage. */
+      Params: {
+      /** Nom du fichier d’avatar, validé avant toute lecture du stockage. */
+      fileName: string } }>("/avatars/:fileName", async (request, reply) => {
       const fileName = request.params.fileName;
       if (!avatarFilePattern.test(fileName)) {
         return reply.code(400).send({ error: "invalid file name" });

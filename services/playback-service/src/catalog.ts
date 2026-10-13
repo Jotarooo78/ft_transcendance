@@ -1,3 +1,8 @@
+/** Client Catalogue utilisé pour figer la durée d’un morceau publié lors de l’ouverture d’une session. */
+/**
+ * Construit la lecture HTTP bornée de la durée publiée ; renvoie null pour un morceau absent et
+ * rejette une panne ou une durée invalide.
+ */
 export function catalogReader(baseUrl: string, timeoutMs = 2000) {
   return async (id: string): Promise<number | null> => {
     const response = await fetch(new URL(`/tracks/${id}`, baseUrl), { signal: AbortSignal.timeout(timeoutMs), redirect: "error" });

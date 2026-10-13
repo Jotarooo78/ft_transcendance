@@ -18,7 +18,9 @@ import {
   UsernameTakenError,
 } from "./profile-creation-definitions.js";
 
+/** Secret serveur pour vérifier ou signer les JWT ; ne doit pas être envoyé au navigateur. */
 const jwtSecret = process.env.JWT_SECRET;
+/** Secret partagé entre services pour les routes internes ; distinct du JWT utilisateur. */
 const internalServiceToken = process.env.INTERNAL_SERVICE_TOKEN;
 const avatarStorageDir =
   process.env.AVATAR_STORAGE_DIR ?? "/tmp/user-service-avatars";
@@ -33,6 +35,10 @@ if (!internalServiceToken) {
   throw new Error("INTERNAL_SERVICE_TOKEN is required at runtime");
 }
 
+/**
+ * Lit les champs publics du profil par UUID ; renvoie null pour un compte absent et conserve une bio
+ * nullable.
+ */
 const readProfile: ProfileReader = (userId) =>
   prisma.profile.findUnique({
     where: { userId },
@@ -45,6 +51,10 @@ const readProfile: ProfileReader = (userId) =>
     },
   });
 
+/**
+ * Crée le profil et mémorise l’événement dans une transaction. Rejouer la même commande confirme le
+ * résultat ; un username occupé ou une commande incompatible produit une erreur métier.
+ */
 const provisionProfile: ProfileProvisioner = async (command) => {
   try {
     return await prisma.$transaction(async (tx) => {
@@ -128,6 +138,10 @@ const provisionProfile: ProfileProvisioner = async (command) => {
   }
 };
 
+/**
+ * Met à jour les champs de profil dans Prisma et traduit le conflit d’unicité en
+ * UsernameConflictError.
+ */
 const profileUpdater: ProfileUpdater = async (userId, values) => {
   try {
     return await prisma.profile.upsert({
@@ -153,6 +167,10 @@ const profileUpdater: ProfileUpdater = async (userId, values) => {
   }
 };
 
+/**
+ * Écrit un nouveau fichier d’avatar puis associe son URL au profil par upsert. Les étapes fichier et
+ * SQL ne forment pas une transaction commune : un échec SQL peut laisser un fichier orphelin.
+ */
 const writeAvatar: AvatarWriter = async (userId, fileName, bytes) => {
   await writeFile(join(avatarStorageDir, fileName), bytes);
   const avatarUrl = `/api/users/avatars/${fileName}`;
@@ -164,6 +182,10 @@ const writeAvatar: AvatarWriter = async (userId, fileName, bytes) => {
   });
 };
 
+/**
+ * Lit le fichier d’avatar dans le dossier configuré ; renvoie null pour ENOENT et propage les autres
+ * erreurs de stockage.
+ */
 const readAvatar: AvatarReader = async (fileName) => {
   try {
     return await readFile(join(avatarStorageDir, fileName));
@@ -173,6 +195,10 @@ const readAvatar: AvatarReader = async (fileName) => {
   }
 };
 
+/**
+ * Application HTTP assemblée avec ses lecteurs et écrivains ; l’ouverture du port est effectuée
+ * séparément.
+ */
 const app = buildApp({
   internalServiceToken,
   jwtSecret,
@@ -518,6 +544,7 @@ app.get("/presence/:userId", async (request, reply) => {
 
 app.addHook("onClose", disconnectPrisma);
 
+/** Ouvre le port du serveur Users ; journalise l’échec et termine le processus si le démarrage échoue. */
 async function start(): Promise<void> {
   try {
     await mkdir(avatarStorageDir, { recursive: true });

@@ -6,6 +6,10 @@ type TrackCardProps = {
   onPlay: (track: Track) => void;
 };
 
+/**
+ * Affiche minutes et secondes à partir d’une durée en secondes ; conserve une indication inconnue
+ * lorsque la durée manque.
+ */
 function formatDuration(durationSeconds: number | null): string {
   if (durationSeconds === null) return "Unknown";
   const minutes = Math.floor(durationSeconds / 60);

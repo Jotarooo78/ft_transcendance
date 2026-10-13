@@ -1,3 +1,4 @@
+/** Tests JWT et filtre SQL de propriétaire : absence, expiration et compte étranger ne doivent pas révéler un fichier. */
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import Fastify from "fastify";
@@ -13,8 +14,17 @@ const idA = "aaaaaaaa-0000-4000-8000-000000000003";
 const idB = "bbbbbbbb-0000-4000-8000-000000000004";
 const seedId = "cccccccc-0000-4000-8000-000000000005";
 const absentId = "dddddddd-0000-4000-8000-000000000006";
-const options = { jwtSecret: "media-test-secret", storageDir: "/unused", ready: async () => {},
-  readAsset: async () => null, isPublished: async () => false };
+/** Opérations de transport et notifications injectées dans la file. */
+const options = { jwtSecret: "media-test-secret", storageDir: "/unused",
+  /** Doublure du scénario pour disponibilité du stockage ; la réponse ou la panne est contrôlée par le test. */
+  ready: async () => {},
+  /**
+   * Doublure du scénario pour métadonnées du fichier audio ; la réponse ou la panne est contrôlée par le
+   * test.
+   */
+  readAsset: async () => null,
+    /** Doublure du scénario pour publication de l’audio ; la réponse ou la panne est contrôlée par le test. */
+    isPublished: async () => false };
 
 test("Media requires a configured secret", () => {
   for (const jwtSecret of ["", "   "]) assert.throws(() => buildApp({ ...options, jwtSecret }), /JWT_SECRET/);
@@ -24,15 +34,31 @@ test("verified sessions scope file access and refuse invalid tokens before datab
   const assets = [
     { id: idA, uploaderUserId: ownerA }, { id: idB, uploaderUserId: ownerB }, { id: seedId, uploaderUserId: null },
   ];
-  const reads: Array<{ id: string; uploaderUserId: string }> = [];
+  const reads: Array<{
+    /** Identifiant de cette entité ; distinct des identifiants des objets liés. */
+    id: string;
+    /** UUID du compte ayant envoyé l’original ; null pour les fichiers sans propriétaire utilisateur. */
+    uploaderUserId: string }> = [];
   // Database double: capture the actual Prisma predicate, then apply both filters.
-  const database = { asset: { findFirst: async ({ where }: { where: { id: string; uploaderUserId: string } }) => {
+  const database = { asset: {
+    /** Doublure du scénario pour filtre de lecture SQL par propriétaire ; la réponse ou la panne est contrôlée par le test. */
+    findFirst: async ({ where }: {
+    /** Filtre SQL attendu par la doublure afin de vérifier la portée propriétaire. */
+    where: {
+    /** Identifiant de cette entité ; distinct des identifiants des objets liés. */
+    id: string;
+    /** UUID du compte ayant envoyé l’original ; null pour les fichiers sans propriétaire utilisateur. */
+    uploaderUserId: string } }) => {
     reads.push(where);
     return assets.find(asset => asset.id === where.id && asset.uploaderUserId === where.uploaderUserId) ?? null;
   } } } as unknown as Pick<PrismaClient, "asset">;
   const app = buildApp(options);
   // Test-only route exercises the future private route composition, without shipping an endpoint.
-  app.post<{ Params: { id: string } }>("/test-private/:id", { onRequest: authenticateUser }, async (request, reply) => {
+  app.post<{
+    /** Paramètres extraits du chemin de la route, validés avant accès au stockage. */
+    Params: {
+    /** Identifiant de cette entité ; distinct des identifiants des objets liés. */
+    id: string } }>("/test-private/:id", { onRequest: authenticateUser }, async (request, reply) => {
     const asset = await readOwnedAsset(database, request, request.params.id);
     return asset ? { id: asset.id, owner: request.authenticatedUserId } : reply.code(404).send({ error: "media_not_found" });
   });
@@ -40,6 +66,7 @@ test("verified sessions scope file access and refuse invalid tokens before datab
   otherIssuer.register(jwt, { secret: "different-test-secret" });
   t.after(async () => { await app.close(); await otherIssuer.close(); });
   await app.ready(); await otherIssuer.ready();
+  /** Signe les claims contrôlées du scénario avec le secret de test Media. */
   const sign = (payload: Record<string, unknown>) => app.jwt.sign({ exp: Math.floor(Date.now() / 1000) + 3600, ...payload });
   const tokenA = sign({ sub: ownerA.toUpperCase() });
   const [header, payload, signature] = tokenA.split(".");
@@ -88,6 +115,8 @@ test("verified sessions scope file access and refuse invalid tokens before datab
 });
 
 test("private database failures propagate rather than becoming successful or missing results", async () => {
-  const database = { asset: { findFirst: async (): Promise<Asset | null> => { throw new Error("database unavailable"); } } } as unknown as Pick<PrismaClient, "asset">;
+  const database = { asset: {
+    /** Doublure du scénario pour filtre de lecture SQL par propriétaire ; la réponse ou la panne est contrôlée par le test. */
+    findFirst: async (): Promise<Asset | null> => { throw new Error("database unavailable"); } } } as unknown as Pick<PrismaClient, "asset">;
   await assert.rejects(readOwnedAsset(database, { authenticatedUserId: ownerA }, idA), /database unavailable/);
 });

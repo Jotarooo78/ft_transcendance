@@ -1,3 +1,4 @@
+/** Tests déterministes de l’horloge et de la file : pause, déplacement, regroupement, répétitions, clôture et perte de compte. */
 /// <reference types="node" />
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -5,9 +6,15 @@ import { ListeningClock } from "./listening-clock.ts";
 import { PlaybackQueue, type TrackingStatus } from "./playback-queue.ts";
 import type { PlaybackSession, ProgressPayload } from "./playback.ts";
 
+/** Session de test à durée fixe de six secondes pour vérifier la file sans réseau réel. */
 const session: PlaybackSession = { id: "test-session", trackId: "test-track", trackDurationMs: 6000,
   startedAt: "2026-01-01T00:00:00Z", endedAt: null, listenedMs: 0, lastSequence: 0, positionMs: 0 };
+/** Observation initiale de test : position et cumul d’écoute nuls. */
 const zero = { positionMs: 0, listenedMsTotal: 0 };
+/**
+ * Crée une promesse dont le test contrôle la résolution pour vérifier l’ordre des échanges sans
+ * attendre un réseau réel.
+ */
 function deferred<T>() {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>(done => { resolve = done; });
@@ -17,7 +24,19 @@ function deferred<T>() {
 test("queue retries identical payload after lost response and coalesces newer readings before close", async () => {
   const gate = deferred<void>(), calls: ProgressPayload[] = [], accepted = new Map<number, ProgressPayload>();
   let state = { ...session }, active = 0, maxActive = 0, closes = 0;
-  const queue = new PlaybackQueue({ open: async () => session, isCurrent: () => true, notify: () => {}, delay: async () => {},
+  const queue = new PlaybackQueue({
+    /** Doublure du scénario pour ouverture de session ; la réponse ou la panne est contrôlée par le test. */
+    open: async () => session,
+    /** Doublure du scénario pour garde de compte courant ; la réponse ou la panne est contrôlée par le test. */
+    isCurrent: () => true,
+    /** Doublure du scénario pour observation des notifications ; la réponse ou la panne est contrôlée par le test. */
+    notify: () => {},
+    /** Doublure du scénario pour attente contrôlée entre tentatives ; la réponse ou la panne est contrôlée par le test. */
+    delay: async () => {},
+    /**
+     * Doublure du scénario pour confirmation de progression ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
     progress: async (_id, payload) => {
       active++; maxActive = Math.max(maxActive, active); calls.push({ ...payload });
       if (calls.length === 1) await gate.promise;
@@ -27,7 +46,9 @@ test("queue retries identical payload after lost response and coalesces newer re
       active--;
       if (calls.length === 1) throw new Error("Response lost after simulated write");
       return state;
-    }, close: async () => { closes++; assert.equal(state.lastSequence, 2); return { ...state, endedAt: "2026-01-01T00:00:03Z" }; },
+    },
+      /** Doublure du scénario pour clôture de session ou libération de ressources ; la réponse ou la panne est contrôlée par le test. */
+      close: async () => { closes++; assert.equal(state.lastSequence, 2); return { ...state, endedAt: "2026-01-01T00:00:03Z" }; },
   });
   await queue.start(zero);
   queue.offer({ positionMs: 1000, listenedMsTotal: 1000 });
@@ -41,9 +62,25 @@ test("queue retries identical payload after lost response and coalesces newer re
 
 test("exhausted retries retain the pending event and require an explicit retry before close", async () => {
   const calls: ProgressPayload[] = [], statuses: TrackingStatus[] = []; let outage = true, closes = 0;
-  const queue = new PlaybackQueue({ open: async () => session, isCurrent: () => true, notify: s => statuses.push(s), delay: async () => {},
+  const queue = new PlaybackQueue({
+    /** Doublure du scénario pour ouverture de session ; la réponse ou la panne est contrôlée par le test. */
+    open: async () => session,
+    /** Doublure du scénario pour garde de compte courant ; la réponse ou la panne est contrôlée par le test. */
+    isCurrent: () => true,
+    /** Doublure du scénario pour observation des notifications ; la réponse ou la panne est contrôlée par le test. */
+    notify: s => statuses.push(s),
+    /** Doublure du scénario pour attente contrôlée entre tentatives ; la réponse ou la panne est contrôlée par le test. */
+    delay: async () => {},
+    /**
+     * Doublure du scénario pour confirmation de progression ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
     progress: async (_id, payload) => { calls.push({ ...payload }); if (outage) throw new Error("offline");
       return { ...session, lastSequence: payload.sequence, positionMs: payload.positionMs, listenedMs: payload.listenedMsTotal }; },
+    /**
+     * Doublure du scénario pour clôture de session ou libération de ressources ; la réponse ou la panne
+     * est contrôlée par le test.
+     */
     close: async () => { closes++; return { ...session, endedAt: "2026-01-01T00:00:01Z" }; },
   });
   await queue.start(zero); await queue.finish({ positionMs: 1000, listenedMsTotal: 1000 });
@@ -55,8 +92,22 @@ test("exhausted retries retain the pending event and require an explicit retry b
 
 test("a late opening after track detachment finishes only its own session without stale notifications", async () => {
   const opening = deferred<PlaybackSession>(), statuses: TrackingStatus[] = []; let progress = 0, closes = 0;
-  const queue = new PlaybackQueue({ open: () => opening.promise, isCurrent: () => true, notify: s => statuses.push(s),
+  const queue = new PlaybackQueue({
+    /** Doublure du scénario pour ouverture de session ; la réponse ou la panne est contrôlée par le test. */
+    open: () => opening.promise,
+    /** Doublure du scénario pour garde de compte courant ; la réponse ou la panne est contrôlée par le test. */
+    isCurrent: () => true,
+    /** Doublure du scénario pour observation des notifications ; la réponse ou la panne est contrôlée par le test. */
+    notify: s => statuses.push(s),
+    /**
+     * Doublure du scénario pour confirmation de progression ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
     progress: async (id, payload) => { assert.equal(id, session.id); progress++; return { ...session, lastSequence: payload.sequence }; },
+    /**
+     * Doublure du scénario pour clôture de session ou libération de ressources ; la réponse ou la panne
+     * est contrôlée par le test.
+     */
     close: async id => { assert.equal(id, session.id); closes++; return { ...session, endedAt: "2026-01-01T00:00:01Z" }; },
   });
   const started = queue.start(zero); queue.detach({ positionMs: 500, listenedMsTotal: 500 });
@@ -66,16 +117,40 @@ test("a late opening after track detachment finishes only its own session withou
 
 test("changed account ignores late opening and stops subsequent requests", async () => {
   const opening = deferred<PlaybackSession>(); let current = true, requests = 0;
-  const queue = new PlaybackQueue({ open: () => opening.promise, isCurrent: () => current, notify: () => {},
-    progress: async () => { requests++; return session; }, close: async () => { requests++; return session; } });
+  const queue = new PlaybackQueue({
+    /** Doublure du scénario pour ouverture de session ; la réponse ou la panne est contrôlée par le test. */
+    open: () => opening.promise,
+    /** Doublure du scénario pour garde de compte courant ; la réponse ou la panne est contrôlée par le test. */
+    isCurrent: () => current,
+    /** Doublure du scénario pour observation des notifications ; la réponse ou la panne est contrôlée par le test. */
+    notify: () => {},
+    /**
+     * Doublure du scénario pour confirmation de progression ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
+    progress: async () => { requests++; return session; },
+      /** Doublure du scénario pour clôture de session ou libération de ressources ; la réponse ou la panne est contrôlée par le test. */
+      close: async () => { requests++; return session; } });
   const started = queue.start(zero); current = false; opening.resolve(session); await started;
   await queue.finish({ positionMs: 1000, listenedMsTotal: 1000 }); queue.retry(); assert.equal(requests, 0);
 });
 
 test("uncertain opening is never retried automatically", async () => {
   let opens = 0; const statuses: TrackingStatus[] = [];
-  const queue = new PlaybackQueue({ open: async () => { opens++; throw new Error("Opening reply lost"); }, isCurrent: () => true,
-    notify: s => statuses.push(s), progress: async () => session, close: async () => session });
+  const queue = new PlaybackQueue({
+    /** Doublure du scénario pour ouverture de session ; la réponse ou la panne est contrôlée par le test. */
+    open: async () => { opens++; throw new Error("Opening reply lost"); },
+    /** Doublure du scénario pour garde de compte courant ; la réponse ou la panne est contrôlée par le test. */
+    isCurrent: () => true,
+    /**
+     * Doublure du scénario pour observation des notifications ; la réponse ou la panne est contrôlée par
+     * le test.
+     */
+    notify: s => statuses.push(s),
+      /** Doublure du scénario pour confirmation de progression ; la réponse ou la panne est contrôlée par le test. */
+      progress: async () => session,
+      /** Doublure du scénario pour clôture de session ou libération de ressources ; la réponse ou la panne est contrôlée par le test. */
+      close: async () => session });
   await queue.start(zero); await queue.start({ positionMs: 1000, listenedMsTotal: 1000 }); queue.retry();
   await queue.finish({ positionMs: 2000, listenedMsTotal: 2000 });
   assert.equal(opens, 1); assert.equal(statuses.at(-1)?.state, "error"); assert.equal(statuses.at(-1)?.canRetry, false);
@@ -84,8 +159,22 @@ test("uncertain opening is never retried automatically", async () => {
 test("logout during an in-flight progress suppresses its result and any final close", async () => {
   const received = deferred<void>(), response = deferred<PlaybackSession>(), statuses: TrackingStatus[] = [];
   let current = true, writes = 0, closes = 0;
-  const queue = new PlaybackQueue({ open: async () => session, isCurrent: () => current, notify: s => statuses.push(s),
+  const queue = new PlaybackQueue({
+    /** Doublure du scénario pour ouverture de session ; la réponse ou la panne est contrôlée par le test. */
+    open: async () => session,
+    /** Doublure du scénario pour garde de compte courant ; la réponse ou la panne est contrôlée par le test. */
+    isCurrent: () => current,
+    /** Doublure du scénario pour observation des notifications ; la réponse ou la panne est contrôlée par le test. */
+    notify: s => statuses.push(s),
+    /**
+     * Doublure du scénario pour confirmation de progression ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
     progress: async () => { writes++; received.resolve(); return response.promise; },
+    /**
+     * Doublure du scénario pour clôture de session ou libération de ressources ; la réponse ou la panne
+     * est contrôlée par le test.
+     */
     close: async () => { closes++; return { ...session, endedAt: "2026-01-01T00:00:01Z" }; } });
   const started = queue.start({ positionMs: 1000, listenedMsTotal: 1000 });
   await received.promise; current = false; response.resolve({ ...session, lastSequence: 1 }); await started;

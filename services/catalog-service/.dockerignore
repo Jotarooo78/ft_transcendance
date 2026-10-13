@@ -1,3 +1,4 @@
+# Exclut dépendances, sorties compilées et client généré du contexte envoyé à Docker ; la construction les recrée.
 node_modules
 dist
 src/generated/prisma

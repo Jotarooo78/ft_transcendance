@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Orchestre la campagne décrite dans le README voisin ; les gardes et le traitement de sortie font partie de la preuve.
 set -Eeuo pipefail
 umask 077
 
@@ -12,11 +13,14 @@ base=(docker compose -p "$project" -f "$repo_dir/docker-compose.yml")
 fresh=("${base[@]}" -f "$work_dir/volumes.yml")
 runtime=(nginx frontend auth-service user-service catalog-service media-service library-service playback-service db)
 volumes=()
+# Contrôle les cibles d’origine avant tout changement de montage.
 phase=guard
 changed=false
 complete=false
 
+# Vérifie les montages et labels de la campagne via check-stack.mjs ; ne remplace pas une cible non vérifiée.
 check() { node "$script_dir/check-stack.mjs" "$1" "$work_dir" "$campaign"; }
+# Restaure les trois volumes d’origine avant de retirer les volumes jetables vérifiés. Une restauration ou un nettoyage échoué empêche le PASS global.
 cleanup() {
   local status=$?
   trap - EXIT
@@ -45,6 +49,7 @@ cleanup() {
   else printf '[FILES] Evidence and recovery targets retained at %s\n' "$work_dir" >&2; fi
   exit "$status"
 }
+# Garantit que la sortie normale et les erreurs passent par le nettoyage prévu par ce runner.
 trap cleanup EXIT
 
 [[ "$(git rev-parse --show-toplevel)" == "$repo_dir" ]]
@@ -69,6 +74,7 @@ npm ci --prefix "$script_dir"
 npm run install:browser --prefix "$script_dir"
 "$script_dir/node_modules/.bin/playwright" --version
 node --input-type=module -e 'import {chromium} from "./tests/files/node_modules/playwright/index.mjs"; const browser=await chromium.launch(); console.log("[FILES] Chromium="+browser.version()); await browser.close();'
+# Crée trois volumes neufs avec labels propres à cette campagne ; aucun volume existant n’est réutilisé.
 phase=fresh-volumes
 for key in db_data media_data avatar_data; do
   volume="common_repo_${campaign//-/_}_${key}"
@@ -81,6 +87,7 @@ changed=true
 "${base[@]}" stop "${runtime[@]}"
 export FILES_COMPOSE_OVERRIDE="$work_dir/volumes.yml"
 export FILES_BASE_URL=https://127.0.0.1:1443
+# Applique les six migrations et les permissions sur ces seules cibles neuves.
 phase=migrations
 "${fresh[@]}" up -d --no-deps db
 for service in migrate-auth migrate-users migrate-catalog migrate-media migrate-library migrate-playback; do "${fresh[@]}" run --rm "$service"; done
@@ -92,6 +99,7 @@ node --input-type=module -e 'import {waitReady,sql} from "./tests/files/verify-f
 "${fresh[@]}" exec -T media-service ffmpeg -version
 "${fresh[@]}" exec -T media-service npm run seed:demo
 "${fresh[@]}" exec -T catalog-service npm run seed:demo
+# Exécute le vrai cycle HTTPS avec témoins PostgreSQL et disque.
 phase=https-initial
 node "$script_dir/verify-files.mjs" initial "$work_dir/state.json"
 phase=media-persistence
@@ -104,6 +112,7 @@ phase=catalogue-outage
 node "$script_dir/verify-files.mjs" catalog-down "$work_dir/state.json"
 phase=non-regression
 node "$script_dir/verify-files.mjs" non-regression "$work_dir/state.json"
+# Exécute les gestes dans un vrai navigateur, y compris progression et changement de compte.
 phase=chromium
 npm test --prefix "$script_dir"
 phase=delete
@@ -111,4 +120,5 @@ node "$script_dir/verify-files.mjs" delete "$work_dir/state.json"
 phase=verify-cleanup
 "${fresh[@]}" exec -T media-service node --input-type=module -e 'import {readdir} from "node:fs/promises"; const files=await readdir("/data/audio"); if(files.length!==3 || ![1,2,3].every(n=>files.includes("demo-"+n+".wav"))) throw new Error("Unexpected remaining Media files"); console.log("[FILES] PASS only three unchanged demo originals remain");'
 complete=true
+# Le trap de sortie restaure la pile initiale et vérifie l’absence des volumes jetables.
 phase=restore-and-cleanup

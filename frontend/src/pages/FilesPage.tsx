@@ -1,3 +1,4 @@
+/** Écran Mes fichiers : liste privée paginée, upload confirmé, aperçus à la demande et suppression après réponse serveur. */
 import { useEffect, useRef, useState } from "react";
 import FileUploadForm from "../components/FileUploadForm";
 import FilePreview from "../components/FilePreview";
@@ -6,10 +7,22 @@ import { deleteFile } from "../services/delete-file";
 import { getAccessToken } from "../services/session";
 import type { ReadyFile } from "../types/files";
 
-function FileItem({ file, onDeleted }: { file: ReadyFile; onDeleted: (id: string) => void }) {
+/**
+ * Présente les métadonnées d’un fichier, son aperçu facultatif et sa suppression ; annule la requête à
+ * la disparition de la ligne.
+ */
+function FileItem({ file, onDeleted }: {
+  /** Métadonnées du fichier privé prêt à être affiché. */
+  file: ReadyFile;
+  /** Appelé après confirmation serveur de la suppression de cet UUID. */
+  onDeleted: (id: string) => void }) {
   const [preview, setPreview] = useState(false); const [busy, setBusy] = useState(false); const [error, setError] = useState("");
   const current = useRef<AbortController | null>(null);
   useEffect(() => () => { current.current?.abort(); current.current = null; }, []);
+  /**
+   * Demande la suppression et appelle onDeleted seulement pour la requête toujours courante après
+   * confirmation. Un refus conserve la ligne et l’aperçu.
+   */
   async function remove() {
     const controller = new AbortController(); current.current = controller; setBusy(true); setError("");
     try { await deleteFile(file.id, controller.signal); if (current.current === controller) onDeleted(file.id); }
@@ -27,10 +40,20 @@ function FileItem({ file, onDeleted }: { file: ReadyFile; onDeleted: (id: string
   </li>;
 }
 
+/**
+ * Charge les fichiers du compte par pages de 20 avec annulation et garde de token ; actualise après
+ * upload et distingue chargement, refus et page vide.
+ */
 export default function FilesPage() {
   const [page, setPage] = useState(1); const [retry, setRetry] = useState(0);
   const token = getAccessToken(); const key = JSON.stringify([token, page, retry]);
-  const [result, setResult] = useState<{ key: string; data?: FilePage; error?: string }>({ key: "" });
+  const [result, setResult] = useState<{
+    /** Identité de la requête ou de l’état ; empêche d’afficher une réponse devenue périmée. */
+    key: string;
+    /** Résultat validé ou champs de la commande regroupés par ce contrat. */
+    data?: FilePage;
+    /** Erreur à rendre visible pour ce résultat ; son absence représente un résultat sans erreur enregistrée. */
+    error?: string }>({ key: "" });
   useEffect(() => {
     const controller = new AbortController();
     void readFiles(page, controller.signal).then(data => { if (!controller.signal.aborted && token === getAccessToken()) setResult({ key, data }); })
@@ -39,6 +62,10 @@ export default function FilesPage() {
   }, [key, page, token]);
   const loading = result.key !== key; const data = loading ? undefined : result.data;
   const pages = Math.max(1, Math.ceil((data?.total ?? 0) / 20));
+  /**
+   * Retire de la page courante l’UUID confirmé supprimé et décrémente le total, seulement si le compte
+   * et la clé de lecture restent courants.
+   */
   function deleted(id: string) {
     if (token !== getAccessToken()) return;
     setResult(previous => previous.key === key && previous.data ? { ...previous, data: { ...previous.data,

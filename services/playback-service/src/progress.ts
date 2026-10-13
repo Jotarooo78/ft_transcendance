@@ -1,15 +1,43 @@
+/** Règles d’écoute exécutées sous le verrou de session : répétitions identiques et clôtures ne comptent jamais deux fois. */
 import { PlaybackError, safeNumber, toSession, type Progress, type Session, type SessionRow } from "./session.js";
 
-export type EventRow = { sequence: number; positionMs: bigint; listenedMsTotal: bigint; receivedAt: Date };
+/** Événement persisté : séquence, position, cumul déclaré et date de réception côté serveur. */
+export type EventRow = {
+  /** Numéro positif de l’événement ; une répétition garde le même numéro et les mêmes valeurs. */
+  sequence: number;
+  /** Position dans le morceau en millisecondes ; un déplacement ne vaut pas du temps écouté. */
+  positionMs: bigint;
+  /** Cumul local déclaré en millisecondes ; le serveur borne le crédit réellement retenu. */
+  listenedMsTotal: bigint;
+  /** Date de réception de l’événement, prise sur l’horloge du serveur. */
+  receivedAt: Date };
+/**
+ * Opérations disponibles sous le verrou du propriétaire ; événement et résumé doivent être écrits dans
+ * la même transaction.
+ */
 export type SessionTransaction = {
+  /** Session confirmée ou état transactionnel de la session concernée. */
   session: SessionRow;
+  /** Lecture d’un événement par séquence dans la transaction de session. */
   getEvent: (sequence: number) => Promise<EventRow | null>;
+  /** Création de l’événement dans la même transaction que son résumé. */
   createEvent: (event: EventRow) => Promise<void>;
+  /** Enregistre le temps crédité et la dernière séquence de la session. */
   saveProgress: (listenedMs: bigint, sequence: number) => Promise<SessionRow>;
+  /** Enregistre la date de clôture sans toucher aux événements. */
   saveClose: (endedAt: Date) => Promise<SessionRow>;
 };
 
 // The caller holds the owner's session row lock for this entire operation.
+/**
+ * Confirme un événement identique déjà reçu sans réécriture ; sinon exige la séquence suivante et une
+ * session ouverte. Le crédit est le minimum du cumul nouveau, du temps serveur écoulé et de la durée
+ * restante.
+ * @param tx Transaction dont le verrou de session est déjà détenu.
+ * @param input Position et cumul client en millisecondes, avec séquence positive.
+ * @param clock Horloge serveur injectable, en millisecondes.
+ * @throws PlaybackError si l’événement contredit une confirmation ou sort du contrat.
+ */
 export async function recordProgress(tx: SessionTransaction, input: Progress, clock: () => number = Date.now): Promise<Session> {
   const row = tx.session;
   const existing = await tx.getEvent(input.sequence);
@@ -30,6 +58,7 @@ export async function recordProgress(tx: SessionTransaction, input: Progress, cl
   if (declared < previousDeclared) throw new PlaybackError(409, "progress_conflict");
   const now = Math.trunc(clock());
   if (!Number.isSafeInteger(now)) throw new Error("Invalid server clock");
+  /** Ramène une borne temporelle négative à zéro pour ne jamais retirer du temps crédité. */
   const nonnegative = (value: bigint) => value < 0n ? 0n : value;
   const bounds = [declared - previousDeclared,
     nonnegative(BigInt(now - (previous?.receivedAt ?? row.startedAt).getTime())),
@@ -41,6 +70,10 @@ export async function recordProgress(tx: SessionTransaction, input: Progress, cl
   return toSession(updated, BigInt(input.positionMs));
 }
 
+/**
+ * Ferme la session une seule fois, sans créer d’événement ni augmenter le temps écouté. Une clôture
+ * répétée renvoie l’état déjà confirmé.
+ */
 export async function recordClose(tx: SessionTransaction, clock: () => number = Date.now): Promise<Session> {
   const row = tx.session;
   const latest = row.lastSequence === 0 ? null : await tx.getEvent(row.lastSequence);

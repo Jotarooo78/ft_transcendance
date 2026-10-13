@@ -1,12 +1,21 @@
+/** Installation explicite des trois morceaux de démonstration et d’un brouillon ; les UUID sont stables et les collisions provoquent un refus. */
 import { strict as assert } from "node:assert";
 import { disconnectPrisma, prisma } from "./prisma.js";
 
 // Explicit command only. Never imported by the server or a migration.
+/** UUID stable de l’artiste de démonstration ; une collision de contenu est refusée par le seed. */
 const artistId = "10000000-0000-4000-8000-000000000001";
+/** UUID stable du genre de démonstration, partagé par les trois morceaux. */
 const genreId = "10000000-0000-4000-8000-000000000002";
+/** Titres déterministes des trois morceaux de démonstration, sans données utilisateur. */
 const titles = ["Aube — demo", "Brise — demo", "Clair — demo"];
+/** Date fixe de publication des démonstrations pour rendre le seed reproductible. */
 const publishedAt = new Date("2026-01-01T00:00:00.000Z");
 
+/**
+ * Compare les champs attendus à une ligne existante. Une différence arrête la transaction plutôt que
+ * remplacer des données déjà présentes.
+ */
 function matches(actual: object, expected: object, kind: string): void {
   const record = actual as Record<string, unknown>;
   for (const [key, value] of Object.entries(expected)) {

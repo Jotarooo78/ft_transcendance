@@ -1,3 +1,8 @@
+/** Contrôle HTTP Catalogue utilisé avant de servir un audio public. */
+/**
+ * Construit la vérification d’un asset publié via Catalogue avec délai borné ; renvoie son booléen
+ * publié et rejette une panne ou une réponse invalide.
+ */
 export function publicationReader(baseUrl: string, timeoutMs = 2000) {
   return async (id: string): Promise<boolean> => {
     const response = await fetch(new URL(`/assets/${id}/publication`, baseUrl), {

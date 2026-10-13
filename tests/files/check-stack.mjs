@@ -1,3 +1,4 @@
+/** Gardes de campagne : noms des volumes, labels d’appartenance, montage des cibles et restauration de la pile d’origine. */
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -5,10 +6,18 @@ import { readFile, writeFile } from 'node:fs/promises';
 const [mode, directory, campaign] = process.argv.slice(2);
 assert.ok(directory?.startsWith('/tmp/transcendence-files-'));
 assert.match(campaign ?? '', /^transcendence-files-[a-zA-Z0-9]+$/);
+/** Les trois volumes susceptibles d’être substitués : PostgreSQL, Media et avatars. */
 const keys = ['db_data','media_data','avatar_data'];
+/** Noms uniques des volumes jetables de cette campagne, distincts des volumes d’origine. */
 const names = keys.map(key => `common_repo_${campaign.replaceAll('-','_')}_${key}`);
+/**
+ * Lit Docker inspect pour les conteneurs ou volumes nommés ; aucune suppression ni modification de ces
+ * objets.
+ */
 const inspect = (kind, ...values) => JSON.parse(execFileSync('docker',[kind,'inspect',...values],{encoding:'utf8'}));
+/** Association entre clés de volume et noms jetables attendus, vérifiée avant les montages. */
 const expected = Object.fromEntries(keys.map((key,index) => [key, names[index]]));
+/** Conteneurs, destinations et clés de volumes dont les montages réels doivent être contrôlés. */
 const mounts = [['ft_db','/var/lib/postgresql/data','db_data'],['ft_media_service','/data/audio','media_data'],['ft_user_service','/data/avatars','avatar_data']];
 
 if(mode === 'prepare') {

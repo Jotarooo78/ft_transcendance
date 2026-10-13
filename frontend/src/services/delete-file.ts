@@ -1,6 +1,11 @@
+/** Client JWT de suppression privée ; seule la réponse 204 confirme la disparition du fichier. */
 import { authenticatedFetch } from "./api";
 import { getAccessToken } from "./session";
 
+/**
+ * Demande la suppression par UUID avec le signal d’annulation. Vérifie que le compte reste courant et
+ * conserve un message explicite si le fichier est utilisé ou si le service refuse.
+ */
 export async function deleteFile(id: string, signal: AbortSignal) {
   const token = getAccessToken();
   const response = await authenticatedFetch(`/api/media/assets/${encodeURIComponent(id)}`, { method: "DELETE", signal });

@@ -8,11 +8,16 @@ import type { PrivatePlaylist as Playlist, Track } from "../types/music";
 
 type CatalogPageProps = {
   playlists: Playlist[];
+  /** Ajoute une nouvelle occurrence de morceau à la playlist sélectionnée. */
   onAddItem: (playlist: Playlist, trackId: string) => Promise<Playlist>;
 };
 
 const TRACKS_PER_PAGE = 2;
 
+/**
+ * Charge une page réelle du Catalogue avec recherche, genre et tri ; une clé de requête empêche
+ * d’afficher une réponse périmée. Gère les ajouts confirmés aux playlists privées.
+ */
 function CatalogPage({ playlists, onAddItem }: CatalogPageProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -37,6 +42,10 @@ function CatalogPage({ playlists, onAddItem }: CatalogPageProps) {
   const [addError, setAddError] = useState("");
   const destination = playlists.find(playlist => playlist.id === selectedPlaylistId) ?? playlists[0];
 
+  /**
+   * Ajoute le morceau à la playlist sélectionnée et affiche le nom confirmé par le serveur ; bloque les
+   * doubles soumissions et conserve un refus visible.
+   */
   async function handleAdd(track: Track) {
     if (!destination || adding) return;
     setAdding(true); setMessage(""); setAddError("");
@@ -49,7 +58,13 @@ function CatalogPage({ playlists, onAddItem }: CatalogPageProps) {
 
   const [retry, setRetry] = useState(0);
   const requestKey = JSON.stringify([currentPage, searchQuery, selectedGenre, sortOption, retry]);
-  const [result, setResult] = useState<{ key: string; data?: CatalogList; error?: string }>({ key: "" });
+  const [result, setResult] = useState<{
+    /** Identité de la requête ou de l’état ; empêche d’afficher une réponse devenue périmée. */
+    key: string;
+    /** Résultat validé ou champs de la commande regroupés par ce contrat. */
+    data?: CatalogList;
+    /** Erreur à rendre visible pour ce résultat ; son absence représente un résultat sans erreur enregistrée. */
+    error?: string }>({ key: "" });
   const loading = result.key !== requestKey;
   const data = loading ? undefined : result.data;
   const genres = result.data?.genres ?? [];

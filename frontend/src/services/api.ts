@@ -20,6 +20,7 @@ export async function authenticatedFetch(
 
   if (response.status === 401) {
     // A late response from a previous login must not invalidate the new one.
+    // Une réponse 401 tardive efface uniquement la session dont le token a servi à cette requête.
     if (getAccessToken() === token) clearAccessToken();
     throw new Error("Your session is invalid or expired. Please log in again.");
   }

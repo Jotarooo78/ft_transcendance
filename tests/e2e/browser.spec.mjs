@@ -1,20 +1,43 @@
+/** Parcours Chromium du profil sur la pile HTTPS isolée : vrais formulaires, avatar, reload et reconnexion. */
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { test, expect } from '@playwright/test';
 
+/**
+ * Active le compte de sonde pour vérifier qu’une régression volontaire est détectée par le parcours
+ * navigateur.
+ */
 const mutationProbe = process.env.PCE_MUTATION_CHECK === '1';
+/** Username de fixture choisi pour distinguer le parcours normal de la sonde de mutation. */
 const username = mutationProbe ? 'pce_browser_probe' : 'pce_browser';
+/** Adresse de fixture sur example.invalid, réservée à ce scénario. */
 const email = `${username}@example.invalid`;
+/** Mot de passe public réservé aux comptes jetables de cette campagne ; jamais un secret utilisateur. */
 const password = 'Pce-browser-test-only-2026';
+/** Chemin de la petite image locale servant de témoin d’avatar. */
 const avatar = fileURLToPath(new URL('./fixtures/avatar.png', import.meta.url));
+/** Octets de référence de l’image fixture, comparés au stockage et aux réponses HTTPS. */
 const avatarBytes = await readFile(avatar);
+/**
+ * Liste exacte des champs publics attendus dans le profil ; détecte les champs manquants et les
+ * fuites.
+ */
 const publicKeys = ['avatarUrl', 'bio', 'displayName', 'userId', 'username'];
+/**
+ * Champs de profil de fixture dont la persistance doit être retrouvée après reconnexion ou
+ * redémarrage.
+ */
 const values = { displayName: 'PCE browser saved', username: `${username}_new`, bio: 'Browser persistence proof' };
 
+/**
+ * Reconnaît la réponse réseau de la méthode et de la route attendues pour synchroniser les assertions
+ * avec le serveur.
+ */
 function responseFor(page, path, method) {
   return page.waitForResponse(r => new URL(r.url()).pathname === path && r.request().method() === method);
 }
+/** Remplit le formulaire de connexion et attend la réponse réelle avant de poursuivre les assertions. */
 async function login(page) {
   await page.getByRole('button', { name: 'Login', exact: true }).click();
   await page.getByLabel('Email', { exact: true }).fill(email);
@@ -48,6 +71,7 @@ async function login(page) {
   }
   throw new Error('Browser registration still pending after ten attempts');
 }
+/** Lit les champs visibles du profil dans le DOM pour les comparer à la réponse API et à PostgreSQL. */
 async function renderedProfile(page, profile) {
   await expect(page.getByRole('heading', { name: profile.displayName, exact: true })).toBeVisible();
   await expect(page.getByText(`@${profile.username}`, { exact: true })).toBeVisible();
@@ -62,6 +86,7 @@ async function renderedProfile(page, profile) {
     assert.deepEqual(await response.body(), avatarBytes);
   }
 }
+/** Remplit les champs du formulaire de profil avec les valeurs choisies pour le scénario. */
 async function fillEdit(page, fields) {
   await page.getByRole('button', { name: 'Edit profile', exact: true }).click();
   await page.getByLabel('Display name', { exact: true }).fill(fields.displayName);

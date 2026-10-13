@@ -1,12 +1,27 @@
+/** Panneau de détail chargé indépendamment de la liste Catalogue, avec annulation et nouvelle tentative locale. */
 import { useEffect, useRef, useState } from "react";
 import { getTrack } from "../services/catalog";
 import type { Track } from "../types/music";
 
-export default function TrackDetails({ id, onClose }: { id: string; onClose: () => void }) {
+/**
+ * Lit le morceau par UUID, place le focus sur le panneau et permet la fermeture par Escape. Une erreur
+ * de détail laisse la liste Catalogue utilisable.
+ */
+export default function TrackDetails({ id, onClose }: {
+  /** Identifiant de cette entité ; distinct des identifiants des objets liés. */
+  id: string;
+  /** Demande la fermeture de l’écran ou du composant concerné. */
+  onClose: () => void }) {
   const panel = useRef<HTMLElement>(null);
   const [retry, setRetry] = useState(0);
   const key = `${id}:${retry}`;
-  const [result, setResult] = useState<{ key: string; track?: Track; error?: string }>({ key: "" });
+  const [result, setResult] = useState<{
+    /** Identité de la requête ou de l’état ; empêche d’afficher une réponse devenue périmée. */
+    key: string;
+    /** Détail public du morceau chargé depuis Catalogue. */
+    track?: Track;
+    /** Erreur à rendre visible pour ce résultat ; son absence représente un résultat sans erreur enregistrée. */
+    error?: string }>({ key: "" });
   useEffect(() => { panel.current?.focus(); }, []);
   useEffect(() => {
     const controller = new AbortController();

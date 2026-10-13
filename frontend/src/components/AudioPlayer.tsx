@@ -10,24 +10,44 @@ type AudioPlayerProps = {
   onClose: () => void;
 };
 
+/**
+ * Relie le lecteur audio réel à la mesure d’écoute et à la file de sauvegarde du compte. Les
+ * événements pause, attente et déplacement interrompent le crédit ; un échec de suivi ne bloque pas
+ * l’audio.
+ */
 function AudioPlayerContent({ track, onClose }: AudioPlayerProps) {
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [tracking, setTracking] = useState<TrackingStatus | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
-  const active = useRef<{ clock: ListeningClock; queue: PlaybackQueue; ended: boolean } | null>(null);
+  const active = useRef<{
+    /** Horloge mesurant le temps de lecture effective, distincte de la position. */
+    clock: ListeningClock;
+    /** File sérialisant les confirmations de progression et de clôture. */
+    queue: PlaybackQueue;
+    /** Indique que ce cycle de suivi du lecteur a déjà atteint sa fin. */
+    ended: boolean } | null>(null);
   const createTracker = useRef<(() => void) | null>(null);
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     const token = getAccessToken(); let mounted = true;
+    /**
+     * Crée une nouvelle horloge et une file pour ce morceau, avec garde de session avant les envois et les
+     * notifications.
+     */
     const create = () => {
       const clock = new ListeningClock();
-      const queue = new PlaybackQueue({ open: () => openPlayback(track.id), progress: savePlaybackProgress, close: closePlayback,
+      const queue = new PlaybackQueue({
+        /** Ouvre le suivi du morceau courant dans Playback, au moment de la lecture réelle. */
+        open: () => openPlayback(track.id), progress: savePlaybackProgress, close: closePlayback,
+        /** Vérifie que le token reste celui du compte ayant commencé cette écoute. */
         isCurrent: () => !!token && getAccessToken() === token,
+        /** Met à jour l’état visible de sauvegarde uniquement pour le compte courant. */
         notify: value => { if (mounted && active.current?.queue === queue) setTracking(value); } });
       active.current = { clock, queue, ended: false };
     };
     createTracker.current = create; create();
+    /** Échantillonne périodiquement la position du vrai lecteur et propose la mesure à la file de suivi. */
     const tick = () => {
       const current = active.current;
       if (!current || current.ended) return;
@@ -36,6 +56,7 @@ function AudioPlayerContent({ track, onClose }: AudioPlayerProps) {
       current.queue.offer(snapshot);
     };
     const interval = window.setInterval(tick, 1000);
+    /** Échantillonne la dernière position et détache le suivi lors du nettoyage, puis retire le timer. */
     const finish = () => {
       const current = active.current;
       if (!current) return;
@@ -45,6 +66,10 @@ function AudioPlayerContent({ track, onClose }: AudioPlayerProps) {
     window.addEventListener("pagehide", finish);
     return () => { mounted = false; window.clearInterval(interval); window.removeEventListener("pagehide", finish); finish(); active.current = null; createTracker.current = null; };
   }, [track.id]);
+  /**
+   * Échantillonne l’événement du lecteur, distingue rupture de position et lecture active, démarre le
+   * suivi à la première lecture et le ferme à la fin.
+   */
   function observe(playing: boolean, discontinuity = false, start = false, end = false) {
     const audio = audioRef.current;
     if (!audio) return;
@@ -98,6 +123,7 @@ function AudioPlayerContent({ track, onClose }: AudioPlayerProps) {
   );
 }
 
+/** Remonte le contenu avec une clé par morceau afin de séparer ses observations et son cycle de suivi. */
 export default function AudioPlayer(props: AudioPlayerProps) {
   return <AudioPlayerContent key={props.track.id} {...props} />;
 }

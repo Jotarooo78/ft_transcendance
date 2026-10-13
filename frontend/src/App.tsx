@@ -28,6 +28,10 @@ import "./App.css";
 
 type PublicPage = "register" | "login";
 
+/**
+ * Pages privées nécessitant une session du compte ; files et history complètent les écrans de profil
+ * et de playlists.
+ */
 type PrivatePage = "profile" | "catalog" | "playlists" | "history" | "users" | "files";
 
 function getErrorMessage(error: unknown, fallbackMessage: string): string {
@@ -49,6 +53,7 @@ function App() {
 
   const [privatePage, setPrivatePage] = useState<PrivatePage>("profile");
 
+  /** Playlists persistantes du compte ; un changement de compte invalide les réponses précédentes. */
   const library = useLibrary(currentUser?.id ?? null);
 
   const [friends, setFriends] = useState<PublicUser[]>([]);
@@ -207,6 +212,7 @@ function App() {
       };
     });
 
+    // Le texte a déjà été confirmé. L’avatar est une seconde opération : son échec conserve le texte sauvegardé.
     if (avatarFile !== null) {
       try {
         const avatarProfile = await uploadMyAvatar(avatarFile);
@@ -366,6 +372,7 @@ function App() {
           />
         )}
 
+        {/* La clé du compte remonte les écrans privés pour libérer les états et aperçus de l’ancien compte. */}
         {privatePage === "history" && <HistoryPage key={currentUser.id} />}
         {privatePage === "files" && <FilesPage key={currentUser.id} />}
 

@@ -12,35 +12,60 @@ import {
 } from "./handle-profile-creation-result.js";
 
 declare module "fastify" {
+  /** Ajoute à Fastify le repère temporel servant à mesurer la durée de chaque requête. */
   interface FastifyRequest {
+    /** Repère haute résolution du début de requête, utilisé pour mesurer sa durée. */
     requestStart: bigint;
   }
 }
 
+/** Entrées de l’inscription, contrôlées par la route avant le hachage et la création du compte. */
 type SignUpBody = {
+  /** Nom affiché du profil, distinct du username unique. */
   displayName?: unknown;
+  /** Adresse utilisée pour identifier le compte à la connexion. */
   email?: unknown;
+  /** Mot de passe reçu à valider et hacher ; ne doit pas être renvoyé ni journalisé. */
   password?: unknown;
+  /** Nom unique canonique : 3 à 24 caractères a-z, 0-9 ou _. */
   username?: unknown;
 };
 
+/** Email et mot de passe transmis pour vérifier la connexion ; ne sont pas renvoyés dans la réponse. */
 type LoginBody = {
+  /** Adresse utilisée pour identifier le compte à la connexion. */
   email?: unknown;
+  /** Mot de passe reçu à valider et hacher ; ne doit pas être renvoyé ni journalisé. */
   password?: unknown;
 };
 
+/**
+ * Dépendances du serveur Auth : stockage, livraison de profil, hachage, vérification du mot de passe
+ * et signature JWT.
+ */
 type BuildAppOptions = {
+  /** Secret serveur pour vérifier ou signer les JWT ; ne doit pas être envoyé au navigateur. */
   jwtSecret: string;
+  /** Active ou désactive les journaux du serveur construit. */
   logger?: boolean;
+  /** Fonction injectable de calcul de l’empreinte du mot de passe. */
   passwordHasher?: (password: string) => Promise<string>;
+  /** Fonction injectable vérifiant le mot de passe contre son empreinte. */
   passwordVerifier?: (hash: string, password: string) => Promise<boolean>;
+  /** Opération de livraison de la demande de profil à Users. */
   profileProvisioner: ProfileProvisioner;
+  /** Stockage du compte et de sa demande durable de création de profil. */
   registrationStore: RegistrationStore;
 };
 
+/** Contrôle syntaxique élémentaire de l’email ; ne prouve pas l’existence de la boîte mail. */
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const usernamePattern = /^[a-z0-9_]{3,24}$/;
 
+/**
+ * Supprime les espaces extérieurs, passe en minuscules et accepte seulement 3 à 24 caractères a-z, 0-9
+ * ou _. Renvoie null si la valeur est invalide.
+ */
 export function normalizeUsername(value: unknown): string | null {
   if (typeof value !== "string") {
     return null;
@@ -50,6 +75,10 @@ export function normalizeUsername(value: unknown): string | null {
   return usernamePattern.test(normalizedUsername) ? normalizedUsername : null;
 }
 
+/**
+ * Construit les routes et les métriques sans ouvrir de port. L’inscription crée une demande durable ;
+ * la connexion exige un profil confirmé avant de signer un JWT.
+ */
 export function buildApp({
   jwtSecret,
   logger = true,
@@ -117,7 +146,9 @@ export function buildApp({
     return metricsRegistry.metrics();
   });
 
-  app.post<{ Body: SignUpBody }>(
+  app.post<{
+    /** Corps HTTP typé pour cette route ; la validation réelle reste effectuée à l’exécution. */
+    Body: SignUpBody }>(
     "/signup",
     {
       config: {
@@ -207,7 +238,9 @@ export function buildApp({
     },
   );
 
-  app.post<{ Body: LoginBody }>(
+  app.post<{
+    /** Corps HTTP typé pour cette route ; la validation réelle reste effectuée à l’exécution. */
+    Body: LoginBody }>(
     "/login",
     {
       config: {

@@ -32,6 +32,7 @@ export type ProfileResponse = {
   userId: string;
   displayName: string;
   username: string;
+  /** Présentation facultative, au plus 160 caractères ; null représente son absence. */
   bio: string | null;
   avatarUrl: string | null;
 };

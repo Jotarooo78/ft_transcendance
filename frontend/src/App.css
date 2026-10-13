@@ -73,6 +73,7 @@ main:has(> .profile-card) {
   width: min(100% - 40px, 1080px);
 }
 
+/* Styles ajoutés pour Mes fichiers : formulaire, cartes privées et contrôles de gestion. */
 .file-upload-form, .file-card {
   display: grid;
   gap: 14px;
@@ -83,6 +84,7 @@ main:has(> .profile-card) {
 }
 .file-upload-form { margin-bottom: 32px; }
 .file-upload-form input, .file-upload-form progress { width: 100%; }
+/* Colonnes adaptatives ; les aperçus restent contenus dans la largeur de leur carte. */
 .file-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 20px; padding: 0; list-style: none; }
 .file-actions { display: flex; gap: 12px; flex-wrap: wrap; }
 .file-id { font-size: .8rem; overflow-wrap: anywhere; }

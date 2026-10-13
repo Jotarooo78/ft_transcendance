@@ -1,25 +1,42 @@
+// Modèles possédés par ce service ; les références vers les autres services restent des UUID logiques.
 generator client {
+  /// Moteur du client ou de la base ; ce choix détermine la génération et les opérations disponibles.
   provider            = "prisma-client"
+  /// Dossier du client Prisma généré, exclu des modifications manuelles.
   output              = "../src/generated/prisma"
+  /// Format ESM des modules générés, aligné sur les imports du service.
   moduleFormat        = "esm"
+  /// Extension .js des imports après compilation TypeScript.
   importFileExtension = "js"
 }
 
 datasource db {
+  /// Moteur du client ou de la base ; ce choix détermine la génération et les opérations disponibles.
   provider = "postgresql"
+  /// Schéma PostgreSQL possédé par ce service ; l’URL runtime choisit son rôle limité.
   schemas  = ["library"]
 }
 
+/// Playlist du compte ; version permet de refuser une modification faite à partir d’une lecture périmée.
 model Playlist {
+  /// Identifiant de cette entité ; distinct des identifiants des objets liés.
   id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// UUID logique du compte propriétaire ; les routes privées filtrent toujours cette valeur.
   ownerUserId String   @map("owner_user_id") @db.Uuid
+  /// Nom de la playlist ou libellé lu par cette projection.
   name        String
+  /// Description de playlist ; le contrat client représente son absence par une chaîne vide.
   description String?
+  /// Visibilité de playlist ; les routes produites ici gèrent uniquement private.
   visibility  String   @default("private")
+  /// Version de concurrence de la playlist ; une mutation réussie l’incrémente.
   version     BigInt   @default(1)
+  /// Date de création prise par PostgreSQL.
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// Date actualisée par Prisma lors des modifications.
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  /// Éléments de la page ou occurrences de playlist ; le total peut dépasser cette liste.
   items PlaylistItem[]
 
   @@index([ownerUserId, updatedAt, id], map: "playlists_owner_idx")
@@ -27,14 +44,22 @@ model Playlist {
   @@schema("library")
 }
 
+/// Occurrence indépendante d’un morceau ; le même trackId peut apparaître plusieurs fois.
 model PlaylistItem {
+  /// Identifiant de cette entité ; distinct des identifiants des objets liés.
   id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// UUID de la playlist locale ; sa suppression entraîne celle de ses occurrences.
   playlistId    String   @map("playlist_id") @db.Uuid
+  /// UUID du morceau Catalogue, distinct de l’occurrence de playlist ou de la session.
   trackId       String   @map("track_id") @db.Uuid
+  /// Ordre d’une occurrence dans la playlist ; les trous après suppression sont conservés.
   position      Int
+  /// UUID logique du compte ayant ajouté l’occurrence ; peut être absent.
   addedByUserId String?  @map("added_by_user_id") @db.Uuid
+  /// Date d’ajout de cette occurrence, distincte de la création du morceau.
   addedAt       DateTime @default(now()) @map("added_at") @db.Timestamptz(6)
 
+  /// Relation locale de l’occurrence vers sa playlist, avec suppression en cascade.
   playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
 
   @@unique([playlistId, position], map: "playlist_items_playlist_position_key")
@@ -43,9 +68,13 @@ model PlaylistItem {
   @@schema("library")
 }
 
+/// Favori d’un compte pour un morceau, stocké localement dans Library ; pas de route ajoutée par cette documentation.
 model TrackFavorite {
+  /// UUID du compte auquel le profil ou la demande est rattaché.
   userId    String   @map("user_id") @db.Uuid
+  /// UUID du morceau Catalogue, distinct de l’occurrence de playlist ou de la session.
   trackId   String   @map("track_id") @db.Uuid
+  /// Date de création prise par PostgreSQL.
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@id([userId, trackId])

@@ -40,6 +40,7 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
     getAvatarSource(user.avatarUrl),
   );
 
+  // Libère l’URL Blob de prévisualisation lorsque la sélection change ou que le formulaire disparaît.
   useEffect(() => () => {
     if (avatarPreviewUrl.startsWith("blob:")) URL.revokeObjectURL(avatarPreviewUrl);
   }, [avatarPreviewUrl]);
@@ -83,6 +84,7 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
     setErrorMessage("");
 
     const trimmedDisplayName = displayName.trim();
+    // Normalise avant de vérifier le contrat commun, sans réécrire les autres champs du formulaire.
     const normalizedUsername = normalizeUsername(username);
     const trimmedBio = bio.trim();
 

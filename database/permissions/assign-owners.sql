@@ -1,3 +1,4 @@
+-- Attribue les objets déjà migrés à leur rôle de migration propriétaire ; ne modifie aucune ligne métier.
 \set ON_ERROR_STOP on
 
 ALTER SCHEMA auth OWNER TO auth_migration;

@@ -1,7 +1,9 @@
+-- Preuve SQL de les données et refus propres au scénario décrit dans le README voisin. Une assertion échouée arrête psql ; les fixtures ne doivent être exécutées que dans leur cible de test contrôlée.
 \set ON_ERROR_STOP on
 -- Reserved edge fixtures only, in the disposable transcendence_music database.
 SELECT current_database() = 'transcendence_music' AS correct_database \gset
 \if :correct_database
+-- Encadre les écritures de fixture pour que le scénario puisse les valider ou les annuler explicitement.
 BEGIN;
 \if :cleanup
 DELETE FROM catalog.tracks WHERE id IN ('21000000-0000-4000-8000-000000000001','21000000-0000-4000-8000-000000000002');

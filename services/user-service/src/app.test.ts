@@ -17,14 +17,24 @@ import {
   profileProvisionType,
 } from "./profile-creation-definitions.js";
 
+/**
+ * Secret public réservé aux jetons de ces tests injectés ; ne doit pas être utilisé par un serveur
+ * réel.
+ */
 const jwtSecret = "test-only-user-service-secret-with-sufficient-length";
+/**
+ * Secret public réservé aux jetons de ces tests injectés ; ne doit pas être utilisé par un serveur
+ * réel.
+ */
 const internalServiceToken =
   "test-only-internal-service-token-with-sufficient-length";
 
+/** Fait échouer le scénario si une route refusée atteint malgré tout l’écriture de profil. */
 const unexpectedProfileUpdate: ProfileUpdater = async () => {
   assert.fail("profile updater must not be called");
 };
 
+/** Construit un message de profil versionné avec UUID de test et valeurs contrôlées. */
 function createProvisionCommand(
   userId = randomUUID(),
   username = "lea",
@@ -51,6 +61,7 @@ test("username normalization implements the canonical contract", () => {
   assert.equal(normalizeUsername(null), null);
 });
 
+/** Signe un JWT local de test avec le sujet demandé pour vérifier les routes privées. */
 async function createToken(
   readProfile: ProfileReader,
   subject: unknown,
@@ -125,7 +136,9 @@ for (const [label, payload, expected] of [
   });
 }
 
+/** Champs de profil de test connus valides ; bio null représente une présentation absente. */
 const validUpdate = { displayName: "Léa", username: "lea", bio: null };
+/** Cas de profil refusés, avec erreur attendue et garantie qu’aucune écriture n’a lieu. */
 const invalidUpdates = [
   ["empty display name", { ...validUpdate, displayName: " " }, "displayName must be between 1 and 60 chars"],
   ["long display name", { ...validUpdate, displayName: "a".repeat(61) }, "displayName must be between 1 and 60 chars"],
@@ -246,6 +259,10 @@ test("GET /me returns exactly the allowed profile DTO", async () => {
     email: "private@example.invalid",
     passwordHash: "must-never-leave-auth",
   };
+  /**
+   * Lecture de profil injectée par ce scénario ; ses valeurs et erreurs contrôlées ne proviennent pas de
+   * PostgreSQL.
+   */
   const readProfile: ProfileReader = async (requestedUserId) => {
     assert.equal(requestedUserId, userId);
     return storedProfile;
@@ -282,6 +299,10 @@ test("GET /me returns exactly the allowed profile DTO", async () => {
 
 test("GET /me returns a stored bio without exposing internal fields", async () => {
   const userId = randomUUID();
+  /**
+   * Lecture de profil injectée par ce scénario ; ses valeurs et erreurs contrôlées ne proviennent pas de
+   * PostgreSQL.
+   */
   const readProfile: ProfileReader = async () => ({
     userId,
     displayName: "Léa",
@@ -333,6 +354,10 @@ test("GET /me ignores client-controlled identity values", async () => {
   const authenticatedUserId = randomUUID();
   const attackerChosenUserId = randomUUID();
   const requestedIds: string[] = [];
+  /**
+   * Lecture de profil injectée par ce scénario ; ses valeurs et erreurs contrôlées ne proviennent pas de
+   * PostgreSQL.
+   */
   const readProfile: ProfileReader = async (userId) => {
     requestedIds.push(userId);
     return {
@@ -367,6 +392,10 @@ test("GET /me ignores client-controlled identity values", async () => {
 
 test("GET /me rejects a token without a UUID subject", async () => {
   let readCount = 0;
+  /**
+   * Lecture de profil injectée par ce scénario ; ses valeurs et erreurs contrôlées ne proviennent pas de
+   * PostgreSQL.
+   */
   const readProfile: ProfileReader = async () => {
     readCount += 1;
     return null;
@@ -394,6 +423,10 @@ test("GET /me rejects a request without a token", async () => {
     jwtSecret,
     logger: false,
     profileUpdater: unexpectedProfileUpdate,
+    /**
+     * Lecture de profil injectée par ce scénario ; ses valeurs et erreurs contrôlées ne proviennent pas de
+     * PostgreSQL.
+     */
     readProfile: async () => {
       readCount += 1;
       return null;
@@ -419,6 +452,10 @@ test("PUT /internal/profiles creates a profile and accepts an idempotent replay"
     jwtSecret,
     logger: false,
     profileUpdater: unexpectedProfileUpdate,
+    /**
+     * Doublure du scénario pour création de profil et éventuel refus ; la réponse ou la panne est
+     * contrôlée par le test.
+     */
     provisionProfile: async (command) => {
       receivedCommands.push(command);
       if (processedEvents.has(command.eventId)) {
@@ -427,6 +464,10 @@ test("PUT /internal/profiles creates a profile and accepts an idempotent replay"
       processedEvents.add(command.eventId);
       return { status: "created" };
     },
+    /**
+     * Lecture de profil injectée par ce scénario ; ses valeurs et erreurs contrôlées ne proviennent pas de
+     * PostgreSQL.
+     */
     readProfile: async () => null,
   });
   const command = createProvisionCommand();
@@ -468,10 +509,18 @@ test("PUT /internal/profiles normalizes the username at the Users boundary", asy
     jwtSecret,
     logger: false,
     profileUpdater: unexpectedProfileUpdate,
+    /**
+     * Doublure du scénario pour création de profil et éventuel refus ; la réponse ou la panne est
+     * contrôlée par le test.
+     */
     provisionProfile: async (command) => {
       receivedCommands.push(command);
       return { status: "created" };
     },
+    /**
+     * Lecture de profil injectée par ce scénario ; ses valeurs et erreurs contrôlées ne proviennent pas de
+     * PostgreSQL.
+     */
     readProfile: async () => null,
   });
   const command = createProvisionCommand(randomUUID(), " ALICE_2 ");
@@ -498,10 +547,18 @@ test("PUT /internal/profiles rejects a request without the internal credential",
     jwtSecret,
     logger: false,
     profileUpdater: unexpectedProfileUpdate,
+    /**
+     * Doublure du scénario pour création de profil et éventuel refus ; la réponse ou la panne est
+     * contrôlée par le test.
+     */
     provisionProfile: async () => {
       provisionCount += 1;
       return { status: "created" };
     },
+    /**
+     * Lecture de profil injectée par ce scénario ; ses valeurs et erreurs contrôlées ne proviennent pas de
+     * PostgreSQL.
+     */
     readProfile: async () => null,
   });
   const command = createProvisionCommand();
@@ -527,9 +584,17 @@ test("PUT /internal/profiles exposes a username conflict without retrying it", a
     jwtSecret,
     logger: false,
     profileUpdater: unexpectedProfileUpdate,
+    /**
+     * Doublure du scénario pour création de profil et éventuel refus ; la réponse ou la panne est
+     * contrôlée par le test.
+     */
     provisionProfile: async () => {
       throw new UsernameTakenError();
     },
+    /**
+     * Lecture de profil injectée par ce scénario ; ses valeurs et erreurs contrôlées ne proviennent pas de
+     * PostgreSQL.
+     */
     readProfile: async () => null,
   });
   const command = createProvisionCommand();
@@ -552,6 +617,10 @@ test("PUT /internal/profiles exposes a username conflict without retrying it", a
   }
 });
 
+/**
+ * Construit le corps multipart de test avec MIME, contenu et champ contrôlés pour tester acceptations
+ * et refus.
+ */
 function avatarMultipart(bytes: Buffer, mime = "image/png", field = "avatar") {
   const boundary = "pce-test-boundary";
   return {
@@ -576,6 +645,10 @@ const validAvatarBytes: Record<string, Buffer> = {
   ]),
 };
 
+/**
+ * Construit Users avec lecteurs et écrivains d’avatar de test afin d’observer le contrat sans utiliser
+ * un stockage de production.
+ */
 async function avatarApp() {
   const userId = randomUUID();
   const files = new Map<string, Buffer>();
@@ -584,7 +657,12 @@ async function avatarApp() {
   const profile: ProfileDto = { userId, displayName: "Léa", username: "lea", bio: "Bio", avatarUrl: null };
   const app = buildApp({
     jwtSecret, logger: false,
+    /**
+     * Lecture de profil injectée par ce scénario ; ses valeurs et erreurs contrôlées ne proviennent pas de
+     * PostgreSQL.
+     */
     readProfile: async () => profile, profileUpdater: unexpectedProfileUpdate,
+    /** Doublure du scénario pour écriture de l’avatar ; la réponse ou la panne est contrôlée par le test. */
     writeAvatar: async (id, fileName, bytes) => {
       assert.equal(id, userId);
       writes.push(fileName);
@@ -592,6 +670,7 @@ async function avatarApp() {
       profile.avatarUrl = `/api/users/avatars/${fileName}`;
       return { ...profile, privateField: "excluded" };
     },
+    /** Doublure du scénario pour lecture de l’avatar ; la réponse ou la panne est contrôlée par le test. */
     readAvatar: async (fileName) => {
       reads.push(fileName);
       return files.get(fileName) ?? null;

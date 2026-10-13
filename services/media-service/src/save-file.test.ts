@@ -1,3 +1,4 @@
+/** Tests d’upload et de stockage local : multipart, confirmation SQL, nettoyage, collision et reprise après résultat incertain. */
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, readFile, readdir, writeFile, mkdir, link, lstat } from "node:fs/promises";
@@ -13,11 +14,24 @@ import { saveFile, recoverUploads } from "./save-file.js";
 import type { FileStore, StoredFile } from "./file-definitions.js";
 import type { ValidatedFile } from "./validate-file.js";
 
+/** UUID du compte propriétaire de fixture. */
 const owner = "11111111-1111-4111-8111-111111111111";
+/**
+ * Doublure des confirmations SQL conservant les métadonnées en mémoire pour observer nettoyage et
+ * reprise des vrais fichiers temporaires.
+ */
 function store() {
   const records = new Map<string, StoredFile>(); const previews = new Map<string, string>();
   const database: FileStore = {
+    /**
+     * Doublure du scénario pour présence d’une confirmation de stockage ; la réponse ou la panne est
+     * contrôlée par le test.
+     */
     hasStorageKey: async key => [...records.values()].some(file => file.storageKey === key),
+    /**
+     * Doublure du scénario pour création des métadonnées du fichier ; la réponse ou la panne est contrôlée
+     * par le test.
+     */
     create: async (id, uploaderUserId, file: ValidatedFile, storageKey, previewKey) => {
       const asset: StoredFile = { id, uploaderUserId, purpose: file.purpose === "audio" ? "audio" : "cover", state: "ready", storageKey,
         mimeType: file.mimeType, byteSize: BigInt(file.byteSize), durationMs: file.durationMs === null ? null : BigInt(file.durationMs), checksumSha256: file.checksumSha256 };
@@ -26,6 +40,7 @@ function store() {
   };
   return { database, records, previews };
 }
+/** Construit le corps d’upload avec nom de champ, contenu et MIME contrôlés. */
 function multipart(bytes: Buffer, mime = "audio/wav", extra = "") {
   return Buffer.concat([Buffer.from(`--fixture\r\nContent-Disposition: form-data; name="file"; filename="../../untrusted.wav"\r\nContent-Type: ${mime}\r\n\r\n`), bytes, Buffer.from(`\r\n${extra}--fixture--\r\n`)]);
 }
@@ -33,9 +48,18 @@ function multipart(bytes: Buffer, mime = "audio/wav", extra = "") {
 test("authenticated POST stores real original and MP3 preview; owner and paths never come from form", async t => {
   const directory = await mkdtemp(join(tmpdir(), "file-post-")); const data = store();
   const app = buildApp({ jwtSecret: "upload-test-secret", storageDir: directory, files: data.database,
-    readAsset: async () => null, isPublished: async () => false, ready: async () => {} });
+    /**
+     * Doublure du scénario pour métadonnées du fichier audio ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
+    readAsset: async () => null,
+      /** Doublure du scénario pour publication de l’audio ; la réponse ou la panne est contrôlée par le test. */
+      isPublished: async () => false,
+      /** Doublure du scénario pour disponibilité du stockage ; la réponse ou la panne est contrôlée par le test. */
+      ready: async () => {} });
   t.after(async () => { await app.close(); await rm(directory, { recursive: true }); });
   await app.ready(); const token = app.jwt.sign({ sub: owner }, { expiresIn: "1h" }); const bytes = demoAudio(1);
+  /** Envoie le multipart à l’application injectée avec le JWT de test. */
   const post = (body: Buffer, auth = true) => app.inject({ method: "POST", url: "/assets", headers: {
     "content-type": "multipart/form-data; boundary=fixture", ...(auth ? { authorization: `Bearer ${token}` } : {}) }, payload: body });
   assert.equal((await post(multipart(bytes), false)).statusCode, 401); assert.equal(data.records.size, 0);
@@ -69,14 +93,21 @@ test("authenticated POST stores real original and MP3 preview; owner and paths n
 test("SQL failure compensates; uncertain commits retain durable markers and recover without deleting confirmed files", async t => {
   const directory = await mkdtemp(join(tmpdir(), "file-sql-")); const data = store();
   t.after(() => rm(directory, { recursive: true })); const bytes = demoAudio(1);
+  /** Écrit l’original du scénario dans le chemin temporaire reçu par saveFile, puis annonce son MIME. */
   const receive = async (path: string) => { await writeFile(path, bytes); return "audio/wav"; };
-  const failed: FileStore = { ...data.database, create: async () => { throw new Error("database offline"); } };
+  const failed: FileStore = { ...data.database,
+    /** Doublure du scénario pour création des métadonnées du fichier ; la réponse ou la panne est contrôlée par le test. */
+    create: async () => { throw new Error("database offline"); } };
   await assert.rejects(saveFile(directory, owner, failed, receive)); assert.deepEqual(await readdir(directory), []);
-  const uncertain: FileStore = { ...failed, hasStorageKey: async () => { throw new Error("database offline"); } };
+  const uncertain: FileStore = { ...failed,
+    /** Doublure du scénario pour présence d’une confirmation de stockage ; la réponse ou la panne est contrôlée par le test. */
+    hasStorageKey: async () => { throw new Error("database offline"); } };
   await assert.rejects(saveFile(directory, owner, uncertain, receive));
   assert.equal((await readdir(directory)).length, 3);
   await recoverUploads(directory, data.database); assert.deepEqual(await readdir(directory), []);
-  const committed: FileStore = { ...data.database, create: async (...args) => { await data.database.create(...args); throw new Error("lost SQL acknowledgement"); } };
+  const committed: FileStore = { ...data.database,
+    /** Doublure du scénario pour création des métadonnées du fichier ; la réponse ou la panne est contrôlée par le test. */
+    create: async (...args) => { await data.database.create(...args); throw new Error("lost SQL acknowledgement"); } };
   await assert.rejects(saveFile(directory, owner, committed, receive));
   assert.equal(data.records.size, 1); assert.equal((await readdir(directory)).length, 2);
   const asset = [...data.records.values()][0]!; assert.deepEqual(await readFile(join(directory, asset.storageKey)), bytes);
@@ -98,7 +129,15 @@ test("startup recovery is bounded, leaves seeds and collisions intact, and finis
 test("a real aborted HTTP upload closes the stream and removes its staging file", async t => {
   const directory = await mkdtemp(join(tmpdir(), "file-abort-")); const data = store();
   const app = buildApp({ jwtSecret: "upload-test-secret", storageDir: directory, files: data.database,
-    readAsset: async () => null, isPublished: async () => false, ready: async () => {} });
+    /**
+     * Doublure du scénario pour métadonnées du fichier audio ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
+    readAsset: async () => null,
+      /** Doublure du scénario pour publication de l’audio ; la réponse ou la panne est contrôlée par le test. */
+      isPublished: async () => false,
+      /** Doublure du scénario pour disponibilité du stockage ; la réponse ou la panne est contrôlée par le test. */
+      ready: async () => {} });
   t.after(async () => { await app.close(); await rm(directory, { recursive: true }); });
   await app.listen({ port: 0, host: "127.0.0.1" }); const address = app.server.address(); assert.ok(address && typeof address !== "string");
   const token = app.jwt.sign({ sub: owner }, { expiresIn: "1h" });

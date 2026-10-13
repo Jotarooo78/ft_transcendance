@@ -1,3 +1,5 @@
+-- Preuve SQL de les données et refus propres au scénario décrit dans le README voisin. Une assertion échouée arrête psql ; les fixtures ne doivent être exécutées que dans leur cible de test contrôlée.
+-- Encadre les écritures de fixture pour que le scénario puisse les valider ou les annuler explicitement.
 BEGIN;
 
 INSERT INTO "users"."profiles" ("user_id", "username", "display_name")
@@ -31,4 +33,5 @@ BEGIN
 END
 $test$;
 
+-- Retire les écritures d’essai de cette transaction après les assertions.
 ROLLBACK;

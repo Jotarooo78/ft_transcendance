@@ -1,10 +1,16 @@
+/** Preuves Chromium réelles des fichiers : progression réseau, aperçu, suppression, erreurs, annulation et changement de compte. */
 import { test, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import { createFixtures } from './fixtures/create-fixtures.mjs';
 import { createAccount, login as apiLogin, request, expect as status, upload, sql, uuid, compose } from './verify-files.mjs';
 
+/** Mot de passe public réservé aux comptes jetables de cette campagne ; jamais un secret utilisateur. */
 const password = 'Files-test-only-password-2026';
+/**
+ * Remplit le vrai formulaire du compte et attend la confirmation de connexion avant d’ouvrir ses
+ * fichiers.
+ */
 async function login(page, account) {
   await page.goto('/'); await page.getByRole('button', { name: 'Login', exact: true }).click();
   await page.getByLabel('Email', { exact: true }).fill(account.email); await page.getByLabel('Password', { exact: true }).fill(password);
@@ -13,6 +19,10 @@ async function login(page, account) {
   await page.getByRole('button', { name: 'Mes fichiers', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Mes fichiers', exact: true })).toBeVisible();
 }
+/**
+ * Sélectionne le fichier dans le formulaire et attend la requête réelle d’upload ou sa confirmation
+ * selon le scénario.
+ */
 async function submit(page, bytes, name, mimeType) {
   await page.getByLabel('Choisir un fichier audio ou une image').setInputFiles({ name, mimeType, buffer: bytes });
   const response = page.waitForResponse(response => new URL(response.url()).pathname === '/api/media/assets' && response.request().method() === 'POST');
@@ -20,6 +30,10 @@ async function submit(page, bytes, name, mimeType) {
   const result = await response; expect(result.status()).toBe(201); const file = await result.json(); uuid(file.id);
   await expect(page.locator(`[data-file-id="${file.id}"]`)).toBeVisible(); return file;
 }
+/**
+ * Supprime uniquement les fichiers et références identifiés comme fixtures du scénario ; conserve les
+ * données étrangères.
+ */
 async function cleanup(accounts, referenceIds) {
   for (const id of referenceIds) sql(`DELETE FROM catalog.tracks WHERE id='${uuid(id)}';`);
   for (const account of accounts) {
@@ -135,6 +149,10 @@ test('audio unsupported locally remains uploadable and receives a real playable 
     const bytes = Buffer.from(base64,'base64'); await login(page,account);
     const local = await page.evaluate(base64 => new Promise(resolve => {
       const audio = new Audio(); const url = URL.createObjectURL(new Blob([Uint8Array.from(atob(base64), char => char.charCodeAt(0))], {type:'audio/aiff'}));
+      /**
+       * Libère le mécanisme d’attente du scénario afin de terminer la réponse réseau volontairement
+       * retardée.
+       */
       const finish = value => { clearTimeout(timer); audio.removeAttribute('src'); audio.load(); URL.revokeObjectURL(url); resolve(value); };
       const timer = setTimeout(() => finish(false),5000); audio.onloadedmetadata=()=>finish(true); audio.onerror=()=>finish(false); audio.src=url;
     }), base64);

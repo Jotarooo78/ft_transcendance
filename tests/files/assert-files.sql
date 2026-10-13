@@ -1,3 +1,4 @@
+-- Preuve SQL de les métadonnées, UUID et contraintes du fichier demandé. Une assertion échouée arrête psql ; les fixtures ne doivent être exécutées que dans leur cible de test contrôlée.
 \set ON_ERROR_STOP on
 DO $$ BEGIN
   IF current_database() <> 'transcendence' THEN RAISE EXCEPTION 'Wrong database for file proof'; END IF;

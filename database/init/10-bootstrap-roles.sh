@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Script exécuté par PostgreSQL sur un volume neuf : vérifie les variables requises puis transmet les secrets à psql sans les imprimer.
 set -Eeuo pipefail
 
 : "${POSTGRES_USER:?POSTGRES_USER is required}"
@@ -16,6 +17,7 @@ set -Eeuo pipefail
 : "${PLAYBACK_MIGRATION_PASSWORD:?PLAYBACK_MIGRATION_PASSWORD is required}"
 : "${PLAYBACK_RUNTIME_PASSWORD:?PLAYBACK_RUNTIME_PASSWORD is required}"
 
+# ON_ERROR_STOP arrête l’initialisation dès le premier refus SQL ; les valeurs passent par des variables psql.
 psql \
   --username "$POSTGRES_USER" \
   --dbname "$POSTGRES_DB" \

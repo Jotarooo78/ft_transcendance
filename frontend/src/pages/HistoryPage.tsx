@@ -1,3 +1,4 @@
+/** Historique privé persistant : la position enregistrée et le temps effectivement crédité sont affichés séparément. */
 import { useEffect, useState } from "react";
 import AudioPlayer from "../components/AudioPlayer";
 import { getTrack } from "../services/catalog";
@@ -5,8 +6,20 @@ import { getPlaybackHistory, type PlaybackHistory, type PlaybackSession } from "
 import { getAccessToken } from "../services/session";
 import type { Track } from "../types/music";
 
-function HistoryItem({ session, onPlay }: { session: PlaybackSession; onPlay: (track: Track) => void }) {
-  const [detail, setDetail] = useState<{ track?: Track; error?: string }>({});
+/**
+ * Charge les détails actuels du morceau d’une session et affiche sa position, son temps crédité et sa
+ * clôture ; un morceau indisponible conserve l’historique lisible.
+ */
+function HistoryItem({ session, onPlay }: {
+  /** Session confirmée ou état transactionnel de la session concernée. */
+  session: PlaybackSession;
+  /** Sélectionne le morceau confirmé à lire dans le lecteur. */
+  onPlay: (track: Track) => void }) {
+  const [detail, setDetail] = useState<{
+    /** Détail public du morceau chargé depuis Catalogue. */
+    track?: Track;
+    /** Erreur à rendre visible pour ce résultat ; son absence représente un résultat sans erreur enregistrée. */
+    error?: string }>({});
   useEffect(() => {
     const controller = new AbortController();
     void getTrack(session.trackId, controller.signal).then(track => {
@@ -27,11 +40,21 @@ function HistoryItem({ session, onPlay }: { session: PlaybackSession; onPlay: (t
   </li>;
 }
 
+/**
+ * Charge une page d’historique du compte avec annulation et garde de token ; permet une nouvelle
+ * lecture et ignore les anciennes réponses de session.
+ */
 export default function HistoryPage() {
   const [page, setPage] = useState(1), [retry, setRetry] = useState(0);
   const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
   const token = getAccessToken(), key = JSON.stringify([token, page, retry]);
-  const [result, setResult] = useState<{ key: string; data?: PlaybackHistory; error?: string }>({ key: "" });
+  const [result, setResult] = useState<{
+    /** Identité de la requête ou de l’état ; empêche d’afficher une réponse devenue périmée. */
+    key: string;
+    /** Résultat validé ou champs de la commande regroupés par ce contrat. */
+    data?: PlaybackHistory;
+    /** Erreur à rendre visible pour ce résultat ; son absence représente un résultat sans erreur enregistrée. */
+    error?: string }>({ key: "" });
   useEffect(() => {
     const controller = new AbortController();
     void getPlaybackHistory(page, controller.signal).then(data => {

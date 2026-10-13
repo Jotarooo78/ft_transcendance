@@ -1,3 +1,4 @@
+/** Route multipart privée : le JWT est vérifié avant de recevoir les octets, puis le stockage confirme seul le succès. */
 import type { FastifyInstance } from "fastify";
 import { createWriteStream } from "node:fs";
 import { open } from "node:fs/promises";
@@ -9,13 +10,22 @@ import { publicFile } from "./file-definitions.js";
 import { saveFile } from "./save-file.js";
 import { audioByteLimit, imageByteLimit, FileError } from "./validate-file.js";
 
+/** Garde locale : un seul transfert lourd simultané dans cette instance Media. */
 let receiving = false;
+/**
+ * Ajoute POST /assets : un seul champ file, un transfert à la fois, comptage réel des octets et arrêt
+ * dès la limite. Confirme 201 uniquement après validation, fichiers durables et métadonnées SQL.
+ */
 export function registerFileUpload(app: FastifyInstance, storageDir: string, store: FileStore) {
   app.post("/assets", { onRequest: authenticateUser }, async (request, reply) => {
     if (receiving) return reply.code(503).send({ error: "upload_busy", message: "Un envoi est déjà en cours. Réessayez." });
     receiving = true;
-    const controller = new AbortController(); const abort = () => controller.abort();
+    const controller = new AbortController(); const /** Annule le transfert et le décodage lorsqu’une interruption est signalée. */ abort = () => controller.abort();
     request.raw.on("aborted", abort);
+    /**
+     * Annule si la connexion se ferme avant la fin de la réponse ; une fermeture normale ne détruit pas le
+     * résultat confirmé.
+     */
     const disconnected = () => { if (!reply.raw.writableEnded) abort(); };
     reply.raw.on("close", disconnected);
     try {
@@ -25,7 +35,9 @@ export function registerFileUpload(app: FastifyInstance, storageDir: string, sto
           if (part.type !== "file" || part.fieldname !== "file" || ++count !== 1) throw new FileError(400, "invalid_multipart");
           mime = part.mimetype;
           let bytes = 0; let header = Buffer.alloc(0); let maximum = audioByteLimit;
-          const bound = new Transform({ transform(chunk: Buffer, _encoding, callback) {
+          const bound = new Transform({
+            /** Compte les octets au fil de l’eau et reconnaît la signature image pour appliquer immédiatement sa limite plus petite. */
+            transform(chunk: Buffer, _encoding, callback) {
             bytes += chunk.length;
             if (header.length < 12) header = Buffer.concat([header, chunk.subarray(0, 12 - header.length)]);
             if (header.length >= 12 && (header.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10])) ||
@@ -42,7 +54,9 @@ export function registerFileUpload(app: FastifyInstance, storageDir: string, sto
       }, controller.signal);
       return reply.code(201).send(publicFile(asset));
     } catch (error) {
-      const code = (error as { code?: string }).code;
+      const code = (error as {
+        /** Code de refus public ou code métier, distinct du message détaillé interne. */
+        code?: string }).code;
       const failure = error instanceof FileError ? error : new FileError(code === "FST_REQ_FILE_TOO_LARGE" ? 413 : 400, "invalid_multipart");
       return reply.code(failure.status).send({ error: failure.code, message: "Fichier refusé ou service indisponible. Vérifiez le fichier puis réessayez." });
     } finally {

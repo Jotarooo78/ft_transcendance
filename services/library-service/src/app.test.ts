@@ -1,3 +1,4 @@
+/** Tests injectés de playlists privées : identité du compte, version attendue, occurrences indépendantes et erreurs de mutation. */
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createServer } from "node:http";
@@ -5,16 +6,38 @@ import { catalogReader } from "./catalog.js";
 import { buildApp } from "./app.js";
 import { createInput, pageQuery, PlaylistError, toPlaylist, type Playlist } from "./playlist.js";
 
+/** UUID du compte propriétaire de fixture. */
+/** UUID d’un autre compte de fixture, utilisé pour vérifier les refus d’accès. */
 const owner = "40000000-0000-4000-8000-000000000001", other = "40000000-0000-4000-8000-000000000002";
+/** Identifiant stable de fixture, utilisé pour comparer les réponses du scénario. */
 const id = "50000000-0000-4000-8000-000000000001";
+/** Playlist de fixture à version initiale, servant de référence aux mutations du scénario. */
 const playlist = { id, name: "Private", description: "", version: 1, items: [] };
 
 test("delete requires ownership and current version; repeats are explicit 404", async t => {
   let exists=true,writes=0,lookups=0;
-  const app=buildApp({jwtSecret:"test-only-library-secret",ready:async()=>{},
+  const app=buildApp({jwtSecret:"test-only-library-secret",
+    /** Doublure du scénario pour disponibilité du stockage ; la réponse ou la panne est contrôlée par le test. */
+    ready:async()=>{},
+    /**
+     * Doublure du scénario pour liste privée des playlists ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
     readPlaylists:async()=>({page:1,pageSize:20,total:exists?1:0,items:exists?[playlist]:[]}),
+    /**
+     * Doublure du scénario pour lecture de playlist privée ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
     readPlaylist:async()=>exists?playlist:null,
+    /**
+     * Doublure du scénario pour existence publiée du morceau ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
     isTrackPublished:async()=>{lookups++;throw new Error("Catalogue down");},
+    /**
+     * Doublure du scénario pour suppression versionnée de playlist ; la réponse ou la panne est contrôlée
+     * par le test.
+     */
     deletePlaylist:async(subject,playlistId,version)=>{
       if(subject!==owner || playlistId!==id || !exists)throw new PlaylistError(404,"playlist_not_found");
       if(version!==1)throw new PlaylistError(409,"version_conflict");
@@ -36,8 +59,20 @@ test("delete requires ownership and current version; repeats are explicit 404", 
 
 test("edit validates all fields before an atomic versioned update", async t => {
   let state: Playlist={...playlist};let writes=0,outage=false;
-  const app=buildApp({jwtSecret:"test-only-library-secret",ready:async()=>{},
-    readPlaylists:async()=>({page:1,pageSize:20,total:1,items:[state]}),readPlaylist:async()=>state,
+  const app=buildApp({jwtSecret:"test-only-library-secret",
+    /** Doublure du scénario pour disponibilité du stockage ; la réponse ou la panne est contrôlée par le test. */
+    ready:async()=>{},
+    /**
+     * Doublure du scénario pour liste privée des playlists ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
+    readPlaylists:async()=>({page:1,pageSize:20,total:1,items:[state]}),
+      /** Doublure du scénario pour lecture de playlist privée ; la réponse ou la panne est contrôlée par le test. */
+      readPlaylist:async()=>state,
+    /**
+     * Doublure du scénario pour modification versionnée de playlist ; la réponse ou la panne est contrôlée
+     * par le test.
+     */
     updatePlaylist:async(subject,playlistId,changes,version)=>{
       assert.equal(playlistId,id);
       if(subject!==owner)throw new PlaylistError(404,"playlist_not_found");
@@ -70,9 +105,25 @@ test("remove targets one occurrence, checks version and never requires Catalogue
   const foreignItem="60000000-0000-4000-8000-000000000003";
   let state: Playlist={...playlist,items:[{id:item1,trackId:"same",position:1},{id:item2,trackId:"same",position:2}]};
   let lookups=0, writes=0;
-  const app=buildApp({jwtSecret:"test-only-library-secret",ready:async()=>{},
-    readPlaylists:async()=>({page:1,pageSize:20,total:1,items:[state]}),readPlaylist:async()=>state,
+  const app=buildApp({jwtSecret:"test-only-library-secret",
+    /** Doublure du scénario pour disponibilité du stockage ; la réponse ou la panne est contrôlée par le test. */
+    ready:async()=>{},
+    /**
+     * Doublure du scénario pour liste privée des playlists ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
+    readPlaylists:async()=>({page:1,pageSize:20,total:1,items:[state]}),
+      /** Doublure du scénario pour lecture de playlist privée ; la réponse ou la panne est contrôlée par le test. */
+      readPlaylist:async()=>state,
+    /**
+     * Doublure du scénario pour existence publiée du morceau ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
     isTrackPublished:async()=>{lookups++;throw new Error("Catalogue down");},
+    /**
+     * Doublure du scénario pour retrait d’une occurrence ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
     removeItem:async(subject,playlistId,itemId,version)=>{
       assert.equal(playlistId,id);
       if(subject!==owner)throw new PlaylistError(404,"playlist_not_found");
@@ -101,10 +152,25 @@ test("adding an occurrence checks owner, version and Catalogue before writing", 
   const trackId = "20000000-0000-4000-8000-000000000001";
   let state: Playlist = { ...playlist, items: [] }; let lookups = 0, writes = 0;
   let available = true, outage = false, conflict = false;
-  const app = buildApp({ jwtSecret: "test-only-library-secret", ready: async () => {},
+  const app = buildApp({ jwtSecret: "test-only-library-secret",
+    /** Doublure du scénario pour disponibilité du stockage ; la réponse ou la panne est contrôlée par le test. */
+    ready: async () => {},
+    /**
+     * Doublure du scénario pour liste privée des playlists ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
     readPlaylists: async () => ({ page: 1, pageSize: 20, total: 1, items: [state] }),
+    /**
+     * Doublure du scénario pour lecture de playlist privée ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
     readPlaylist: async subject => subject === owner ? state : null,
+    /**
+     * Doublure du scénario pour existence publiée du morceau ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
     isTrackPublished: async () => { lookups++; if (outage) throw new Error("timeout"); return available; },
+    /** Doublure du scénario pour ajout d’une occurrence ; la réponse ou la panne est contrôlée par le test. */
     addItem: async (subject, playlistId, track, version) => {
       assert.equal(subject,owner); assert.equal(playlistId,id); assert.equal(track,trackId);
       if (conflict || version !== state.version) throw new PlaylistError(409,"version_conflict");
@@ -128,7 +194,9 @@ test("adding an occurrence checks owner, version and Catalogue before writing", 
   assert.equal((await app.inject({method:"POST",url,headers,payload})).statusCode,200);
   const second = await app.inject({method:"POST",url,headers,payload:{...payload,expectedVersion:2}});
   assert.equal(second.statusCode,200); assert.equal(second.json().version,3);
-  assert.deepEqual(second.json().items.map((item: {trackId:string})=>item.trackId),[trackId,trackId]);
+  assert.deepEqual(second.json().items.map((item: {
+    /** UUID du morceau Catalogue, distinct de l’occurrence de playlist ou de la session. */
+    trackId:string})=>item.trackId),[trackId,trackId]);
   assert.notEqual(second.json().items[0].id,second.json().items[1].id);
 });
 
@@ -149,9 +217,23 @@ test("Catalogue client distinguishes absent, malformed and timed-out tracks", as
 
 test("create empty private playlist uses authenticated owner and validates the entire body", async t => {
   let writes = 0; let failure = false; let saved: typeof playlist | null = null;
-  const app = buildApp({ jwtSecret: "test-only-library-secret", ready: async () => {},
+  const app = buildApp({ jwtSecret: "test-only-library-secret",
+    /** Doublure du scénario pour disponibilité du stockage ; la réponse ou la panne est contrôlée par le test. */
+    ready: async () => {},
+    /**
+     * Doublure du scénario pour liste privée des playlists ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
     readPlaylists: async () => ({ page: 1, pageSize: 20, total: saved ? 1 : 0, items: saved ? [saved] : [] }),
+    /**
+     * Doublure du scénario pour lecture de playlist privée ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
     readPlaylist: async (subject, value) => subject === owner && value === id ? saved : null,
+    /**
+     * Doublure du scénario pour création de playlist vide ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
     createPlaylist: async (subject, input) => { writes++; assert.equal(subject, owner);
       if (failure) throw new Error("private SQL"); saved = { ...playlist, ...input }; return saved; },
   });
@@ -174,13 +256,31 @@ test("create empty private playlist uses authenticated owner and validates the e
 
 test("JWT verification precedes storage and ownership scopes every read", async t => {
   let calls = 0; let failure = false;
-  const app = buildApp({ jwtSecret: "test-only-library-secret", ready: async () => {},
+  const app = buildApp({ jwtSecret: "test-only-library-secret",
+    /** Doublure du scénario pour disponibilité du stockage ; la réponse ou la panne est contrôlée par le test. */
+    ready: async () => {},
+    /**
+     * Doublure du scénario pour liste privée des playlists ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
     readPlaylists: async (subject, query) => { calls++; if (failure) throw new Error("private SQL");
       return { ...query, total: subject === owner ? 1 : 0, items: subject === owner ? [playlist] : [] }; },
+    /**
+     * Doublure du scénario pour lecture de playlist privée ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
     readPlaylist: async (subject, value) => { calls++; if (failure) throw new Error("private SQL"); return subject === owner && value === id ? playlist : null; },
   });
-  const foreign = buildApp({ jwtSecret: "another-test-secret", ready: async () => {},
-    readPlaylists: async () => { throw new Error("unused"); }, readPlaylist: async () => null });
+  const foreign = buildApp({ jwtSecret: "another-test-secret",
+    /** Doublure du scénario pour disponibilité du stockage ; la réponse ou la panne est contrôlée par le test. */
+    ready: async () => {},
+    /**
+     * Doublure du scénario pour liste privée des playlists ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
+    readPlaylists: async () => { throw new Error("unused"); },
+      /** Doublure du scénario pour lecture de playlist privée ; la réponse ou la panne est contrôlée par le test. */
+      readPlaylist: async () => null });
   t.after(async () => { await app.close(); await foreign.close(); });
   await app.ready(); await foreign.ready();
   for (const token of [undefined, "not-a-jwt", foreign.jwt.sign({ sub: owner }), app.jwt.sign({ sub: owner, exp: 1 }),
@@ -216,6 +316,14 @@ test("DTO has safe version, separate occurrences and no owner fields", () => {
   assert.deepEqual(toPlaylist(row), { ...playlist, items });
   assert.throws(() => toPlaylist({ ...row, version: 9007199254740992n }));
   assert.deepEqual(pageQuery({}), { page: 1, pageSize: 20 });
-  assert.throws(() => buildApp({ jwtSecret: "", ready: async () => {}, readPlaylist: async () => null,
+  assert.throws(() => buildApp({ jwtSecret: "",
+    /** Doublure du scénario pour disponibilité du stockage ; la réponse ou la panne est contrôlée par le test. */
+    ready: async () => {},
+    /** Doublure du scénario pour lecture de playlist privée ; la réponse ou la panne est contrôlée par le test. */
+    readPlaylist: async () => null,
+    /**
+     * Doublure du scénario pour liste privée des playlists ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
     readPlaylists: async () => ({ items: [], total: 0, page: 1, pageSize: 20 }) }));
 });

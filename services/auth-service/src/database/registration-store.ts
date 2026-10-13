@@ -1,3 +1,4 @@
+/** Adaptateur Prisma de l’inscription et de la boîte d’envoi : aucune demande n’est perdue entre création du compte et livraison à Users. */
 import { randomUUID } from "node:crypto";
 
 import { Prisma } from "../generated/prisma/client.js";
@@ -12,11 +13,15 @@ import {
 } from "../handle-profile-creation-result.js";
 import { prisma } from "./prisma.js";
 
+/** Données de profil sérialisées dans le message durable, indépendantes des identifiants de livraison. */
 type ProfilePayload = {
+  /** Nom affiché du profil, distinct du username unique. */
   displayName: string;
+  /** Nom unique canonique : 3 à 24 caractères a-z, 0-9 ou _. */
   username: string;
 };
 
+/** Vérifie les champs du JSON stocké avant de reconstruire une demande ; rejette un message corrompu. */
 function parseProfilePayload(value: Prisma.JsonValue): ProfilePayload {
   if (
     typeof value === "object" &&
@@ -34,16 +39,26 @@ function parseProfilePayload(value: Prisma.JsonValue): ProfilePayload {
   throw new Error("invalid profile provision payload in outbox");
 }
 
+/**
+ * Calcule la prochaine tentative avec un délai exponentiel plafonné à 60 secondes. attempts est le
+ * nombre de tentatives déjà comptées.
+ */
 function nextAttemptAt(attempts: number): Date {
   const delaySeconds = Math.min(60, 2 ** Math.min(attempts, 6));
   return new Date(Date.now() + delaySeconds * 1000);
 }
 
+/** Implémente les transactions du compte et de la boîte d’envoi avec le rôle SQL propriétaire d’Auth. */
 export class PrismaRegistrationStore implements RegistrationStore {
+  /** Exécute SELECT 1 pour vérifier la connexion PostgreSQL. */
   async checkReady(): Promise<void> {
     await prisma.$queryRaw`SELECT 1`;
   }
 
+  /**
+   * Crée le compte et son message dans une transaction unique. Transforme le conflit d’unicité Prisma
+   * P2002 en DuplicateEmailError.
+   */
   async createPendingRegistration(
     input: CreateRegistrationInput,
   ) {
@@ -103,6 +118,10 @@ export class PrismaRegistrationStore implements RegistrationStore {
     }
   }
 
+  /**
+   * Lit les champs de connexion et vérifie l’état stocké ; renvoie null si l’email est absent et rejette
+   * un état inconnu.
+   */
   async findAccountByEmail(email: string): Promise<AccountForLogin | null> {
     const account = await prisma.account.findUnique({
       where: { email },
@@ -129,6 +148,10 @@ export class PrismaRegistrationStore implements RegistrationStore {
     return { ...account, state: account.state };
   }
 
+  /**
+   * Lit les demandes pending dont le délai est écoulé, de la plus ancienne à la plus récente, dans la
+   * limite demandée.
+   */
   async listPendingProvisions(
     limit: number,
   ): Promise<PendingProfileProvision[]> {
@@ -163,6 +186,7 @@ export class PrismaRegistrationStore implements RegistrationStore {
     });
   }
 
+  /** Passe le message pending à delivered et le compte pending_profile à active dans la même transaction. */
   async markProvisioned(message: PendingProfileProvision): Promise<void> {
     await prisma.$transaction([
       prisma.outboxMessage.updateMany({
@@ -180,6 +204,10 @@ export class PrismaRegistrationStore implements RegistrationStore {
     ]);
   }
 
+  /**
+   * Reporte uniquement un message encore pending et incrémente son compteur ; une livraison déjà
+   * confirmée reste inchangée.
+   */
   async markProvisionAttemptFailed(
     message: PendingProfileProvision,
     errorCode: string,
@@ -194,6 +222,7 @@ export class PrismaRegistrationStore implements RegistrationStore {
     });
   }
 
+  /** Marque ensemble le message failed et le compte profile_failed, sans modifier un compte déjà activé. */
   async markProvisionPermanentlyFailed(
     message: PendingProfileProvision,
     errorCode: PermanentProvisionCode,

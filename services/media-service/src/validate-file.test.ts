@@ -1,3 +1,4 @@
+/** Tests sur de vrais fichiers et décodeurs : contenu, MIME, troncature, dimensions, budget, annulation et aperçu. */
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -9,7 +10,12 @@ import sharp from "sharp";
 import { demoAudio } from "./database/audio-fixture.js";
 import { createFileValidator, FileError, audioByteLimit, imageByteLimit } from "./validate-file.js";
 
+/** Validateur isolé partagé par les uploads, avec contrôle des octets avant création SQL. */
 const validate = createFileValidator();
+/**
+ * Exige que le validateur refuse la fixture avec le statut prévu ; un succès inattendu fait échouer le
+ * test.
+ */
 const rejects = (promise: Promise<unknown>, status: number, code?: string) => assert.rejects(promise,
   error => error instanceof FileError && error.status === status && (!code || error.code === code));
 

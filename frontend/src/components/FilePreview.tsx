@@ -1,10 +1,23 @@
+/** Aperçu privé chargé à la demande avec un Blob authentifié et une URL locale temporaire. */
 import { useEffect, useState } from "react";
 import { getAccessToken } from "../services/session";
 import { readFilePreview } from "../services/read-files";
 import type { ReadyFile } from "../types/files";
 
-export default function FilePreview({ file }: { file: ReadyFile }) {
-  const [result, setResult] = useState<{ key: string; url?: string; error?: string }>({ key: "" });
+/**
+ * Charge l’aperçu du fichier du compte et rend une image ou un lecteur audio. Annule la lecture et
+ * révoque l’URL Blob à la fermeture ou au changement de session.
+ */
+export default function FilePreview({ file }: {
+  /** Métadonnées du fichier privé prêt à être affiché. */
+  file: ReadyFile }) {
+  const [result, setResult] = useState<{
+    /** Identité de la requête ou de l’état ; empêche d’afficher une réponse devenue périmée. */
+    key: string;
+    /** URL Blob locale temporaire, à révoquer après fermeture de l’aperçu. */
+    url?: string;
+    /** Erreur à rendre visible pour ce résultat ; son absence représente un résultat sans erreur enregistrée. */
+    error?: string }>({ key: "" });
   const token = getAccessToken(); const key = JSON.stringify([token, file.id]);
   useEffect(() => {
     const controller = new AbortController(); let url: string | undefined;

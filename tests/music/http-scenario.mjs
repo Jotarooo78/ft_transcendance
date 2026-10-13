@@ -1,9 +1,14 @@
+/** Campagnes HTTPS réelles Catalogue, Media, Library et Playback sur la seule pile isolée transcendence_music. */
 import assert from 'node:assert/strict';
 import https from 'node:https';
 import { createHash, createHmac } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 
+/**
+ * Origine HTTPS autorisée de la campagne ; les gardes qui suivent empêchent une cible extérieure au
+ * périmètre prévu.
+ */
 export const base = new URL(process.env.MUSIC_BASE_URL ?? 'https://127.0.0.1:3443');
 assert.equal(base.protocol, 'https:');
 assert.equal(base.hostname, '127.0.0.1');
@@ -11,6 +16,10 @@ assert.equal(base.port, '3443');
 assert.equal(base.pathname, '/');
 assert.ok(!base.username && !base.password && !base.search && !base.hash);
 
+/**
+ * Envoie une requête HTTPS confinée à 127.0.0.1:3443, avec délai de 10 s et réponse bornée à 8 MiB.
+ * Renvoie les octets et un lecteur JSON explicite.
+ */
 export function request(path, { method = 'GET', headers = {}, body } = {}) {
   assert.ok(path.startsWith('/') && !path.startsWith('//'));
   return new Promise((resolve, reject) => {
@@ -19,6 +28,10 @@ export function request(path, { method = 'GET', headers = {}, body } = {}) {
       res.on('data', chunk => { size += chunk.length; if (size > 8 * 1024 * 1024) res.destroy(new Error('Response too large')); else chunks.push(chunk); });
       res.on('error', reject);
       res.on('end', () => { const bytes = Buffer.concat(chunks); resolve({ status: res.statusCode, headers: res.headers, bytes,
+        /**
+         * Décode les octets reçus en JSON au moment où l’assertion le demande ; un JSON invalide fait échouer
+         * le scénario.
+         */
         json: () => JSON.parse(bytes.toString('utf8')) }); });
     });
     req.on('timeout', () => req.destroy(new Error('Request timed out')));
@@ -27,6 +40,7 @@ export function request(path, { method = 'GET', headers = {}, body } = {}) {
   });
 }
 
+/** Attend au plus 60 tentatives que /ready du service réponde réellement par HTTPS. */
 export async function waitReady(service) {
   for (let n = 0; n < 60; n++) {
     try { if ((await request(`/api/${service}/ready`)).status === 200) return; } catch { /* bounded recovery */ }
@@ -35,9 +49,15 @@ export async function waitReady(service) {
   throw new Error(`${service} did not become ready`);
 }
 
+/** UUID stables des trois morceaux de démonstration utilisés dans les assertions. */
 const trackIds = [1, 2, 3].map(n => `20000000-0000-4000-8000-${String(n).padStart(12, '0')}`);
+/**
+ * Prouve le contrat Catalogue : morceaux publiés, détail, tris stables, pages, filtres, refus et
+ * invisibilité des brouillons.
+ */
 async function catalog() {
   await waitReady('catalog');
+  /** Lit une liste Catalogue avec les paramètres du scénario et exige HTTP 200 avant de lire le JSON. */
   const list = async query => {
     const response = await request(`/api/catalog/tracks${query}`);
     assert.equal(response.status, 200, `list ${query}`);
@@ -79,8 +99,13 @@ async function catalog() {
   assert.equal((await request('/api/catalog/metrics')).status, 403);
 }
 
+/**
+ * Prouve les cas supplémentaires de recherche littérale, associations et tris sur les fixtures ciblées
+ * installées par le runner.
+ */
 async function catalogEdge() {
   await waitReady('catalog');
+  /** Lit une liste Catalogue avec les paramètres du scénario et exige HTTP 200 avant de lire le JSON. */
   const list = async query => { const r = await request(`/api/catalog/tracks?${query}`); assert.equal(r.status, 200); return r.json(); };
   const edge1 = '21000000-0000-4000-8000-000000000001', edge2 = '21000000-0000-4000-8000-000000000002';
   assert.equal((await list('')).total, 5);
@@ -91,11 +116,16 @@ async function catalogEdge() {
   assert.deepEqual((await list('genre=Other')).items.map(t => t.id), [edge1, edge2]);
 }
 
+/** Empreintes attendues des trois originaux audio pour vérifier les octets et la persistance. */
 const hashes = [
   '5677a050f387c21a475ab48574c58b694f895a4a892e6856e25ef89e8e4d6acb',
   '2555a613adb120e97254d51e67841193f7481d5058450ef9e77b86d6088b5323',
   'fd61a1cf5debdd360c057b20aaf36618ba6cced33536326ddf540e69bef0a882',
 ];
+/**
+ * Compare les vrais octets audio, les plages GET, HEAD et les refus attendus, sans déduire une
+ * réussite du seul SQL.
+ */
 async function media(edge = false) {
   await waitReady('media'); await waitReady('catalog');
   for (let index = 0; index < 3; index++) {
@@ -135,18 +165,23 @@ async function media(edge = false) {
   }
 }
 
+/** Fichier local des témoins Library à comparer après redémarrage de la pile isolée. */
 const libraryStatePath = '/tmp/transcendence-music-library-state.json';
+/** Mot de passe public réservé aux comptes de la pile musicale isolée. */
 const testPassword = 'MusicTestOnly_123!';
+/** Encode un corps JSON et son token éventuel avant d’appeler le transport HTTPS réel. */
 async function jsonRequest(path, method, body, token) {
   const encoded = body === undefined ? undefined : JSON.stringify(body);
   return request(path, { method, headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(encoded === undefined ? {} : { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(encoded) }) }, body: encoded });
 }
+/** Connecte le compte de fixture et attend son profil avec des tentatives bornées. */
 async function loginFixture(user) {
   const response = await jsonRequest('/api/auth/login', 'POST', { email: user.email, password: testPassword });
   assert.equal(response.status, 200, 'fixture login');
   const token = response.json().token; assert.equal(typeof token, 'string'); return token;
 }
+/** Inscrit un compte propre à la campagne et conserve son identité confirmée. */
 async function createFixtureUser(suffix) {
   const username = `lib_${Date.now().toString(36)}_${suffix}`;
   const email = `${username}@example.test`;
@@ -154,22 +189,35 @@ async function createFixtureUser(suffix) {
   assert.equal(response.status, 201, 'fixture signup');
   return { username, email, id: response.json().userId };
 }
+/**
+ * Appelle une route privée Library, exige le statut prévu et no-store ; ne tente pas de lire un corps
+ * pour 204.
+ */
 async function libraryCall(token, suffix, method = 'GET', body, status = 200) {
   const response = await jsonRequest(`/api/library/playlists${suffix}`, method, body, token);
   assert.equal(response.status, status, `Library ${method} ${suffix}`);
   assert.equal(response.headers['cache-control'], 'no-store');
   return status === 204 ? undefined : response.json();
 }
+/**
+ * Signe des claims choisies avec le secret public réservé à cette pile de test, afin de provoquer des
+ * refus d’authentification contrôlés.
+ */
 function signedTestToken(claims) {
   const payload = [ { alg: 'HS256', typ: 'JWT' }, claims ].map(value => Buffer.from(JSON.stringify(value)).toString('base64url')).join('.');
   return payload + '.' + createHmac('sha256', 'e2e_test_only_jwt_secret_with_sufficient_length').update(payload).digest('base64url');
 }
+/**
+ * Prouve propriété, versions, occurrences répétées et modifications privées ; mémorise les témoins à
+ * relire après redémarrage.
+ */
 async function library() {
   await waitReady('library');
   const a = await createFixtureUser('a'), b = await createFixtureUser('b');
   const ta = await loginFixture(a), tb = await loginFixture(b);
   let p = await libraryCall(ta, '', 'POST', { name: '  HTTP library A  ' }, 201);
   assert.equal(p.name, 'HTTP library A'); assert.equal(p.description, ''); assert.equal(p.version, 1); assert.deepEqual(p.items, []);
+  /** Relit la playlist du compte A et exige qu’un refus testé n’ait modifié aucun de ses champs. */
   const sameA = async () => assert.deepEqual(await libraryCall(ta, `/${p.id}`), p);
   for (const body of [{ name: '' }, { name: ' '.repeat(3) }, { name: 'x'.repeat(101) }, { name: 'ok', description: 'x'.repeat(2001) },
     { name: 'ok', ownerUserId: a.id }, { name: 'ok', visibility: 'public' }, { name: 'ok', version: 99 }, { name: 123 }]) {
@@ -234,6 +282,10 @@ async function library() {
   assert.equal((await request('/api/library/metrics')).status, 403);
   await writeFile(libraryStatePath, JSON.stringify({ a, b, p, pb, removed, deleted, boundaryId: boundary.id }), { mode: 0o600 });
 }
+/**
+ * Relit les playlists et leurs occurrences depuis les témoins locaux pour vérifier la persistance
+ * après redémarrage.
+ */
 async function libraryVerify(mode) {
   await waitReady('library');
   const state = JSON.parse(await readFile(libraryStatePath, 'utf8'));
@@ -263,18 +315,28 @@ async function libraryVerify(mode) {
   }
 }
 
+/** Fichier local des témoins Playback à comparer après redémarrage de la pile isolée. */
 const playbackStatePath = '/tmp/transcendence-music-playback-state.json';
+/**
+ * Appelle une route privée Playback et exige son statut et ses en-têtes avant de lire la session
+ * confirmée.
+ */
 async function playbackCall(token, suffix = '', method = 'GET', body, status = 200) {
   const response = await jsonRequest(`/api/playback/sessions${suffix}`, method, body, token);
   assert.equal(response.status, status, `Playback ${method} ${suffix}: ${response.bytes}`);
   assert.equal(response.headers['cache-control'], 'no-store');
   return response.json();
 }
+/**
+ * Prouve les séquences, répétitions identiques, bornes de temps, clôtures et séparation des comptes ;
+ * conserve les témoins de session.
+ */
 async function playback() {
   await waitReady('playback');
   assert.equal((await request('/api/playback/metrics')).status, 403);
   const a = await createFixtureUser('eco_a'), b = await createFixtureUser('eco_b');
   const ta = await loginFixture(a), tb = await loginFixture(b);
+  /** Relit la page d’historique utilisée par les assertions de ce scénario. */
   const history = () => playbackCall(ta);
   for (const token of [undefined, 'invalid', signedTestToken({ sub: a.id, exp: 1 }), signedTestToken({ sub: 'invalid' })]) {
     await playbackCall(token, '', 'GET', undefined, 401);
@@ -294,6 +356,7 @@ async function playback() {
   await delay(120);
   session = await playbackCall(ta, progress, 'PUT', first);
   assert.equal(session.listenedMs, 100); assert.equal(session.positionMs, 2000);
+  /** Compare la session avant et après un refus pour vérifier l’absence d’écriture ou de temps ajouté. */
   const unchanged = async () => assert.deepEqual((await history()).items, [session]);
   assert.deepEqual(await playbackCall(ta, progress, 'PUT', first), session);
   for (const [body, status] of [
@@ -345,6 +408,7 @@ async function playback() {
     [session.id]: [first, second, variants[winner]], [capped.id]: [excessive],
   } }), { mode: 0o600 });
 }
+/** Relit les sessions et les événements attendus après redémarrage à partir du témoin de campagne. */
 async function playbackVerify(unavailable = false) {
   await waitReady('playback'); await waitReady('auth');
   const f = JSON.parse(await readFile(playbackStatePath, 'utf8'));
@@ -360,6 +424,7 @@ async function playbackVerify(unavailable = false) {
   }
 }
 
+/** Phase demandée par le runner ; l’import du helper ne doit pas lancer une campagne par erreur. */
 const mode = process.argv[2];
 if (mode === 'catalog' || mode === 'catalog-verify') await catalog();
 else if (mode === 'catalog-edge') await catalogEdge();

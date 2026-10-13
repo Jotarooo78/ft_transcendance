@@ -1,8 +1,13 @@
+/** Quatre parcours Chromium sur la pile musicale isolée : catalogue, écoute, playlists et historique avec comptes distincts. */
 import { test, expect } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 // Read-only SQL witness, confined to the same disposable project as the browser.
+/**
+ * Témoin SQL en lecture seule d’une session et de ses événements, confiné à transcendence_music après
+ * validation de l’UUID.
+ */
 function playbackSql(id) {
   expect(id).toMatch(/^[0-9a-f-]{36}$/);
   const query = `SELECT json_build_object('id',s.id,'userId',s.user_id,'listenedMs',s.listened_ms,
@@ -14,7 +19,12 @@ function playbackSql(id) {
     '-f',fileURLToPath(new URL('./compose.yml', import.meta.url)),'exec','-T','db','psql','-U','e2e_admin',
     '-d','transcendence_music','-v','ON_ERROR_STOP=1','-At','-c',query], { encoding:'utf8', timeout:10000 }).trim());
 }
+/** Reconnaît une confirmation réelle PUT /progress réussie pour synchroniser les assertions navigateur. */
 const playbackProgress = r => r.request().method() === 'PUT' && /\/api\/playback\/sessions\/[^/]+\/progress$/.test(r.url()) && r.status() === 200;
+/**
+ * Ouvre le morceau de démonstration et attend la vraie session ainsi que les octets Media ; lance le
+ * lecteur natif et renvoie session et élément audio.
+ */
 async function startPlayback(page) {
   await page.getByRole('button', { name:'Catalog', exact:true }).click();
   const opened = page.waitForResponse(r => r.url().endsWith('/api/playback/sessions') && r.request().method() === 'POST' && r.status() === 201);
@@ -31,6 +41,10 @@ test('playback: real listening, pause, seek, SQL, history and account isolation'
   const loggedIn=page.waitForResponse(r=>r.url().endsWith('/api/auth/login') && r.status()===200);
   const user=await createAccount(page,'eco_real');
   const token=(await (await loggedIn).json()).token, headers={Authorization:`Bearer ${token}`};
+  /**
+   * Relit l’historique par API authentifiée depuis le navigateur pour comparer les mesures visibles à la
+   * confirmation serveur.
+   */
   const readHistory=async()=>{const r=await page.request.get('/api/playback/sessions',{headers});expect(r.status()).toBe(200);return r.json();};
   const sent=[];
   page.on('request',r=>{if(r.method()==='PUT' && r.url().includes('/api/playback/'))sent.push(r.postDataJSON());});
@@ -262,6 +276,7 @@ test('library: confirmed gestures, failures, persistence and account isolation',
   expect(await page.evaluate(() => localStorage.getItem('ft-music:playlists:v1'))).toBe(witness);
 });
 
+/** Inscrit un compte de scénario via les formulaires et conserve ses identifiants pour la reconnexion. */
 export async function createAccount(page, prefix) {
   const name=`${prefix}_${Date.now().toString(36)}`;
   const user={username:name,email:`${name}@example.test`,password:'MusicTestOnly_123!'};
@@ -277,6 +292,7 @@ export async function createAccount(page, prefix) {
   return user;
 }
 
+/** Effectue la connexion réelle du compte de scénario et attend sa confirmation. */
 export async function login(page,user) {
   await page.getByRole('button',{name:'Login',exact:true}).click();
   await page.getByLabel('Email',{exact:true}).fill(user.email);

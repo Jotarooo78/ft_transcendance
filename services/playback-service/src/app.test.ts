@@ -1,3 +1,4 @@
+/** Tests injectés d’écoute : séquences, crédit borné, répétitions, clôture, verrou et lecture privée ; ne remplacent pas la preuve PostgreSQL. */
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createServer } from "node:http";
@@ -6,16 +7,29 @@ import { catalogReader } from "./catalog.js";
 import { pageQuery, PlaybackError, progressInput, toHistorySession, toSession, type SessionRow } from "./session.js";
 import { recordClose, recordProgress, type EventRow, type SessionTransaction } from "./progress.js";
 
+/** UUID du compte propriétaire de fixture. */
+/** UUID du morceau Catalogue, distinct de l’occurrence de playlist ou de la session. */
 const owner = "40000000-0000-4000-8000-000000000001", trackId = "20000000-0000-4000-8000-000000000001";
+/** Identifiant stable de fixture, utilisé pour comparer les réponses du scénario. */
 const id = "70000000-0000-4000-8000-000000000001";
+/** Ligne SQL de fixture avant conversion en réponse publique. */
 const row = { id, trackId, trackDurationMs: 6000n, startedAt: new Date("2026-01-01T00:00:00Z"), endedAt: null, listenedMs: 0n, lastSequence: 0 };
 
 test("history validates bounded pagination and uses only the verified subject without Catalogue", async t => {
   const closed = toHistorySession({ ...row, endedAt: new Date(row.startedAt.getTime() + 3000), listenedMs: 2000n, lastSequence: 2,
     events: [{ sequence: 2, positionMs: 5000n }] });
   let reads = 0, outage = false;
-  const app = buildApp({ jwtSecret: "test-only-playback-secret", ready: async () => {},
-    readTrackDuration: async () => { throw new Error("No Catalogue for history"); }, createSession: async () => toSession(row),
+  const app = buildApp({ jwtSecret: "test-only-playback-secret",
+    /** Doublure du scénario pour disponibilité du stockage ; la réponse ou la panne est contrôlée par le test. */
+    ready: async () => {},
+    /**
+     * Doublure du scénario pour durée publiée du morceau ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
+    readTrackDuration: async () => { throw new Error("No Catalogue for history"); },
+      /** Doublure du scénario pour création d’une session ; la réponse ou la panne est contrôlée par le test. */
+      createSession: async () => toSession(row),
+    /** Doublure du scénario pour historique privé ; la réponse ou la panne est contrôlée par le test. */
     readSessions: async (subject, query) => {
       reads++; if (outage) throw new Error("DB down");
       const items = subject === owner ? [closed, toSession({ ...row, id: trackId })] : [];
@@ -42,16 +56,37 @@ test("history validates bounded pagination and uses only the verified subject wi
   assert.throws(() => toHistorySession({ ...row, lastSequence: 1, events: [] }));
 });
 
+/**
+ * Simule les événements et le résumé sous une transaction contrôlée, avec compteurs d’écriture pour
+ * vérifier l’absence de double comptage.
+ */
 function memoryTransaction(initial: SessionRow = row) {
   let state = structuredClone(initial), summaries = 0, closures = 0;
   const events = new Map<number, EventRow>();
   const tx: SessionTransaction = {
-    get session() { return state; }, getEvent: async sequence => events.get(sequence) ?? null,
+    get session() { return state; },
+      /** Doublure du scénario pour lecture d’événement ; la réponse ou la panne est contrôlée par le test. */
+      getEvent: async sequence => events.get(sequence) ?? null,
+    /**
+     * Doublure du scénario pour enregistrement d’événement ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
     createEvent: async event => { assert.equal(events.has(event.sequence), false); events.set(event.sequence, event); },
+    /** Doublure du scénario pour mise à jour du résumé ; la réponse ou la panne est contrôlée par le test. */
     saveProgress: async (listenedMs, lastSequence) => { summaries++; state = { ...state, listenedMs, lastSequence }; return state; },
+    /**
+     * Doublure du scénario pour mise à jour de la date de fin ; la réponse ou la panne est contrôlée par
+     * le test.
+     */
     saveClose: async endedAt => { closures++; state = { ...state, endedAt }; return state; },
   };
-  return { tx, events, state: () => state, summaries: () => summaries, closures: () => closures };
+  return { tx, events,
+    /** Doublure du scénario pour lecture de l’état courant simulé ; la réponse ou la panne est contrôlée par le test. */
+    state: () => state,
+    /** Doublure du scénario pour lecture du compteur de résumés écrits ; la réponse ou la panne est contrôlée par le test. */
+    summaries: () => summaries,
+    /** Doublure du scénario pour lecture du compteur de clôtures écrites ; la réponse ou la panne est contrôlée par le test. */
+    closures: () => closures };
 }
 
 test("close belongs to the subject, is terminal and idempotent without invented time", async t => {
@@ -59,12 +94,23 @@ test("close belongs to the subject, is terminal and idempotent without invented 
   let now = start + 2000;
   const input = { sequence: 1, positionMs: 1000, listenedMsTotal: 1000 };
   await recordProgress(memory.tx, input, () => start + 1000);
-  const app = buildApp({ jwtSecret: "test-only-playback-secret", ready: async () => {},
-    readTrackDuration: async () => { throw new Error("Catalogue must not be called"); }, createSession: async () => toSession(row),
+  const app = buildApp({ jwtSecret: "test-only-playback-secret",
+    /** Doublure du scénario pour disponibilité du stockage ; la réponse ou la panne est contrôlée par le test. */
+    ready: async () => {},
+    /**
+     * Doublure du scénario pour durée publiée du morceau ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
+    readTrackDuration: async () => { throw new Error("Catalogue must not be called"); },
+      /** Doublure du scénario pour création d’une session ; la réponse ou la panne est contrôlée par le test. */
+      createSession: async () => toSession(row),
+    /** Doublure du scénario pour clôture idempotente ; la réponse ou la panne est contrôlée par le test. */
     closeSession: async (subject, sessionId) => {
       if (subject !== owner || sessionId !== id) throw new PlaybackError(404, "session_not_found");
       return recordClose(memory.tx, () => now);
-    }, progressSession: async (_subject, _id, value) => recordProgress(memory.tx, value, () => now),
+    },
+      /** Doublure du scénario pour progression sérialisée ; la réponse ou la panne est contrôlée par le test. */
+      progressSession: async (_subject, _id, value) => recordProgress(memory.tx, value, () => now),
   });
   t.after(() => app.close()); await app.ready();
   const headers = { authorization: `Bearer ${app.jwt.sign({ sub: owner })}` }, url = `/sessions/${id}/close`;
@@ -109,6 +155,10 @@ test("exact retransmissions confirm one event even when older or closed; diverge
 test("two equal requests under a simulated lock cause one write pair", async () => {
   const memory = memoryTransaction(); let tail = Promise.resolve();
   const input = { sequence: 1, positionMs: 1000, listenedMsTotal: 1000 };
+  /**
+   * Sérialise les opérations du scénario pour exercer les règles de progression comme sous un verrou de
+   * session.
+   */
   const locked = () => {
     const run = tail.then(() => recordProgress(memory.tx, input, () => row.startedAt.getTime() + 1000));
     tail = run.then(() => {}); return run;
@@ -120,8 +170,15 @@ test("two equal requests under a simulated lock cause one write pair", async () 
 
 test("progress validates request shape before the writer and preserves business errors", async t => {
   let writes = 0;
-  const app = buildApp({ jwtSecret: "test-only-playback-secret", ready: async () => {}, readTrackDuration: async () => 6000,
-    createSession: async () => toSession(row), progressSession: async (subject, sessionId, input) => {
+  const app = buildApp({ jwtSecret: "test-only-playback-secret",
+    /** Doublure du scénario pour disponibilité du stockage ; la réponse ou la panne est contrôlée par le test. */
+    ready: async () => {},
+    /** Doublure du scénario pour durée publiée du morceau ; la réponse ou la panne est contrôlée par le test. */
+    readTrackDuration: async () => 6000,
+    /** Doublure du scénario pour création d’une session ; la réponse ou la panne est contrôlée par le test. */
+    createSession: async () => toSession(row),
+      /** Doublure du scénario pour progression sérialisée ; la réponse ou la panne est contrôlée par le test. */
+      progressSession: async (subject, sessionId, input) => {
       assert.equal(subject, owner); assert.equal(sessionId, id); writes++;
       throw new PlaybackError(409, "progress_conflict");
     } });
@@ -164,9 +221,20 @@ test("progress writes event and summary together and bounds credit independently
 
 test("opening uses verified identity and catalogue duration; refusals write nothing", async t => {
   let writes = 0, lookups = 0, duration: number | null = 6000, outage = false, closed = false;
-  const app = buildApp({ jwtSecret: "test-only-playback-secret", ready: async () => { if (outage) throw new Error("DB down"); },
+  const app = buildApp({ jwtSecret: "test-only-playback-secret",
+    /** Doublure du scénario pour disponibilité du stockage ; la réponse ou la panne est contrôlée par le test. */
+    ready: async () => { if (outage) throw new Error("DB down"); },
+    /**
+     * Doublure du scénario pour clôture de session ou libération de ressources ; la réponse ou la panne
+     * est contrôlée par le test.
+     */
     close: async () => { closed = true; },
+    /**
+     * Doublure du scénario pour durée publiée du morceau ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
     readTrackDuration: async id => { lookups++; assert.equal(id, trackId); if (outage) throw new Error("Catalogue down"); return duration; },
+    /** Doublure du scénario pour création d’une session ; la réponse ou la panne est contrôlée par le test. */
     createSession: async (subject, track, ms) => { assert.equal(subject, owner); assert.equal(track, trackId); assert.equal(ms, 6000); writes++; return toSession(row); },
   });
   t.after(() => app.close()); await app.ready();

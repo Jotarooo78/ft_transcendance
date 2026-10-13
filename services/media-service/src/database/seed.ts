@@ -1,3 +1,4 @@
+/** Commande explicite installant les trois audios stables ; un fichier existant différent est refusé plutôt que remplacé. */
 import { constants } from "node:fs";
 import { mkdir, open, link, unlink } from "node:fs/promises";
 import { join } from "node:path";
@@ -5,8 +6,13 @@ import { randomUUID } from "node:crypto";
 import { demoAudio, sha256 } from "./audio-fixture.js";
 import { disconnectPrisma, prisma } from "./prisma.js";
 
+/** Dossier durable des originaux Media, lu dans MEDIA_STORAGE_DIR ou /data/audio. */
 const storage = process.env.MEDIA_STORAGE_DIR ?? "/data/audio";
 
+/**
+ * Ouvre le fichier sans suivre de lien symbolique et exige les octets attendus. Une collision de
+ * contenu arrête l’installation ; un fichier absent peut être créé par l’appelant.
+ */
 async function verifyFile(path: string, expected: Buffer): Promise<void> {
   const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
   try {

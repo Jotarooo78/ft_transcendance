@@ -90,6 +90,7 @@ export async function loginUser(
     displayName: profile.displayName,
     username: profile.username,
     email,
+    // Conserve null pour une bio absente, conformément au contrat Users.
     bio: profile.bio,
     avatarUrl: profile.avatarUrl,
     createdAt: null,

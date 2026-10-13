@@ -676,3 +676,31 @@ Les critères de compréhension restent personnels.
 - ECO-13 est validé techniquement ; ce commit rassemble le runner testé,
   le scénario HTTP et le bilan. Sa publication et le résultat du pull sont
   consignés dans la sous-action Notion après git-sync.
+
+## Documentation des contributions — 13 octobre 2026
+
+- Périmètre recoupé avec les missions Done de Notion et les lignes attribuées
+  à `Azard444` dans Git : infrastructure Prisma/permissions, inscription et
+  profil, username/bio, Catalogue, Media, Library, Playback et fichiers privés.
+  Dans les fichiers partagés, les ajouts documentaires restent sur ses blocs.
+- JSDoc en français pour fonctions, composants, types, champs et constantes ;
+  commentaires adaptés pour shell, SQL, Prisma, Docker, Compose, Nginx et CSS.
+  Le [guide de lecture](../STRUCTURE_SERVICES.md) relie les parcours aux sources
+  et explique les configurations JSON et les migrations sans les réécrire.
+- Contrôles : structure TypeScript/JavaScript source et JavaScript compilé
+  identiques hors commentaires, mise en page et conteneurs de commentaires
+  JSX ; mêmes instructions pour les 52 configurations commentées ; syntaxe
+  des scripts shell et quatre configurations Compose valides.
+- Six compilations et six validations Prisma réussies dans des conteneurs
+  temporaires sans réseau et sans volumes métier. Tests des services : Auth 6,
+  Users 50, Catalogue 7, Media 19, Library 8 et Playback 8, soit 98 réussites.
+  Lint/build frontend réussis ; les 10 scénarios horloge/file passent aussi
+  dans Node 22 isolé. Le lanceur local ne rapporte que le fichier de test :
+  le résultat détaillé des 10 scénarios provient du conteneur natif.
+- Le service de langage TypeScript restitue les explications au survol pour
+  `saveFile`, `sendFile`, `byteSize` et `recordProgress`. Les migrations
+  déjà appliquées gardent leurs octets et empreintes. Les lignes des autres
+  contributeurs et les 57 changements locaux initiaux sont préservés.
+- Cette passe ne rejoue pas les campagnes HTTPS/SQL/Chromium historiques :
+  elle documente les comportements existants sans les modifier. La publication
+  et le résultat du pull sont consignés dans les missions Notion après git-sync.

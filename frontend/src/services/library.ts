@@ -1,7 +1,12 @@
+/** Client JWT des playlists persistantes ; les mutations incluent la version connue et ne confirment que la réponse serveur. */
 import { authenticatedFetch } from "./api";
 import { getAccessToken } from "./session";
 import type { PrivatePlaylist } from "../types/music";
 
+/**
+ * Vérifie l’identité, la version entière positive et chaque occurrence avant d’utiliser une réponse
+ * Library.
+ */
 export function isPlaylist(value: unknown): value is PrivatePlaylist {
   if (!value || typeof value !== "object") return false;
   const p = value as Record<string, unknown>;
@@ -11,6 +16,10 @@ export function isPlaylist(value: unknown): value is PrivatePlaylist {
       typeof item.trackId === "string" && Number.isInteger(item.position) && item.position > 0);
 }
 
+/**
+ * Parcourt les pages du compte par lots de 100, avec borne issue du premier total et regroupement par
+ * UUID. Annule si le signal ou le compte change ; une actualisation voit les changements ultérieurs.
+ */
 export async function getPlaylists(signal?: AbortSignal): Promise<PrivatePlaylist[]> {
   const token = getAccessToken();
   const result = new Map<string, PrivatePlaylist>();
@@ -30,6 +39,10 @@ export async function getPlaylists(signal?: AbortSignal): Promise<PrivatePlaylis
   return [...result.values()];
 }
 
+/**
+ * Relit une playlist privée par UUID et valide sa structure ; un 404 signifie qu’elle n’est plus
+ * accessible.
+ */
 export async function getPlaylist(id: string, signal?: AbortSignal): Promise<PrivatePlaylist> {
   const response = await authenticatedFetch(`/api/library/playlists/${encodeURIComponent(id)}`, { signal });
   if (!response.ok) throw new Error(response.status === 404 ? "This playlist is no longer available." : "Unable to load playlist.");
@@ -38,6 +51,10 @@ export async function getPlaylist(id: string, signal?: AbortSignal): Promise<Pri
   return playlist;
 }
 
+/**
+ * Envoie nom et description et renvoie uniquement la playlist confirmée par le serveur, sans ajout
+ * optimiste local.
+ */
 export async function createPlaylist(name: string, description: string): Promise<PrivatePlaylist> {
   const response = await authenticatedFetch("/api/library/playlists", {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, description }),
@@ -48,11 +65,21 @@ export async function createPlaylist(name: string, description: string): Promise
   return playlist;
 }
 
+/**
+ * Erreur de mutation avec statut HTTP ; le hook reconnaît notamment 409 pour relire une version
+ * périmée.
+ */
 export class LibraryMutationError extends Error {
+  /** Statut HTTP du refus conservé pour que la route ou le client le traite. */
   readonly status: number;
+  /** Conserve le statut HTTP et le message utiles à l’écran. */
   constructor(status: number, message: string) { super(message); this.status = status; }
 }
 
+/**
+ * Envoie une mutation JSON authentifiée et valide la playlist confirmée ; porte les refus HTTP dans
+ * LibraryMutationError.
+ */
 async function mutatePlaylist(path: string, method: string, body: object): Promise<PrivatePlaylist> {
   const response = await authenticatedFetch(`/api/library/playlists/${path}`, {
     method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
@@ -64,18 +91,28 @@ async function mutatePlaylist(path: string, method: string, body: object): Promi
   return playlist;
 }
 
+/** Ajoute une occurrence de trackId en transmettant la version courante de la playlist. */
 export function addPlaylistItem(playlist: PrivatePlaylist, trackId: string) {
   return mutatePlaylist(`${encodeURIComponent(playlist.id)}/items`, "POST", { trackId, expectedVersion: playlist.version });
 }
 
+/** Retire uniquement l’occurrence itemId, avec la version connue du client. */
 export function removePlaylistItem(playlist: PrivatePlaylist, itemId: string) {
   return mutatePlaylist(`${encodeURIComponent(playlist.id)}/items/${encodeURIComponent(itemId)}`, "DELETE", { expectedVersion: playlist.version });
 }
 
+/**
+ * Envoie le nom et la description avec expectedVersion pour éviter d’écraser une modification
+ * concurrente.
+ */
 export function updatePlaylist(playlist: PrivatePlaylist, name: string, description: string) {
   return mutatePlaylist(encodeURIComponent(playlist.id), "PATCH", { name, description, expectedVersion: playlist.version });
 }
 
+/**
+ * Demande la suppression avec expectedVersion et exige une confirmation 204 ; rejette tout autre
+ * résultat.
+ */
 export async function deletePlaylist(playlist: PrivatePlaylist): Promise<void> {
   const response = await authenticatedFetch(`/api/library/playlists/${encodeURIComponent(playlist.id)}`, {
     method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expectedVersion: playlist.version }),

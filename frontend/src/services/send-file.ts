@@ -1,13 +1,25 @@
+/** Upload authentifié XHR pour mesurer les octets réellement transmis et distinguer transfert et validation serveur. */
 import { getAccessToken, clearAccessToken, onSessionCleared } from "./session";
 import { isReadyFile, type ReadyFile, type UploadProgress } from "../types/files";
 
+/**
+ * Envoie un unique champ multipart file avec le token capturé. Publie la progression réelle puis
+ * l’état validating ; résout seulement après 201 et métadonnées ready valides. Annule si la session
+ * change et traite les refus sans inventer de réussite.
+ * @param file Original sélectionné.
+ * @param progress Réception des états de transfert et de validation.
+ * @param signal Annulation de cet envoi.
+ * @returns Fichier confirmé par le serveur, ou promesse rejetée avec un message public.
+ */
 export function sendFile(file: File, progress: (value: UploadProgress) => void, signal: AbortSignal): Promise<ReadyFile> {
   const token = getAccessToken();
   if (!token) return Promise.reject(new Error("Connectez-vous pour envoyer un fichier."));
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest(); xhr.open("POST", "/api/media/assets");
     xhr.setRequestHeader("Authorization", `Bearer ${token}`); xhr.timeout = 900_000;
+    /** Interrompt la requête XHR active lors d’une annulation ou d’une perte de session. */
     const abort = () => xhr.abort(); const unsubscribe = onSessionCleared(abort);
+    /** Retire les abonnements à l’annulation pour éviter de conserver la requête terminée. */
     const cleanup = () => { signal.removeEventListener("abort", abort); unsubscribe(); };
     xhr.upload.onprogress = event => {
       if (signal.aborted || token !== getAccessToken()) { abort(); return; }

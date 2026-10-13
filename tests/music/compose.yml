@@ -1,4 +1,6 @@
+# Pile de preuve isolée de la pile de développement ; les noms, ports et volumes propres au scénario évitent de toucher les données courantes.
 # Test-only credentials; this Compose never reads the development .env.
+# Lire le runner et le README voisins avant lancement : ils déterminent préparation, migrations et nettoyage de cette seule pile.
 services:
   db:
     image: docker.io/library/postgres:16-alpine

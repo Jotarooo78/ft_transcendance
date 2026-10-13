@@ -1,3 +1,4 @@
+/** Assemble les routes publiques audio et les opérations privées de fichiers ; leurs autorisations sont distinctes. */
 import Fastify from "fastify";
 import jwt from "@fastify/jwt";
 import multipart from "@fastify/multipart";
@@ -10,13 +11,36 @@ import { registerFileUpload } from "./register-file-upload.js";
 import { registerFileReads } from "./register-file-reads.js";
 import { registerFileDeletion } from "./register-file-deletion.js";
 
+/** Métadonnées requises pour servir un original audio ready et référencé par un morceau publié. */
 export type AudioAsset = {
-  purpose: string; state: string; storageKey: string; mimeType: string; byteSize: bigint | null;
+  /** Usage interne Media ; audio et cover représentent les uploads gérés ici. */
+  purpose: string;
+    /** État de stockage Media : ready pour l’accès, deleting pendant la suppression, deleted après confirmation. */
+    state: string;
+    /** Nom interne du fichier sur le volume durable ; ne doit pas être exposé au client. */
+    storageKey: string;
+    /** Type MIME du contenu vérifié, utilisé pour servir les octets avec leur format. */
+    mimeType: string;
+    /** Taille exacte de l’original ou de la variante en octets, pas en mégaoctets. */
+    byteSize: bigint | null;
 };
+/** Contrôle syntaxique UUID avant accès au stockage. */
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/**
+ * Formats des originaux audio que cette route publique sait servir ; distincts des formats décodables
+ * lors d’un upload privé.
+ */
 const mimeTypes = new Set(["audio/wav", "audio/mpeg", "audio/ogg", "audio/mp4", "audio/webm"]);
 
-function byteRange(value: string, size: number): { start: number; end: number } | null {
+/**
+ * Interprète une seule plage bytes avec bornes inclusives, ouverte ou suffixe. Limite la fin à la
+ * taille du fichier et renvoie null pour une plage invalide.
+ */
+function byteRange(value: string, size: number): {
+  /** Premier octet de la plage, borne incluse. */
+  start: number;
+  /** Dernier octet de la plage, borne incluse. */
+  end: number } | null {
   const match = /^bytes=(\d*)-(\d*)$/.exec(value);
   if (!match || (!match[1] && !match[2])) return null;
   const first = Number(match[1]); const last = Number(match[2]);
@@ -25,16 +49,34 @@ function byteRange(value: string, size: number): { start: number; end: number } 
   const end = match[2] ? Math.min(last, size - 1) : size - 1;
   return first < size && first <= end ? { start: first, end } : null;
 }
+/** Lecteurs Catalogue/Media, dossier durable et opérations privées injectables, avec JWT obligatoire. */
 type Options = {
+  /** Secret serveur pour vérifier ou signer les JWT ; ne doit pas être envoyé au navigateur. */
   jwtSecret: string;
+  /** Lecture des métadonnées de l’original audio pour la diffusion publique. */
   readAsset: (id: string) => Promise<AudioAsset | null>;
+  /** Contrôle Catalogue avant de diffuser l’audio publiquement. */
   isPublished: (id: string) => Promise<boolean>;
-  storageDir: string; ready: () => Promise<void>; close?: () => Promise<void>; logger?: boolean;
+  /** Dossier du volume durable Media ; les chemins publics ne doivent pas le révéler. */
+  storageDir: string;
+    /** Contrôle de disponibilité du stockage avant réponse de /ready. */
+    ready: () => Promise<void>;
+    /** Libération des ressources à la fermeture, ou clôture de la session dans le transport Playback. */
+    close?: () => Promise<void>;
+    /** Active ou désactive les journaux du serveur construit. */
+    logger?: boolean;
+  /** Opérations d’enregistrement de fichiers injectées dans l’application. */
   files?: FileStore;
+  /** Lecture privée et liste des fichiers injectées dans l’application. */
   fileReads?: FileReader;
+  /** Suppression privée et contrôle de références injectés dans l’application. */
   fileDeletes?: FileDeletion;
 };
 
+/**
+ * Construit Media sans ouvrir de port. L’audio public exige une référence publiée ; les uploads,
+ * listes, aperçus et suppressions exigent le compte vérifié.
+ */
 export function buildApp(options: Options) {
   if (!options.jwtSecret.trim()) throw new Error("JWT_SECRET is required");
   const app = Fastify({ logger: options.logger ?? false, exposeHeadRoutes: false });
@@ -54,8 +96,15 @@ export function buildApp(options: Options) {
   app.get("/metrics", async (_request, reply) => {
     reply.header("Content-Type", registry.contentType); return registry.metrics();
   });
-  app.route<{ Params: { id: string } }>({ method: ["GET", "HEAD"], url: "/assets/:id/audio", handler: async (request, reply) => {
+  app.route<{
+    /** Paramètres extraits du chemin de la route, validés avant accès au stockage. */
+    Params: {
+    /** Identifiant de cette entité ; distinct des identifiants des objets liés. */
+    id: string } }>({ method: ["GET", "HEAD"], url: "/assets/:id/audio",
+    /** Sert un original audio publié, régulier et de taille conforme. GET accepte une plage unique avec 206 ; HEAD reste sans corps et une plage invalide produit 416. */
+    handler: async (request, reply) => {
     reply.header("Cache-Control", "no-store");
+    /** Renvoie une erreur publique, en omettant le corps pour HEAD. */
     const refuse = (status: number, error: string) => reply.code(status).send(request.method === "HEAD" ? undefined : { error });
     if (!uuid.test(request.params.id)) return refuse(400, "invalid_request");
     let file: FileHandle | undefined;
@@ -75,7 +124,11 @@ export function buildApp(options: Options) {
       if (!stat.isFile() || stat.size !== Number(asset.byteSize)) {
         return refuse(404, "media_not_found");
       }
-      let portion: { start: number; end: number } | undefined;
+      let portion: {
+        /** Premier octet de la plage, borne incluse. */
+        start: number;
+        /** Dernier octet de la plage, borne incluse. */
+        end: number } | undefined;
       if (request.method === "GET" && request.headers.range !== undefined) {
         const range = byteRange(request.headers.range, stat.size);
         if (!range) return reply.code(416).header("Content-Range", `bytes */${stat.size}`).send({ error: "invalid_range" });

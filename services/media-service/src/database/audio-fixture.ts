@@ -1,6 +1,11 @@
+/** Octets WAV déterministes pour les trois démonstrations ; aucune donnée utilisateur ne sert de fixture. */
 import { createHash } from "node:crypto";
 
 // Six seconds of quiet mono PCM, 16-bit little-endian, 8 kHz.
+/**
+ * Produit six secondes de signal PCM dans un conteneur WAV, avec une fréquence déterministe selon
+ * l’index de démonstration.
+ */
 export function demoAudio(index: number): Buffer {
   if (![1, 2, 3].includes(index)) throw new Error("Unknown demo");
   const samples = 8000 * 6;
@@ -18,4 +23,8 @@ export function demoAudio(index: number): Buffer {
   return bytes;
 }
 
+/**
+ * Calcule l’empreinte hexadécimale SHA-256 des octets pour vérifier leur identité, sans modifier le
+ * contenu.
+ */
 export const sha256 = (bytes: Buffer): string => createHash("sha256").update(bytes).digest("hex");

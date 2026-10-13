@@ -1,15 +1,23 @@
+/** Tests des routes Catalogue avec lecteurs injectés : champs, publication, filtres, pagination, erreurs et disponibilité. */
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { buildApp } from "./app.js";
 import { parseTrackQuery, toTrackDto } from "./catalog.js";
 
+/** Identifiant stable de fixture, utilisé pour comparer les réponses du scénario. */
 const id = "20000000-0000-4000-8000-000000000001";
+/** Ligne SQL de fixture avant conversion en réponse publique. */
 const row = { id, title: "Aube", artistName: "Atelier Demo", albumTitle: "", genre: "Demo",
   durationMs: 6000n, audioAssetId: "30000000-0000-4000-8000-000000000001" };
 
 test("asset publication reveals only a boolean and distinguishes outages", async t => {
   let failed = false;
-  const app = buildApp({ ready: async () => {}, readTrack: async () => null,
+  const app = buildApp({
+    /** Doublure du scénario pour disponibilité du stockage ; la réponse ou la panne est contrôlée par le test. */
+    ready: async () => {},
+    /** Doublure du scénario pour lecture de morceau ; la réponse ou la panne est contrôlée par le test. */
+    readTrack: async () => null,
+    /** Doublure du scénario pour publication de l’audio ; la réponse ou la panne est contrôlée par le test. */
     isAssetPublished: async value => { if (failed) throw new Error("SQL"); return value === row.audioAssetId; } });
   t.after(() => app.close());
   assert.equal((await app.inject('/assets/no/publication')).statusCode, 400);
@@ -21,7 +29,15 @@ test("asset publication reveals only a boolean and distinguishes outages", async
 
 test("list bounds and malformed parameters reject before reading", async t => {
   let calls = 0;
-  const app = buildApp({ ready: async () => {}, readTrack: async () => null,
+  const app = buildApp({
+    /** Doublure du scénario pour disponibilité du stockage ; la réponse ou la panne est contrôlée par le test. */
+    ready: async () => {},
+    /** Doublure du scénario pour lecture de morceau ; la réponse ou la panne est contrôlée par le test. */
+    readTrack: async () => null,
+    /**
+     * Doublure du scénario pour liste paginée du catalogue ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
     listTracks: async query => { calls++; return { ...query, items: [], total: 0, genres: [] }; } });
   t.after(() => app.close());
   for (const bad of ["page=0", "page=-1", "page=1.5", "page=1e2", "pageSize=101", "pageSize=0", "page=9007199254740992",
@@ -36,7 +52,15 @@ test("list bounds and malformed parameters reject before reading", async t => {
 });
 
 test("list storage failure is a controlled 503", async t => {
-  const app = buildApp({ ready: async () => {}, readTrack: async () => null,
+  const app = buildApp({
+    /** Doublure du scénario pour disponibilité du stockage ; la réponse ou la panne est contrôlée par le test. */
+    ready: async () => {},
+    /** Doublure du scénario pour lecture de morceau ; la réponse ou la panne est contrôlée par le test. */
+    readTrack: async () => null,
+    /**
+     * Doublure du scénario pour liste paginée du catalogue ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
     listTracks: async () => { throw new Error("private SQL"); } });
   t.after(() => app.close());
   const r = await app.inject("/tracks");
@@ -59,8 +83,17 @@ test("detail validation, missing/invisible track, outage and readiness", async t
   let unavailable = false;
   let closed = false;
   const app = buildApp({
+    /**
+     * Doublure du scénario pour disponibilité du stockage ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
     ready: async () => { if (unavailable) throw new Error("private db detail"); },
+    /**
+     * Doublure du scénario pour clôture de session ou libération de ressources ; la réponse ou la panne
+     * est contrôlée par le test.
+     */
     close: async () => { closed = true; },
+    /** Doublure du scénario pour lecture de morceau ; la réponse ou la panne est contrôlée par le test. */
     readTrack: async value => {
       calls++;
       if (unavailable) throw new Error("private db detail");

@@ -1,3 +1,8 @@
+/** Contrôle interne des références avant une suppression ; une panne ne vaut jamais autorisation. */
+/**
+ * Construit la requête interne authentifiée, bornée dans le temps et sans redirection. Exige un
+ * booléen referenced ; rejette un refus ou une réponse invalide pour empêcher la suppression.
+ */
 export function catalogReferences(baseUrl: string, token: string, timeoutMs = 2000) {
   if (!token.trim()) throw new Error("INTERNAL_SERVICE_TOKEN is required");
   return async (id: string): Promise<boolean> => {

@@ -1,3 +1,4 @@
+/** Tests HTTP injectés Auth : inscription durable, profil en attente, livraison, conflits, connexion et refus ; le stockage est simulé en mémoire. */
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
@@ -14,17 +15,33 @@ import {
   deliverProfileProvision,
 } from "./handle-profile-creation-result.js";
 
+/**
+ * Secret public réservé aux jetons de ces tests injectés ; ne doit pas être utilisé par un serveur
+ * réel.
+ */
 const jwtSecret = "test-only-auth-service-secret-with-sufficient-length";
 
+/**
+ * Doublure de RegistrationStore en mémoire pour contrôler les transitions du compte et de sa demande
+ * sans PostgreSQL.
+ */
 class InMemoryRegistrationStore implements RegistrationStore {
+  /** Comptes de test en mémoire, indexés par email. */
   readonly accounts = new Map<string, AccountForLogin>();
+  /** Demandes de profil de test en mémoire, indexées par eventId. */
   readonly messages = new Map<
     string,
-    { message: PendingProfileProvision; status: "pending" | "delivered" | "failed" }
+    {
+      /** Message de suivi ou demande à transmettre, selon le contrat contenant ce champ. */
+      message: PendingProfileProvision;
+      /** État simulé de livraison de la demande dans la boîte d’envoi du test. */
+      status: "pending" | "delivered" | "failed" }
   >();
 
+  /** Simule un stockage disponible, sans requête SQL. */
   async checkReady(): Promise<void> {}
 
+  /** Crée les deux objets de test et refuse un email déjà présent dans la Map. */
   async createPendingRegistration(input: CreateRegistrationInput) {
     if (this.accounts.has(input.email)) {
       throw new DuplicateEmailError();
@@ -51,10 +68,12 @@ class InMemoryRegistrationStore implements RegistrationStore {
     return { account: { id, email: input.email }, message };
   }
 
+  /** Relit le compte de test en mémoire ou renvoie null. */
   async findAccountByEmail(email: string) {
     return this.accounts.get(email) ?? null;
   }
 
+  /** Retourne les seuls messages pending jusqu’à la limite ; aucun délai réel de stockage n’est simulé. */
   async listPendingProvisions(limit: number) {
     return [...this.messages.values()]
       .filter(({ status }) => status === "pending")
@@ -62,10 +81,12 @@ class InMemoryRegistrationStore implements RegistrationStore {
       .map(({ message }) => message);
   }
 
+  /** Incrémente le compteur de tentative de la demande de test. */
   async markProvisionAttemptFailed(message: PendingProfileProvision) {
     message.attempts += 1;
   }
 
+  /** Marque la demande delivered et active le compte de test encore en attente. */
   async markProvisioned(message: PendingProfileProvision) {
     const record = this.messages.get(message.eventId);
     if (record) {
@@ -79,6 +100,7 @@ class InMemoryRegistrationStore implements RegistrationStore {
     }
   }
 
+  /** Marque la demande failed et le compte profile_failed dans les objets de test. */
   async markProvisionPermanentlyFailed(
     message: PendingProfileProvision,
     _errorCode: PermanentProvisionCode,
@@ -96,6 +118,10 @@ class InMemoryRegistrationStore implements RegistrationStore {
   }
 }
 
+/**
+ * Construit Auth avec stockage mémoire et hachage factice déterministe ; ce hachage ne doit jamais
+ * servir à une application réelle.
+ */
 function createTestApp(
   store: InMemoryRegistrationStore,
   profileProvisioner: (message: PendingProfileProvision) => Promise<void>,
@@ -103,13 +129,22 @@ function createTestApp(
   return buildApp({
     jwtSecret,
     logger: false,
+    /**
+     * Doublure du scénario pour hachage déterministe réservé aux tests ; la réponse ou la panne est
+     * contrôlée par le test.
+     */
     passwordHasher: async (password) => `hashed:${password}`,
+    /**
+     * Doublure du scénario pour vérification du hachage factice ; la réponse ou la panne est contrôlée par
+     * le test.
+     */
     passwordVerifier: async (hash, password) => hash === `hashed:${password}`,
     profileProvisioner,
     registrationStore: store,
   });
 }
 
+/** Entrée d’inscription de test connue valide, réutilisée pour isoler les refus. */
 const validSignup = {
   email: "lea@example.invalid",
   password: "password1234",
@@ -162,8 +197,11 @@ test("signup activates the account only after profile provisioning succeeds", as
 
     assert.equal(signupResponse.statusCode, 201);
     const signupBody = signupResponse.json<{
+      /** Statut HTTP du refus conservé pour que la route ou le client le traite. */
       status: string;
+      /** UUID du compte auquel le profil ou la demande est rattaché. */
       userId: string;
+      /** Action contrôlée du scénario, sans effet sur une vraie interface utilisateur. */
       nextAction: string;
     }>();
     assert.deepEqual(signupBody, {
@@ -184,8 +222,12 @@ test("signup activates the account only after profile provisioning succeeds", as
       },
     });
     assert.equal(loginResponse.statusCode, 200);
-    const token = loginResponse.json<{ token: string }>().token;
-    const claims = app.jwt.verify<{ sub: string }>(token);
+    const token = loginResponse.json<{
+      /** JWT signé avec le secret réservé au test ; ne représente aucune donnée de connexion réelle. */
+      token: string }>().token;
+    const claims = app.jwt.verify<{
+      /** Sujet du JWT : UUID du compte, vérifié avant de servir des données privées. */
+      sub: string }>(token);
     assert.equal(claims.sub, signupBody.userId);
   } finally {
     await app.close();
@@ -205,7 +247,9 @@ test("a transient Users failure returns pending, blocks login, then converges on
       payload: validSignup,
     });
     assert.equal(signupResponse.statusCode, 202);
-    assert.equal(signupResponse.json<{ code: string }>().code, "REGISTRATION_PENDING");
+    assert.equal(signupResponse.json<{
+      /** Code de refus public ou code métier, distinct du message détaillé interne. */
+      code: string }>().code, "REGISTRATION_PENDING");
     assert.equal(
       store.accounts.get(validSignup.email)?.state,
       "pending_profile",
@@ -221,7 +265,9 @@ test("a transient Users failure returns pending, blocks login, then converges on
     });
     assert.equal(pendingLogin.statusCode, 202);
     assert.equal(
-      pendingLogin.json<{ code: string }>().code,
+      pendingLogin.json<{
+        /** Code de refus public ou code métier, distinct du message détaillé interne. */
+        code: string }>().code,
       "REGISTRATION_PENDING",
     );
 
@@ -263,7 +309,9 @@ test("a username conflict is permanent and leaves no usable account", async () =
     });
     assert.equal(signupResponse.statusCode, 409);
     assert.equal(
-      signupResponse.json<{ code: string }>().code,
+      signupResponse.json<{
+        /** Code de refus public ou code métier, distinct du message détaillé interne. */
+        code: string }>().code,
       "USERNAME_TAKEN",
     );
     assert.equal(
@@ -281,7 +329,9 @@ test("a username conflict is permanent and leaves no usable account", async () =
     });
     assert.equal(loginResponse.statusCode, 409);
     assert.equal(
-      loginResponse.json<{ code: string }>().code,
+      loginResponse.json<{
+        /** Code de refus public ou code métier, distinct du message détaillé interne. */
+        code: string }>().code,
       "REGISTRATION_FAILED",
     );
   } finally {

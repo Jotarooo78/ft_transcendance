@@ -12,9 +12,11 @@ RUN npm ci
 
 COPY . .
 
+# Génère le client Prisma puis compile TypeScript ; une erreur interrompt la construction.
 RUN npm run build
 
 FROM build AS runtime
+# Retire les dépendances de développement du runtime ; ne change pas le code compilé.
 RUN npm prune --omit=dev --omit=optional --omit=peer
 
 EXPOSE 4001

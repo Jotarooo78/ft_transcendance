@@ -1,3 +1,4 @@
+/** Preuves HTTPS, SQL et disque du cycle privé de fichiers ; utilise la pile common_repo et les cibles vérifiées par le runner. */
 // Verify file management through HTTPS, PostgreSQL and the real Media volume.
 import assert from 'node:assert/strict';
 import https from 'node:https';
@@ -10,24 +11,44 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { createFixtures } from './fixtures/create-fixtures.mjs';
 
+/** Racine du dépôt déduite du chemin de ce scénario, indépendante du dossier de lancement. */
 export const root = fileURLToPath(new URL('../../', import.meta.url));
+/**
+ * Origine HTTPS autorisée de la campagne ; les gardes qui suivent empêchent une cible extérieure au
+ * périmètre prévu.
+ */
 export const base = new URL(process.env.FILES_BASE_URL ?? 'https://127.0.0.1:1443');
 assert.equal(base.href, 'https://127.0.0.1:1443/');
+/** Mot de passe public réservé aux comptes jetables de cette campagne ; jamais un secret utilisateur. */
 const password = 'Files-test-only-password-2026';
+/** Calcule l’empreinte des octets pour comparer original, aperçu et témoins après redémarrage. */
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
+/** Exige un UUID avant de le transmettre aux témoins SQL ou disque ; renvoie la valeur validée. */
 export const uuid = value => { assert.match(value, /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i); return value; };
 
+/**
+ * Exécute Docker Compose pour common_repo avec l’override de campagne autorisé, une entrée facultative
+ * et une sortie bornée.
+ */
 export function compose(args, input, maximum = 4 * 1024 * 1024) {
   const override = process.env.FILES_COMPOSE_OVERRIDE;
   if (override) assert.ok(override.startsWith('/tmp/transcendence-files-') && override.endsWith('.yml'));
   return execFileSync('docker', ['compose', '-p', 'common_repo', '-f', `${root}docker-compose.yml`, ...(override ? ['-f', override] : []), ...args],
     { cwd: root, input, maxBuffer: maximum, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
 }
+/**
+ * Ajoute une garde sur la base transcendence et passe les valeurs via les variables psql ; arrête à la
+ * première erreur SQL.
+ */
 export function sql(query, variables = {}) {
   const argumentsList = Object.entries(variables).flatMap(([key, value]) => ['-v', `${key}=${value}`]);
   const guarded = `DO $$ BEGIN IF current_database() <> 'transcendence' THEN RAISE EXCEPTION 'Wrong database'; END IF; END $$;\n${query}`;
   return compose(['exec', '-T', 'db', 'sh', '-c', 'exec psql -X -q -A -t -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 "$@"', 'psql', ...argumentsList], guarded);
 }
+/**
+ * Envoie HTTPS sur l’origine exacte contrôlée ; borne la réponse à 8 MiB et renvoie statut, en-têtes,
+ * octets et JSON éventuel.
+ */
 export function request(path, { method = 'GET', token, json, bytes, contentType } = {}) {
   assert.ok(path.startsWith('/') && !path.startsWith('//'));
   const body = json === undefined ? bytes : Buffer.from(JSON.stringify(json));
@@ -43,7 +64,9 @@ export function request(path, { method = 'GET', token, json, bytes, contentType 
     req.setTimeout(330_000, () => req.destroy(new Error('File HTTP timeout'))); req.on('error', reject); req.end(body);
   });
 }
+/** Compare le statut au résultat attendu puis renvoie les données JSON pour les autres assertions. */
 export function expect(response, status) { assert.equal(response.status, status, `Expected HTTP ${status}, got ${response.status}`); return response.data; }
+/** Attend de façon bornée les services nécessaires via la vraie passerelle HTTPS. */
 export async function waitReady() {
   for (let attempt = 0; attempt < 60; attempt++) {
     try { const responses = await Promise.all(['auth','users','catalog','media','library','playback'].map(service => request(`/api/${service}/ready`))); if (responses.every(response => response.status === 200)) return; } catch { /* bounded startup */ }
@@ -51,6 +74,10 @@ export async function waitReady() {
   }
   throw new Error('File services did not become ready');
 }
+/**
+ * Attend la confirmation réelle du compte, avec répétitions bornées si l’inscription attend son
+ * profil.
+ */
 export async function login(account) {
   for (let attempt = 0; attempt < 20; attempt++) {
     const response = await request('/api/auth/login', { method: 'POST', json: { email: account.email, password } });
@@ -59,6 +86,10 @@ export async function login(account) {
   }
   throw new Error('Registration remained pending');
 }
+/**
+ * Crée un compte de campagne avec identité unique puis conserve son UUID confirmé pour les preuves de
+ * propriétaire.
+ */
 export async function createAccount(campaign, suffix) {
   const username = `files_${campaign}_${suffix}`; const email = `${username}@example.invalid`;
   const result = await request('/api/auth/signup', { method: 'POST', json: { username, email, password, displayName: `Files ${suffix}` } });
@@ -67,17 +98,26 @@ export async function createAccount(campaign, suffix) {
   const profile = expect(await request('/api/users/me', { token }), 200);
   return { ...account, id: uuid(profile.userId) };
 }
+/**
+ * Construit un champ file avec MIME et frontière explicites pour les uploads réels et les refus de
+ * contenu.
+ */
 export function multipart(bytes, mime, field = 'file') {
   assert.ok(field === 'file' || field === 'avatar');
   const boundary = `files-${randomUUID()}`;
   return { contentType: `multipart/form-data; boundary=${boundary}`, bytes: Buffer.concat([
     Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${field}"; filename="../../untrusted"\r\nContent-Type: ${mime}\r\n\r\n`), bytes, Buffer.from(`\r\n--${boundary}--\r\n`) ]) };
 }
+/** Envoie les octets par HTTPS et exige une confirmation 201 avant de renvoyer les métadonnées. */
 export async function upload(token, bytes, mime) {
   const file = expect(await request('/api/media/assets', { method: 'POST', token, ...multipart(bytes, mime) }), 201);
   uuid(file.id); assert.equal(file.state, 'ready'); assert.deepEqual(Object.keys(file).sort(), ['id','usage','state','mimeType','byteSize','durationMs'].sort());
   return file;
 }
+/**
+ * Transmet réellement 500 000 001 octets de fichier via un flux de petits blocs, sans allouer 500 Mo ;
+ * exige 413 et arrête l’envoi après la réponse.
+ */
 export async function oversizedAudio(token) {
   const prefix = Buffer.from('--large\r\nContent-Disposition: form-data; name="file"; filename="large.wav"\r\nContent-Type: audio/wav\r\n\r\n');
   const suffix = Buffer.from('\r\n--large--\r\n'); const maximumPlusOne = 500_000_001; const chunk = Buffer.alloc(1024 * 1024);
@@ -94,14 +134,27 @@ export async function oversizedAudio(token) {
   });
   assert.equal(await response, 413, '500,000,001 real file bytes must be refused through HTTPS');
 }
+/** Lit le témoin local de campagne seulement si ses permissions sont 0600. */
 export async function readState(path) { assert.equal((await stat(path)).mode & 0o777, 0o600); return JSON.parse(await readFile(path, 'utf8')); }
+/**
+ * Écrit le témoin de campagne avec permissions privées ; initial permet d’exiger un fichier
+ * inexistant.
+ */
 export async function writeState(path, state, initial = false) { await writeFile(path, JSON.stringify(state, null, 2), { mode: 0o600, ...(initial ? { flag: 'wx' } : {}) }); }
 
+/**
+ * Envoie un original, lit son aperçu réel puis mémorise propriétaire, tailles et empreintes comme
+ * témoins.
+ */
 async function recordFile(token, account, bytes, mime) {
   const file = await upload(token, bytes, mime);
   const preview = await request(`/api/media/assets/${file.id}/private-content`, { token }); expect(preview, 200);
   return { ...file, ownerId: account.id, checksum: sha256(bytes), previewChecksum: sha256(preview.bytes), previewBytes: preview.bytes.length };
 }
+/**
+ * Compare les métadonnées SQL et les octets sur disque aux témoins. Pour deleted, exige l’absence des
+ * originaux et aperçus ainsi que le refus de lecture.
+ */
 async function verifyStored(file, token, state = 'ready') {
   uuid(file.id); uuid(file.ownerId);
   const assertions = await readFile(new URL('./assert-files.sql', import.meta.url), 'utf8');
@@ -121,6 +174,10 @@ async function verifyStored(file, token, state = 'ready') {
   assert.equal(Number(response.headers['content-length']), file.previewBytes);
   const head = await request(`/api/media/assets/${file.id}/private-content`, { method: 'HEAD', token }); expect(head, 200); assert.equal(head.bytes.length, 0);
 }
+/**
+ * Relit les fichiers des comptes de campagne et les compare aux témoins après les redémarrages, sans
+ * les réenvoyer.
+ */
 async function verify(state) {
   await waitReady(); const tokenA = await login(state.a); const tokenB = await login(state.b);
   const aIds = expect(await request('/api/media/assets?pageSize=100', { token: tokenA }), 200).items.map(file => file.id);
@@ -133,6 +190,10 @@ async function verify(state) {
     await verifyStored(file, isA ? tokenA : tokenB);
   }
 }
+/**
+ * Installe des références Catalogue ciblées puis prouve les refus de suppression ; retire ses fixtures
+ * dans le nettoyage.
+ */
 async function references(state) {
   const token = await login(state.a); const [audio, cover, image] = state.files.filter(file => file.ownerId === state.a.id);
   const ids = { track: randomUUID(), release: randomUUID(), artist: randomUUID() };
@@ -151,6 +212,10 @@ async function references(state) {
     delete state.references; await writeState(state.path, state);
   }
 }
+/**
+ * Vérifie les parcours existants avatar, catalogue, playlists et écoute avec deux comptes sur la vraie
+ * pile.
+ */
 async function nonRegression(state) {
   const token = await login(state.a); const other = await login(state.b);
   const fixtures = await createFixtures(`${state.path}.fixtures`);
@@ -183,6 +248,10 @@ async function nonRegression(state) {
   const history = expect(await request('/api/playback/sessions',{token}),200); assert.ok(history.items.some(item=>item.id===session.id));
   console.log('[FILES HTTP] PASS avatar bytes/limit, catalogue, private Library and Playback non-regression');
 }
+/**
+ * Sélectionne la phase initiale, de relecture, de panne Catalogue, de suppression ou de non-régression
+ * et exécute ses assertions réelles.
+ */
 export async function main(mode, statePath) {
   await waitReady();
   if (mode === 'initial') {

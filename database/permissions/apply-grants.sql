@@ -1,3 +1,4 @@
+-- Transaction de droits runtime : retire les permissions transversales puis accorde seulement les opérations nécessaires au schéma propriétaire.
 \set ON_ERROR_STOP on
 
 BEGIN;
@@ -22,6 +23,7 @@ GRANT USAGE ON SCHEMA media TO media_runtime;
 GRANT USAGE ON SCHEMA library TO library_runtime;
 GRANT USAGE ON SCHEMA playback TO playback_runtime;
 
+-- Les droits DML autorisent les lignes métier ; ils ne donnent aucun droit de création ou modification de structure.
 GRANT SELECT, INSERT, UPDATE
   ON TABLE auth.accounts, auth.outbox_messages
   TO auth_runtime;
@@ -61,6 +63,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE
   ON TABLE playback.sessions, playback.events
   TO playback_runtime;
 
+-- Empêche les futurs objets de devenir accessibles à PUBLIC par les privilèges par défaut.
 ALTER DEFAULT PRIVILEGES FOR ROLE auth_migration IN SCHEMA auth REVOKE ALL ON TABLES FROM PUBLIC;
 ALTER DEFAULT PRIVILEGES FOR ROLE users_migration IN SCHEMA users REVOKE ALL ON TABLES FROM PUBLIC;
 ALTER DEFAULT PRIVILEGES FOR ROLE catalog_migration IN SCHEMA catalog REVOKE ALL ON TABLES FROM PUBLIC;

@@ -1,3 +1,4 @@
+-- Initialise les douze rôles migration/runtime et leurs schémas ; les secrets sont transmis par variables psql, pas inscrits dans le SQL.
 \set ON_ERROR_STOP on
 
 SELECT format('CREATE ROLE auth_migration LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS', :'auth_migration_password')
@@ -37,6 +38,7 @@ SELECT format('CREATE ROLE playback_runtime LOGIN PASSWORD %L NOSUPERUSER NOCREA
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'playback_runtime')
 \gexec
 
+-- Met à jour les mots de passe configurés sans donner de droits superutilisateur.
 ALTER ROLE auth_migration PASSWORD :'auth_migration_password';
 ALTER ROLE auth_runtime PASSWORD :'auth_runtime_password';
 ALTER ROLE users_migration PASSWORD :'users_migration_password';
@@ -50,6 +52,7 @@ ALTER ROLE library_runtime PASSWORD :'library_runtime_password';
 ALTER ROLE playback_migration PASSWORD :'playback_migration_password';
 ALTER ROLE playback_runtime PASSWORD :'playback_runtime_password';
 
+-- Retire les droits implicites de PUBLIC ; seuls les rôles explicitement listés accèdent à la base.
 REVOKE CONNECT, TEMPORARY ON DATABASE :"database_name" FROM PUBLIC;
 GRANT CONNECT ON DATABASE :"database_name" TO
   auth_migration, auth_runtime,
@@ -61,6 +64,7 @@ GRANT CONNECT ON DATABASE :"database_name" TO
 
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
 
+-- Attribue chaque schéma à son rôle de migration et limite le runtime à USAGE.
 CREATE SCHEMA IF NOT EXISTS auth AUTHORIZATION auth_migration;
 CREATE SCHEMA IF NOT EXISTS users AUTHORIZATION users_migration;
 CREATE SCHEMA IF NOT EXISTS catalog AUTHORIZATION catalog_migration;
@@ -90,6 +94,7 @@ GRANT USAGE ON SCHEMA media TO media_runtime;
 GRANT USAGE ON SCHEMA library TO library_runtime;
 GRANT USAGE ON SCHEMA playback TO playback_runtime;
 
+-- Fixe un search_path propre au service ; les accès interservices restent interdits par les privilèges.
 ALTER ROLE auth_migration IN DATABASE :"database_name" SET search_path TO auth, pg_catalog;
 ALTER ROLE auth_runtime IN DATABASE :"database_name" SET search_path TO auth, pg_catalog;
 ALTER ROLE users_migration IN DATABASE :"database_name" SET search_path TO users, pg_catalog;

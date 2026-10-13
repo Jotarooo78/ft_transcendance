@@ -2,22 +2,51 @@ import { useState, type SubmitEvent } from "react";
 import type { PrivatePlaylist } from "../types/music";
 import PlaylistTracks from "../components/PlaylistTracks";
 
+/**
+ * Liste privée et opérations serveur injectées par useLibrary ; les mutations renvoient leurs
+ * confirmations.
+ */
 type Props = {
+  /** Playlists privées confirmées du compte courant. */
   playlists: PrivatePlaylist[];
+  /** Indique une lecture encore en cours pour cet écran. */
   loading: boolean;
+  /**
+   * Erreur à rendre visible pour ce résultat ; son absence représente un résultat sans erreur
+   * enregistrée.
+   */
   error?: string;
+  /** Demande une nouvelle lecture après une erreur ou une actualisation. */
   onRetry: () => void;
+  /** Crée côté serveur et renvoie la playlist confirmée. */
   onCreate: (name: string, description: string) => Promise<PrivatePlaylist>;
+  /** Retire uniquement l’occurrence identifiée dans la playlist. */
   onRemoveItem: (playlist: PrivatePlaylist, itemId: string) => Promise<PrivatePlaylist>;
+  /** Enregistre les champs et renvoie la playlist avec sa nouvelle version. */
   onUpdate: (playlist: PrivatePlaylist, name: string, description: string) => Promise<PrivatePlaylist>;
+  /** Supprime côté serveur ; sa résolution confirme la suppression. */
   onDelete: (playlist: PrivatePlaylist) => Promise<void>;
 };
 
-function PlaylistEditor({ playlist, onUpdate, onClose }: { playlist: PrivatePlaylist; onUpdate: Props["onUpdate"]; onClose: () => void }) {
+/**
+ * Conserve les champs saisis et les erreurs pendant une modification ; ferme le formulaire uniquement
+ * après confirmation.
+ */
+function PlaylistEditor({ playlist, onUpdate, onClose }: {
+  /** Playlist confirmée contenant la version connue du client. */
+  playlist: PrivatePlaylist;
+  /** Enregistre les champs et renvoie la playlist avec sa nouvelle version. */
+  onUpdate: Props["onUpdate"];
+  /** Demande la fermeture de l’écran ou du composant concerné. */
+  onClose: () => void }) {
   const [name, setName] = useState(playlist.name);
   const [description, setDescription] = useState(playlist.description);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  /**
+   * Envoie nom et description nettoyés à onUpdate ; empêche les doubles soumissions et garde le
+   * formulaire ouvert en cas de refus.
+   */
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (saving || name.trim() === "") return;
@@ -35,16 +64,28 @@ function PlaylistEditor({ playlist, onUpdate, onClose }: { playlist: PrivatePlay
   </form>;
 }
 
+/**
+ * Affiche les playlists confirmées du compte et pilote création, édition, suppression et occurrences,
+ * avec erreurs conservées dans l’écran.
+ */
 export default function PlaylistsPage({ playlists, loading, error, onRetry, onCreate, onRemoveItem, onUpdate, onDelete }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<{ id: string; message: string } | null>(null);
+  const [deleteError, setDeleteError] = useState<{
+    /** Identifiant de cette entité ; distinct des identifiants des objets liés. */
+    id: string;
+    /** Message de suivi ou demande à transmettre, selon le contrat contenant ce champ. */
+    message: string } | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
   const selected = playlists.find(playlist => playlist.id === selectedId) ?? playlists[0];
+  /**
+   * Demande une confirmation utilisateur puis attend la suppression serveur avant de retirer les
+   * sélections et le formulaire associés.
+   */
   async function handleDelete(playlist: PrivatePlaylist) {
     if (deleting || !window.confirm(`Delete playlist "${playlist.name}"?`)) return;
     setDeleting(true); setDeleteError(null);
@@ -55,6 +96,10 @@ export default function PlaylistsPage({ playlists, loading, error, onRetry, onCr
     } catch (error) { setDeleteError({ id: playlist.id, message: error instanceof Error ? error.message : "Unable to delete playlist." }); }
     finally { setDeleting(false); }
   }
+  /**
+   * Crée une playlist côté serveur, sélectionne sa confirmation et vide le formulaire seulement après
+   * succès.
+   */
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (creating || name.trim() === "") return;

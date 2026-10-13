@@ -1,3 +1,4 @@
+/** Tests du flux audio public : publication, fichier régulier, taille exacte, plages, HEAD et refus. */
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { mkdtemp, writeFile, symlink, mkdir, rm } from "node:fs/promises";
@@ -8,7 +9,9 @@ import { buildApp, type AudioAsset } from "./app.js";
 import { demoAudio } from "./database/audio-fixture.js";
 import { publicationReader } from "./publication.js";
 
+/** Identifiant stable de fixture, utilisé pour comparer les réponses du scénario. */
 const id = "30000000-0000-4000-8000-000000000001";
+/** Chemin HTTP de fixture utilisé pour appeler la route audio injectée. */
 const path = `/assets/${id}/audio`;
 
 test("real file bytes, metadata checks, confined paths and dependency errors", async t => {
@@ -19,8 +22,15 @@ test("real file bytes, metadata checks, confined paths and dependency errors", a
   await mkdir(join(dir, "directory"));
   const original: AudioAsset = { purpose: "audio", state: "ready", storageKey: "demo.wav", mimeType: "audio/wav", byteSize: BigInt(bytes.length) };
   let asset = { ...original }; let published = true; let failure = false;
-  const app = buildApp({ jwtSecret: "media-test-secret", storageDir: dir, ready: async () => { if (failure) throw new Error("db"); },
+  const app = buildApp({ jwtSecret: "media-test-secret", storageDir: dir,
+    /** Doublure du scénario pour disponibilité du stockage ; la réponse ou la panne est contrôlée par le test. */
+    ready: async () => { if (failure) throw new Error("db"); },
+    /**
+     * Doublure du scénario pour métadonnées du fichier audio ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
     readAsset: async value => value === id ? asset : null,
+    /** Doublure du scénario pour publication de l’audio ; la réponse ou la panne est contrôlée par le test. */
     isPublished: async () => { if (failure) throw new Error("catalog"); return published; } });
   t.after(async () => { await app.close(); await rm(dir, { recursive: true, force: true }); });
   const r = await app.inject(path);
@@ -54,8 +64,15 @@ test("HEAD and closed, open, suffix and invalid byte ranges", async t => {
   const dir = await mkdtemp(join(tmpdir(), "media-range-")); const bytes = demoAudio(1);
   await writeFile(join(dir, "demo.wav"), bytes);
   let published = true;
-  const app = buildApp({ jwtSecret: "media-test-secret", storageDir: dir, ready: async () => {},
+  const app = buildApp({ jwtSecret: "media-test-secret", storageDir: dir,
+    /** Doublure du scénario pour disponibilité du stockage ; la réponse ou la panne est contrôlée par le test. */
+    ready: async () => {},
+    /**
+     * Doublure du scénario pour métadonnées du fichier audio ; la réponse ou la panne est contrôlée par le
+     * test.
+     */
     readAsset: async () => ({ purpose: "audio", state: "ready", storageKey: "demo.wav", mimeType: "audio/wav", byteSize: BigInt(bytes.length) }),
+    /** Doublure du scénario pour publication de l’audio ; la réponse ou la panne est contrôlée par le test. */
     isPublished: async () => published });
   t.after(async () => { await app.close(); await rm(dir, { recursive: true, force: true }); });
   for (const [range, start, end] of [

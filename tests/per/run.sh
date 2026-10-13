@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Orchestre la campagne décrite dans le README voisin ; les gardes et le traitement de sortie font partie de la preuve.
 set -Eeuo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -7,6 +8,7 @@ compose_file="$script_dir/compose.yml"
 project_name="transcendence_per"
 compose=(docker compose -p "$project_name" -f "$compose_file")
 
+# Traitement de sortie : conserve le statut d’échec et nettoie uniquement les ressources de cette campagne.
 cleanup() {
   local status=$?
   trap - EXIT
@@ -20,6 +22,7 @@ cleanup() {
   exit "$status"
 }
 
+# Garantit que la sortie normale et les erreurs passent par le nettoyage prévu par ce runner.
 trap cleanup EXIT
 
 if [[ "$project_name" != "transcendence_per" ]]; then
@@ -27,6 +30,7 @@ if [[ "$project_name" != "transcendence_per" ]]; then
   exit 1
 fi
 
+# Exécute les contrôles d’administration avec le compte de la seule base PER isolée.
 admin_psql() {
   "${compose[@]}" exec -T db psql \
     --username per_admin \
@@ -35,6 +39,7 @@ admin_psql() {
     "$@"
 }
 
+# Exécute le fichier SQL avec le rôle runtime fourni pour prouver ses droits réels.
 runtime_psql() {
   local role=$1
   local password=$2
@@ -50,6 +55,7 @@ runtime_psql() {
       --file /dev/stdin < "$file"
 }
 
+# Exige le refus SQL attendu pour ce rôle ; une opération autorisée par erreur fait échouer la campagne.
 expect_sql_failure() {
   local role=$1
   local password=$2

@@ -1,22 +1,36 @@
 generator client {
+  /// Moteur du client ou de la base ; ce choix détermine la génération et les opérations disponibles.
   provider            = "prisma-client"
+  /// Dossier du client Prisma généré, exclu des modifications manuelles.
   output              = "../src/generated/prisma"
+  /// Format ESM des modules générés, aligné sur les imports du service.
   moduleFormat        = "esm"
+  /// Extension .js des imports après compilation TypeScript.
   importFileExtension = "js"
 }
 
 datasource db {
+  /// Moteur du client ou de la base ; ce choix détermine la génération et les opérations disponibles.
   provider = "postgresql"
+  /// Schéma PostgreSQL possédé par ce service ; l’URL runtime choisit son rôle limité.
   schemas  = ["users"]
 }
 
+/// Informations publiques du compte possédées par Users, distinctes des identifiants de connexion Auth.
 model Profile {
+  /// UUID du compte auquel le profil ou la demande est rattaché.
   userId      String   @id @map("user_id") @db.Uuid
+  /// Nom unique canonique : 3 à 24 caractères a-z, 0-9 ou _.
   username    String   @unique
+  /// Nom affiché du profil, distinct du username unique.
   displayName String   @map("display_name")
+  /// Présentation facultative, au plus 160 caractères ; null représente son absence.
   bio         String?
+  /// URL publique de l’avatar ; absence conservée pour permettre l’avatar par défaut.
   avatarUrl   String?  @map("avatar_url")
+  /// Date de création prise par PostgreSQL.
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// Date actualisée par Prisma lors des modifications.
   updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
 
   friendsInitiated Friend[]  @relation("friends_initiated")
@@ -27,12 +41,19 @@ model Profile {
   @@schema("users")
 }
 
+/// Mémoire des événements de profil déjà traités pour confirmer une livraison répétée sans recréer le profil.
 model InboxMessage {
+  /// Identifiant de cette entité ; distinct des identifiants des objets liés.
   id               String   @id @db.Uuid
+  /// Nom versionné de l’événement ProfileProvisionRequested.v1.
   type             String
+  /// UUID du compte concerné par cette commande de profil.
   aggregateId      String   @map("aggregate_id") @db.Uuid
+  /// Version entière de l’entité concernée par la commande.
   aggregateVersion Int      @map("aggregate_version")
+  /// Confirmation mémorisée pour la commande reçue.
   result           Json
+  /// Date de mémorisation de l’événement déjà traité.
   processedAt      DateTime @default(now()) @map("processed_at") @db.Timestamptz(6)
 
   @@index([aggregateId])

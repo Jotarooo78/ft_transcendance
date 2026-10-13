@@ -1,3 +1,4 @@
+/** Processus de décodage appelé par validate-file ; l’original est lu, contrôlé et conservé sans modification. */
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { constants } from "node:fs";
@@ -7,11 +8,27 @@ import { FileError, audioByteLimit, imageByteLimit } from "./validate-file.js";
 
 // This executable runs in its own process group under validate-file's budget.
 sharp.cache(false); sharp.concurrency(1);
+/** Chemin de l’original transmis au processus de décodage ; l’accès reste un fichier local contrôlé. */
 const path = process.argv[2]!;
+/** MIME annoncé, normalisé avant comparaison au format réellement décodé. */
 const declared = process.argv[3]!.split(";", 1)[0]!.trim().toLowerCase();
+/** Chemin de sortie de l’aperçu privé éventuel, soumis au budget du même traitement. */
 const previewPath = process.argv[4];
 
-async function runDecoder(command: string, args: string[], countOnly = false): Promise<{ text: string; bytes: number }> {
+/**
+ * Lance FFprobe ou FFmpeg sur un descripteur régulier déjà ouvert : les protocoles réseau, fichiers
+ * externes et playlists restent interdits. En mode countOnly, compte les octets PCM au lieu de les
+ * accumuler et produit éventuellement l’aperçu MP3 privé.
+ * @param command Exécutable du décodeur.
+ * @param args Options de sondage ou de décodage local.
+ * @param countOnly Compter la sortie audio brute sans la conserver en mémoire.
+ * @throws FileError en cas de panne du décodeur ou de contenu invalide.
+ */
+async function runDecoder(command: string, args: string[], countOnly = false): Promise<{
+  /** Sortie textuelle bornée du sondage FFprobe. */
+  text: string;
+  /** Nombre d’octets de sortie décodés ; la sortie PCM n’est pas conservée en mode comptage. */
+  bytes: number }> {
   const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
   const preview = countOnly && previewPath ? await open(previewPath, "wx", 0o600) : undefined;
   try {
@@ -32,6 +49,11 @@ async function runDecoder(command: string, args: string[], countOnly = false): P
   } finally { await file.close(); await preview?.sync(); await preview?.close(); }
 }
 
+/**
+ * Calcule l’empreinte et décode tout le contenu. Images : PNG/JPEG/WebP fixes, dimensions bornées et
+ * pixels vérifiés. Audio : une seule piste, durée mesurée à partir du PCM décodé, MIME cohérent et
+ * aperçu MP3 facultatif. Ne fait aucun accès SQL.
+ */
 async function decode() {
   const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
   let size: number; let header: Buffer; let checksum: string;

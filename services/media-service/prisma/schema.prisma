@@ -1,28 +1,48 @@
+// Modèles possédés par ce service ; les références vers les autres services restent des UUID logiques.
 generator client {
+  /// Moteur du client ou de la base ; ce choix détermine la génération et les opérations disponibles.
   provider            = "prisma-client"
+  /// Dossier du client Prisma généré, exclu des modifications manuelles.
   output              = "../src/generated/prisma"
+  /// Format ESM des modules générés, aligné sur les imports du service.
   moduleFormat        = "esm"
+  /// Extension .js des imports après compilation TypeScript.
   importFileExtension = "js"
 }
 
 datasource db {
+  /// Moteur du client ou de la base ; ce choix détermine la génération et les opérations disponibles.
   provider = "postgresql"
+  /// Schéma PostgreSQL possédé par ce service ; l’URL runtime choisit son rôle limité.
   schemas  = ["media"]
 }
 
+/// Original Media avec propriétaire, état et clé privée ; les octets résident dans le volume durable.
 model Asset {
+  /// Identifiant de cette entité ; distinct des identifiants des objets liés.
   id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// UUID du compte ayant envoyé l’original ; null pour les fichiers sans propriétaire utilisateur.
   uploaderUserId String?  @map("uploader_user_id") @db.Uuid
+  /// Usage interne Media ; audio et cover représentent les uploads gérés ici.
   purpose        String
+  /// État Media : pending, ready, deleting ou deleted selon le cycle de stockage.
   state          String   @default("pending")
+  /// Nom interne du fichier sur le volume durable ; ne doit pas être exposé au client.
   storageKey     String   @unique @map("storage_key")
+  /// Type MIME du contenu vérifié, utilisé pour servir les octets avec leur format.
   mimeType       String   @map("mime_type")
+  /// Taille exacte de l’original ou de la variante en octets, pas en mégaoctets.
   byteSize       BigInt?  @map("byte_size")
+  /// Durée en millisecondes ; null lorsque cette durée n’est pas disponible ou ne s’applique pas.
   durationMs     BigInt?  @map("duration_ms")
+  /// Empreinte SHA-256 de l’original ; sert à contrôler l’identité des octets, pas à partager le stockage.
   checksumSha256 String?  @map("checksum_sha256")
+  /// Date de création prise par PostgreSQL.
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// Date actualisée par Prisma lors des modifications.
   updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  /// Représentations dérivées de l’original, avec leur propre clé de stockage.
   variants Variant[]
 
   @@index([uploaderUserId], map: "assets_uploader_idx")
@@ -30,16 +50,26 @@ model Asset {
   @@schema("media")
 }
 
+/// Représentation dérivée d’un original, par exemple private-preview en MP3, avec sa propre clé.
 model Variant {
+  /// Identifiant de cette entité ; distinct des identifiants des objets liés.
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// UUID local de l’original auquel cette variante appartient.
   assetId      String   @map("asset_id") @db.Uuid
+  /// Nom de la représentation, unique par original ; private-preview désigne l’aperçu MP3.
   renditionKey String   @map("rendition_key")
+  /// Nom interne du fichier sur le volume durable ; ne doit pas être exposé au client.
   storageKey   String   @unique @map("storage_key")
+  /// Type MIME du contenu vérifié, utilisé pour servir les octets avec leur format.
   mimeType     String   @map("mime_type")
+  /// Débit de l’audio dérivé en kilobits par seconde ; absent pour les formats où il ne s’applique pas.
   bitrateKbps  Int?     @map("bitrate_kbps")
+  /// Taille exacte de l’original ou de la variante en octets, pas en mégaoctets.
   byteSize     BigInt   @map("byte_size")
+  /// Date de création prise par PostgreSQL.
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
+  /// Relation locale vers l’original ; sa suppression SQL entraîne celle des variantes.
   asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
 
   @@unique([assetId, renditionKey], map: "variants_asset_rendition_key")

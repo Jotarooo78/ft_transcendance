@@ -1,5 +1,10 @@
+/** Prévalidation bornée dans le navigateur ; l’autorité finale reste le décodage complet du serveur. */
 import { audioByteLimit, imageByteLimit } from "../types/files";
 
+/**
+ * Lit largeur et hauteur PNG/JPEG/WebP depuis le préfixe du fichier sans allouer les pixels ; renvoie
+ * null si les dimensions ne peuvent être identifiées.
+ */
 function imageDimensions(bytes: Uint8Array, format: string): [number, number] | null {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   if (format === "png" && bytes.length >= 24) return [view.getUint32(16), view.getUint32(20)];
@@ -22,12 +27,22 @@ function imageDimensions(bytes: Uint8Array, format: string): [number, number] | 
   return null;
 }
 
+/**
+ * Essaie de charger une image ou les métadonnées audio via une URL Blob temporaire, puis libère l’URL.
+ * Une image indécodable est refusée ; un codec audio non pris en charge localement reste éligible au
+ * serveur.
+ */
 async function decodeLocally(file: File, image: boolean, signal: AbortSignal) {
   const url = URL.createObjectURL(file);
   const media = image ? new Image() : new Audio();
   try {
     await new Promise<void>((resolve, reject) => {
+      /** Termine la prévalidation locale avec une erreur d’annulation. */
       const abort = () => finish(new Error("Vérification annulée."));
+      /**
+       * Retire délai et écouteurs du média puis confirme ou rejette la prévalidation une seule fois par
+       * événement reçu.
+       */
       const finish = (error?: Error) => {
         clearTimeout(timer); signal.removeEventListener("abort", abort); media.onload = null; media.onloadedmetadata = null; media.onerror = null;
         if (error) reject(error); else resolve();
@@ -47,6 +62,14 @@ async function decodeLocally(file: File, image: boolean, signal: AbortSignal) {
   } finally { media.removeAttribute("src"); if (!image) (media as HTMLAudioElement).load(); URL.revokeObjectURL(url); }
 }
 
+/**
+ * Vérifie fichier non vide, taille, signature et MIME sur au plus 1 MiB de préfixe. Contrôle les
+ * dimensions avant décodage image, refuse les faux audios textuels et les WAV tronqués, puis laisse le
+ * serveur décider des codecs audio.
+ * @param file Fichier sélectionné, conservé intact.
+ * @param signal Annulation par changement de sélection, de session ou fermeture.
+ * @throws Error avec message utilisable dans le formulaire pour une prévalidation refusée.
+ */
 export async function validateFile(file: File, signal: AbortSignal) {
   if (!file.size) throw new Error("Le fichier est vide.");
   if (file.size > audioByteLimit) throw new Error("L’audio ne doit pas dépasser 500 Mo.");

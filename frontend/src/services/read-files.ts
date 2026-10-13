@@ -1,8 +1,22 @@
+/** Lecture JWT des fichiers et téléchargement borné de leurs aperçus ; le token ne figure jamais dans l’URL. */
 import { authenticatedFetch } from "./api";
 import { getAccessToken } from "./session";
 import { audioByteLimit, imageByteLimit, isReadyFile, type ReadyFile } from "../types/files";
 
-export type FilePage = { items: ReadyFile[]; total: number; page: number; pageSize: number };
+/** Page de fichiers ready appartenant au compte, avec total et pagination confirmés. */
+export type FilePage = {
+  /** Éléments de la page ou occurrences de playlist ; le total peut dépasser cette liste. */
+  items: ReadyFile[];
+  /** Nombre total d’éléments correspondant au filtre, avant la pagination. */
+  total: number;
+  /** Numéro de page à partir de 1. */
+  page: number;
+  /** Nombre maximal d’éléments demandé par page, contrôlé par la route. */
+  pageSize: number };
+/**
+ * Charge une page de 20 fichiers et valide les métadonnées ; refuse une réponse reçue après annulation
+ * ou changement de compte.
+ */
 export async function readFiles(page: number, signal: AbortSignal): Promise<FilePage> {
   const token = getAccessToken();
   const response = await authenticatedFetch(`/api/media/assets?page=${page}&pageSize=20`, { signal });
@@ -14,6 +28,11 @@ export async function readFiles(page: number, signal: AbortSignal): Promise<File
   return data;
 }
 
+/**
+ * Télécharge l’image originale ou l’aperçu MP3 privé avec Authorization. Contrôle MIME, taille
+ * annoncée et octets réellement reçus avant de construire le Blob ; annule et libère le lecteur à la
+ * sortie.
+ */
 export async function readFilePreview(file: ReadyFile, signal: AbortSignal): Promise<Blob> {
   const token = getAccessToken();
   const response = await authenticatedFetch(`/api/media/assets/${encodeURIComponent(file.id)}/private-content`, { signal });

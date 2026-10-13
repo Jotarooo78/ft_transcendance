@@ -1,12 +1,18 @@
+/** Tests du contrôle de références : SQL incluant les brouillons et accès HTTP réservé au token interne. */
 import test from "node:test";
 import assert from "node:assert/strict";
 import type { PrismaClient } from "./generated/prisma/client.js";
 import { isAssetReferenced } from "./database/check-asset-references.js";
 import { buildApp } from "./app.js";
 
+/** Identifiant stable de fixture, utilisé pour comparer les réponses du scénario. */
 const id = "33333333-3333-4333-8333-333333333333";
 test("reference lookup covers audio, release cover and artist image, including drafts", async () => {
   const calls: unknown[] = []; let selected = "";
+  /**
+   * Intercepte l’appel SQL pour vérifier le contrat des références et renvoyer le témoin contrôlé du
+   * scénario.
+   */
   const query = (kind: string) => async (args: unknown) => { calls.push(args); return selected === kind ? { id } : null; };
   const database = { track: { findFirst: query("audio") }, release: { findFirst: query("cover") }, artist: { findFirst: query("image") } } as unknown as Pick<PrismaClient, "track" | "release" | "artist">;
   for (selected of ["", "audio", "cover", "image"]) {
@@ -16,7 +22,13 @@ test("reference lookup covers audio, release cover and artist image, including d
 });
 test("internal references require a service token and fail closed on dependency errors", async t => {
   let reads = 0; let failure = false; let referenced = false;
-  const options = { readTrack: async () => null, ready: async () => {}, isAssetReferenced: async () => { reads++; if (failure) throw new Error("SQL"); return referenced; } };
+  const options = {
+    /** Doublure du scénario pour lecture de morceau ; la réponse ou la panne est contrôlée par le test. */
+    readTrack: async () => null,
+    /** Doublure du scénario pour disponibilité du stockage ; la réponse ou la panne est contrôlée par le test. */
+    ready: async () => {},
+    /** Doublure du scénario pour références du fichier ; la réponse ou la panne est contrôlée par le test. */
+    isAssetReferenced: async () => { reads++; if (failure) throw new Error("SQL"); return referenced; } };
   assert.throws(() => buildApp(options), /INTERNAL_SERVICE_TOKEN/);
   const app = buildApp({ ...options, internalServiceToken: "internal-test-token" }); t.after(() => app.close());
   const path = `/internal/assets/${id}/references`;

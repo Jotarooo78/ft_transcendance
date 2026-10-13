@@ -1,3 +1,4 @@
+/** Commande explicite de vérification : interroge PostgreSQL avec le client runtime puis le ferme, sans écrire de données. */
 import { disconnectPrisma, prisma } from "./prisma.js";
 
 try {

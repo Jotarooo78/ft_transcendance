@@ -1,8 +1,13 @@
+/** Lecture SQL paramétrée du catalogue ; liste et total partagent le même filtre et le même instantané de base. */
 import { Prisma } from "../generated/prisma/client.js";
 import { toTrackDto, type TrackList, type TrackQuery, type TrackRow } from "../catalog.js";
 import { prisma } from "./prisma.js";
 
 // Fixed SQL fragments only; all request values are bound through Prisma.sql.
+/**
+ * Fragment SQL fixe des morceaux published et de leurs crédits, sortie et genre ; les valeurs
+ * utilisateur sont liées séparément.
+ */
 const projection = Prisma.sql`
   SELECT t.id, t.title, t.audio_asset_id AS "audioAssetId", t.duration_ms AS "durationMs",
     COALESCE((SELECT string_agg(a.name, ', ' ORDER BY CASE c.role WHEN 'primary' THEN 0 ELSE 1 END, c.credit_order, a.id)
@@ -14,6 +19,12 @@ const projection = Prisma.sql`
       WHERE tg.track_id=t.id ORDER BY g.name COLLATE "C", g.id LIMIT 1), '') AS genre
   FROM catalog.tracks t WHERE t.status='published'`;
 
+/**
+ * Recherche les morceaux published avec un tri stable puis pagine. Échappe % et _ pour garder une
+ * recherche littérale ; la transaction RepeatableRead assure un total cohérent avec les lignes.
+ * @param query Paramètres préalablement validés par parseTrackQuery.
+ * @returns Page publique, total filtré et genres des morceaux publiés.
+ */
 export async function listTracks(query: TrackQuery): Promise<TrackList> {
   // Escape LIKE metacharacters so q remains a literal substring.
   const pattern = `%${query.q.replace(/[\\%_]/g, "\\$&")}%`;
@@ -32,8 +43,12 @@ export async function listTracks(query: TrackQuery): Promise<TrackList> {
     const rows = await tx.$queryRaw<TrackRow[]>(Prisma.sql`${filtered}
       SELECT * FROM filtered ORDER BY ${order} ASC NULLS LAST, id ASC
       LIMIT ${query.pageSize} OFFSET ${(query.page - 1) * query.pageSize}`);
-    const counts = await tx.$queryRaw<{ total: bigint }[]>(Prisma.sql`${filtered} SELECT count(*) AS total FROM filtered`);
-    const genres = await tx.$queryRaw<{ name: string }[]>`
+    const counts = await tx.$queryRaw<{
+      /** Nombre total d’éléments correspondant au filtre, avant la pagination. */
+      total: bigint }[]>(Prisma.sql`${filtered} SELECT count(*) AS total FROM filtered`);
+    const genres = await tx.$queryRaw<{
+      /** Nom de la playlist ou libellé lu par cette projection. */
+      name: string }[]>`
       SELECT DISTINCT g.name COLLATE "C" AS name FROM catalog.genres g
       JOIN catalog.track_genres tg ON tg.genre_id=g.id JOIN catalog.tracks t ON t.id=tg.track_id
       WHERE t.status='published' ORDER BY name`;

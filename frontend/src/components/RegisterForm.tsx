@@ -41,6 +41,7 @@ function RegisterForm() {
     setErrorMessage("");
     setRegistration(null);
 
+    // Le username envoyé utilise le même format canonique que les validations Auth, Users et SQL.
     const normalizedUsername = normalizeUsername(form.username);
     const displayName = form.displayName.trim();
 

@@ -37,9 +37,11 @@ services:
     env_file:
       - .env
     environment:
+      # Auth livre les demandes durables de profil à Users via cette adresse interne.
       USER_SERVICE_URL: http://user-service:4001
       INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
     depends_on:
+      # Exécuté après les six migrations : attribue les objets et applique les droits runtime avant les services HTTP.
       apply-permissions:
         condition: service_completed_successfully
     networks:
@@ -65,6 +67,7 @@ services:
       - ft_network
     restart: unless-stopped
 
+  # Service propriétaire des métadonnées musicales et des contrôles de publication/référence.
   catalog-service:
     build: ./services/catalog-service
     container_name: ft_catalog_service
@@ -79,6 +82,7 @@ services:
       - ft_network
     restart: unless-stopped
 
+  # Service propriétaire des originaux et aperçus ; les octets sont conservés dans media_data.
   media-service:
     build: ./services/media-service
     container_name: ft_media_service
@@ -98,6 +102,7 @@ services:
       - ft_network
     restart: unless-stopped
 
+  # Service propriétaire des playlists privées et de leurs occurrences versionnées.
   library-service:
     build: ./services/library-service
     container_name: ft_library_service
@@ -115,6 +120,7 @@ services:
       - ft_network
     restart: unless-stopped
 
+  # Service propriétaire des sessions d’écoute et des événements de progression.
   playback-service:
     build: ./services/playback-service
     container_name: ft_playback_service
@@ -125,6 +131,7 @@ services:
     environment:
       JWT_SECRET: ${JWT_SECRET}
       CATALOG_SERVICE_URL: http://catalog-service:4002
+    # pg_isready vérifie que PostgreSQL répond avant de lancer les migrations ; ne certifie pas les données métier.
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4005/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 2s
@@ -195,6 +202,7 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
+      # Deux rôles par service : migration pour la structure, runtime pour les seules opérations métier autorisées.
       AUTH_MIGRATION_PASSWORD: ${AUTH_MIGRATION_PASSWORD}
       AUTH_RUNTIME_PASSWORD: ${AUTH_RUNTIME_PASSWORD}
       USERS_MIGRATION_PASSWORD: ${USERS_MIGRATION_PASSWORD}
@@ -223,6 +231,7 @@ services:
       - ft_network
     restart: unless-stopped
 
+  # Conteneurs de migration : utilisent la cible build et l’URL de migration, avant démarrage des services HTTP.
   migrate-auth:
     build:
       context: ./services/auth-service

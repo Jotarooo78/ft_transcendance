@@ -1,8 +1,13 @@
+/** Lecture SQL d’un fichier privé : le filtre propriétaire est appliqué dans la requête, avant tout retour de métadonnées. */
 import type { FastifyRequest } from "fastify";
 import type { PrismaClient } from "./generated/prisma/client.js";
 import { uuidPattern } from "./authenticate-user.js";
 
 // The owner must come from authenticateUser, never from form or query data.
+/**
+ * Renvoie le fichier du compte authentifié et sa variante private-preview, ou null si l’identité
+ * manque, l’UUID est invalide ou le fichier appartient à un autre compte.
+ */
 export async function readOwnedAsset(
   database: Pick<PrismaClient, "asset">,
   request: Pick<FastifyRequest, "authenticatedUserId">,

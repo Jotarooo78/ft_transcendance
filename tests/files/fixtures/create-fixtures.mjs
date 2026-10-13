@@ -1,7 +1,12 @@
+/** Génère des fixtures locales déterministes : WAV, image et contenus vides, tronqués ou actifs à refuser. */
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 // Reproducible tiny fixtures; generated files stay local to the campaign.
+/**
+ * Crée le dossier demandé et y écrit les petites fixtures du scénario, dont six secondes de WAV. Les
+ * fichiers générés restent locaux à la campagne ; renvoie leurs octets par nom.
+ */
 export async function createFixtures(directory) {
   await mkdir(directory, { recursive: true });
   const samples = 8000 * 6;

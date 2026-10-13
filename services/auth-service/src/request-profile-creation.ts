@@ -1,3 +1,4 @@
+/** Client HTTP interne Auth → Users ; la même demande peut être rejouée après une réponse perdue. */
 import {
   PermanentProfileProvisionError,
   type PermanentProvisionCode,
@@ -5,21 +6,33 @@ import {
   profileProvisionType,
 } from "./handle-profile-creation-result.js";
 
+/** Signature de fetch injectable pour tester les échanges HTTP sans contacter un serveur réel. */
 type Fetch = typeof fetch;
 
+/** Adresse de Users, secret interne, délai en millisecondes et implémentation HTTP à utiliser. */
 type HttpProfileProvisionerOptions = {
+  /** Implémentation HTTP injectable afin de contrôler les échanges dans les tests. */
   fetchImpl?: Fetch;
+  /** Secret partagé entre services pour les routes internes ; distinct du JWT utilisateur. */
   internalServiceToken: string;
+  /** Délai maximal de l’échange HTTP en millisecondes. */
   timeoutMs?: number;
+  /** Adresse interne de Users utilisée pour livrer une demande de profil. */
   userServiceUrl: string;
 };
 
+/** Reconnaît uniquement les deux codes de conflit définis par le contrat de création du profil. */
 function isPermanentProvisionCode(
   value: unknown,
 ): value is PermanentProvisionCode {
   return value === "USERNAME_TAKEN" || value === "PROFILE_CONFLICT";
 }
 
+/**
+ * Construit l’envoi PUT interne avec identité stable, token de service et délai borné. Un succès
+ * confirme la livraison ; seuls les conflits 409 connus sont définitifs. Les autres refus et pannes
+ * sont rejetés pour permettre une nouvelle tentative.
+ */
 export function createHttpProfileProvisioner({
   fetchImpl = fetch,
   internalServiceToken,

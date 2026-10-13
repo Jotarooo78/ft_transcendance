@@ -1,14 +1,25 @@
+/** Formulaire d’upload : prévalidation, progression mesurée, annulation et confirmation serveur distinctes. */
 import { useEffect, useRef, useState, type SubmitEvent } from "react";
 import { validateFile } from "../services/validate-file";
 import { sendFile } from "../services/send-file";
 import type { ReadyFile, UploadProgress } from "../types/files";
 
-export default function FileUploadForm({ onReady }: { onReady?: (file: ReadyFile) => void }) {
+/**
+ * Gère la sélection et le transfert ; conserve le fichier sélectionné en cas de refus, annule au
+ * nettoyage et appelle onReady seulement après confirmation.
+ */
+export default function FileUploadForm({ onReady }: {
+  /** Appelé uniquement après confirmation du fichier ready par le serveur. */
+  onReady?: (file: ReadyFile) => void }) {
   const [file, setFile] = useState<File | null>(null); const [message, setMessage] = useState(""); const [error, setError] = useState("");
   const [progress, setProgress] = useState<UploadProgress | null>(null); const [checking, setChecking] = useState(false);
   const current = useRef<AbortController | null>(null); const input = useRef<HTMLInputElement | null>(null);
   useEffect(() => () => { current.current?.abort(); current.current = null; }, []);
   const busy = checking || progress !== null;
+  /**
+   * Empêche une soumission concurrente, prévalide le fichier puis lance XHR. Affiche le refus ou la
+   * confirmation et libère l’opération courante à la sortie.
+   */
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault(); if (!file || busy) return;
     const controller = new AbortController(); current.current = controller;

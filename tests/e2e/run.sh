@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Orchestre la campagne décrite dans le README voisin ; les gardes et le traitement de sortie font partie de la preuve.
 set -Eeuo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -12,6 +13,7 @@ cleanup_enabled=false
 campaign_complete=false
 revision="$(git -C "$repo_dir" rev-parse HEAD)"
 
+# Traitement de sortie : conserve le statut d’échec et nettoie uniquement les ressources de cette campagne.
 cleanup() {
   local status=$?
   trap - EXIT
@@ -34,6 +36,7 @@ cleanup() {
   fi
   exit "$status"
 }
+# Garantit que la sortie normale et les erreurs passent par le nettoyage prévu par ce runner.
 trap cleanup EXIT
 
 [[ "$project_name" == transcendence_e2e && "$compose_file" == "$repo_dir/tests/e2e/compose.yml" ]]
@@ -88,6 +91,7 @@ printf '[PCE] Playwright: %s\n' "$("$script_dir/node_modules/.bin/playwright" --
 phase=migrations-permissions-readiness
 "${compose[@]}" up -d --wait nginx
 
+# Exécute les assertions SQL dans la base isolée avec arrêt à la première erreur.
 sql_assertions() {
   "${compose[@]}" exec -T db psql --username e2e_admin --dbname transcendence_e2e \
     --set ON_ERROR_STOP=1 --file /dev/stdin < "$script_dir/assert-state.sql"

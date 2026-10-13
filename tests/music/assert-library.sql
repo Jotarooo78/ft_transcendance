@@ -1,3 +1,4 @@
+-- Preuve SQL de les données et refus propres au scénario décrit dans le README voisin. Une assertion échouée arrête psql ; les fixtures ne doivent être exécutées que dans leur cible de test contrôlée.
 \set ON_ERROR_STOP on
 SELECT set_config('music.library_fixture', :'fixture', false) IS NOT NULL AS fixture_loaded;
 SELECT set_config('music.library_cleanup', :'cleanup', false) IS NOT NULL AS cleanup_loaded;
