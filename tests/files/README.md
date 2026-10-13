@@ -320,6 +320,56 @@ Lint et build frontend passent. Les preuves avec un vrai serveur, images
 décodées, lecture MP3, refus de suppression et changements de compte
 arrivent aux étapes 11/12 ; la compilation ne remplace pas ces preuves.
 
+## Prouver les vrais stockages — étape 11
+
+Après démarrage des services et installation explicite des démonstrations
+Media/Catalogue par leurs scripts existants, utiliser un nouveau manifeste
+privé de campagne. Le scénario refuse d'écraser un manifeste existant.
+
+```bash
+docker compose exec -T media-service npm run seed:demo
+docker compose exec -T catalog-service npm run seed:demo
+node tests/files/http-scenario.mjs initial /tmp/transcendence-files-state.json
+docker compose restart media-service
+node tests/files/http-scenario.mjs verify /tmp/transcendence-files-state.json
+docker compose restart db
+node tests/files/http-scenario.mjs verify /tmp/transcendence-files-state.json
+node tests/files/http-scenario.mjs catalog-down /tmp/transcendence-files-state.json
+node tests/files/http-scenario.mjs delete /tmp/transcendence-files-state.json
+```
+
+La campagne est strictement bornée au projet common_repo, à HTTPS 1443 et à
+current_database() = transcendence. Les comptes A/B sont créés par inscription
+réelle, avec attente du résultat pending avant connexion. Le manifeste mode
+0600 contient identités de campagne, UUID et empreintes ; aucun JWT n'est
+enregistré. Le mot de passe est une constante destinée uniquement aux comptes
+de test example.invalid. Les fixtures sont générées à côté du manifeste.
+
+initial envoie audio/image à A et une image à B ; compare propriétaire,
+purpose/state/tailles/durée/checksum SQL via assert-files.sql, SHA-256 des
+originaux sur disque et octets des aperçus autorisés. Il contrôle les listes,
+GET/HEAD, refus A/B sur UUID réellement existants, JWT absent, MIME mensonger,
+troncature, vide, contenu actif, image de 25 000 001 octets et audio de
+500 000 001 octets réellement transmis en flux (sans allocation de 500 Mo).
+Trois fixtures SQL distinctes protègent audio draft, cover draft et image
+d'artiste ; leur effacement refusé conserve références/octets et audio public.
+Leur nettoyage vise seulement les trois UUID du manifeste, même sur échec.
+
+verify attend les services prêts puis recontrôle les mêmes UUID/empreintes
+sans seed ni ré-upload. catalog-down arrête seulement Catalogue, attend un
+503 de DELETE sans effacement, puis le redémarre même sur échec. delete
+envoie deux DELETE concurrents par fichier A, vérifie deleted en SQL,
+absence d'original/variante, nouvel accès 404 et idempotence ; B reste intact
+jusqu'à son nettoyage final, et les démonstrations restent lisibles.
+Les comptes et lignes deleted sont conservés comme suivi, sans suppression
+globale de tables/volumes. Une campagne ordinaire ne réinitialise aucune base.
+
+Résultats du 13 octobre 2026 : initial, vérification après redémarrage Media,
+vérification après redémarrage PostgreSQL, panne Catalogue et suppression
+concurrente/idempotente réussis sur les vrais services. Aucun dossier .upload
+résiduel ; les trois audios de démonstration et le catalogue sont conservés.
+Le rendu et la progression visibles du navigateur restent à l'étape 12.
+
 ## État du contrôle initial
 
 Le 13 octobre 2026, la configuration Compose est valide et la base démarre.
