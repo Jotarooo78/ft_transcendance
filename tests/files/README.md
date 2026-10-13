@@ -237,6 +237,41 @@ Prisma propriétaire/état, la pagination et les clés publiques, puis les
 octets image/variante et tous ces refus sur un dossier temporaire réel.
 La base des tests reste simulée ; le rendu navigateur est encore à prouver.
 
+## Supprimer sans casser le catalogue — étape 8
+
+DELETE /api/media/assets/:id exige propriétaire et UUID valides. Un fichier
+sans propriétaire ou d'un autre compte donne 404 ; un fichier déjà deleted
+du même compte donne 204. Media demande à Catalogue si tracks.audioAssetId,
+releases.coverAssetId ou artists.imageAssetId référence ce fichier, sans
+filtre d'état : un brouillon est protégé aussi. Le contrôle utilise HTTP
+interne et INTERNAL_SERVICE_TOKEN, jamais le SQL d'un autre service.
+Nginx refuse tout accès public à /api/catalog/internal/. Une référence
+donne 409 ; réponse invalide, timeout ou panne du contrôle donne 503, sans
+effacement ni transition depuis ready.
+
+Après contrôle, une transition SQL conditionnelle ready → deleting masque
+le fichier des nouvelles listes/lectures. Le serveur retire l'original et
+toutes ses variantes, synchronise le dossier et marque deleted. Une absence
+d'octets est tolérée pour terminer une suppression interrompue. Deux DELETE
+concurrents convergent vers deleted/204 ; les lignes de suivi sont conservées.
+Au démarrage, la reprise traite au plus 1 000 lignes deleting appartenant à
+un compte, avec le même contrôle de références et les mêmes protections.
+Une panne Catalogue/SQL empêche un faux succès ; la reprise pourra retenter
+l'opération. Un flux déjà autorisé peut terminer sa lecture.
+
+Cette protection correspond au périmètre acquis : les routes Catalogue
+sont en lecture seule et les fichiers personnels ne sont jamais associés
+par l'interface. Une vérification HTTP suivie d'un effacement ne constitue
+pas une transaction entre services. Des écritures administratives de seeds
+doivent être faites hors suppression concurrente ; une future publication
+utilisateur devra ajouter son propre protocole d'association/suppression.
+
+Les tests Media couvrent accès tiers/seeds, références et panne de contrôle,
+DELETE concurrents/idempotents et reprise après panne SQL sur octets réels.
+Les tests Catalogue couvrent les trois champs de référence sans filtre de
+statut et l'authentification interne. Les preuves de références SQL réelles
+et de conservation de la lecture publique sont prévues à l'étape 11.
+
 ## État du contrôle initial
 
 Le 13 octobre 2026, la configuration Compose est valide et la base démarre.

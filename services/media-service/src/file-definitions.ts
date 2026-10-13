@@ -14,6 +14,13 @@ export type FileReader = {
   list: (owner: string, page: number, pageSize: number) => Promise<{ items: StoredFile[]; total: number }>;
   read: (request: { authenticatedUserId?: string }, id: string) => Promise<(StoredFile & { variants: FileVariant[] }) | null>;
 };
+export type FileDeletion = {
+  read: FileReader["read"];
+  markDeleting: (id: string, owner: string) => Promise<boolean>;
+  markDeleted: (id: string, owner: string) => Promise<void>;
+  pending: (maximum: number) => Promise<Array<StoredFile>>;
+  referenced: (id: string) => Promise<boolean>;
+};
 export function publicFile(file: StoredFile) {
   return { id: file.id, usage: file.purpose === "audio" ? "audio" : "image", state: file.state,
     mimeType: file.mimeType, byteSize: Number(file.byteSize), durationMs: file.durationMs === null ? null : Number(file.durationMs) };

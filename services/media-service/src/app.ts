@@ -5,9 +5,10 @@ import client from "prom-client";
 import { constants } from "node:fs";
 import { open, type FileHandle } from "node:fs/promises";
 import { join } from "node:path";
-import type { FileStore, FileReader } from "./file-definitions.js";
+import type { FileStore, FileReader, FileDeletion } from "./file-definitions.js";
 import { registerFileUpload } from "./register-file-upload.js";
 import { registerFileReads } from "./register-file-reads.js";
+import { registerFileDeletion } from "./register-file-deletion.js";
 
 export type AudioAsset = {
   purpose: string; state: string; storageKey: string; mimeType: string; byteSize: bigint | null;
@@ -31,6 +32,7 @@ type Options = {
   storageDir: string; ready: () => Promise<void>; close?: () => Promise<void>; logger?: boolean;
   files?: FileStore;
   fileReads?: FileReader;
+  fileDeletes?: FileDeletion;
 };
 
 export function buildApp(options: Options) {
@@ -41,6 +43,7 @@ export function buildApp(options: Options) {
   app.decorateRequest("authenticatedUserId", undefined);
   if (options.files) registerFileUpload(app, options.storageDir, options.files);
   if (options.fileReads) registerFileReads(app, options.storageDir, options.fileReads);
+  if (options.fileDeletes) registerFileDeletion(app, options.storageDir, options.fileDeletes);
   const registry = new client.Registry();
   client.collectDefaultMetrics({ prefix: "media_service_", register: registry });
   app.get("/health", async () => ({ status: "ok", service: "media-service" }));

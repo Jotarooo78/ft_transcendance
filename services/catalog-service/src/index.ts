@@ -2,11 +2,14 @@ import { buildApp } from "./app.js";
 import { toTrackDto } from "./catalog.js";
 import { disconnectPrisma, prisma } from "./database/prisma.js";
 import { listTracks } from "./database/catalog-list.js";
+import { isAssetReferenced } from "./database/check-asset-references.js";
 
 const app = buildApp({
   logger: true,
   close: disconnectPrisma,
   listTracks,
+  internalServiceToken: process.env.INTERNAL_SERVICE_TOKEN ?? "",
+  isAssetReferenced: id => isAssetReferenced(prisma, id),
   isAssetPublished: async audioAssetId => !!await prisma.track.findFirst({
     where: { audioAssetId, status: "published" }, select: { id: true },
   }),

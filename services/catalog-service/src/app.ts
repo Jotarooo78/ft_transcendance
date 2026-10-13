@@ -1,17 +1,21 @@
 import Fastify from "fastify";
 import client from "prom-client";
+import { timingSafeEqual } from "node:crypto";
 import { parseTrackQuery, uuidPattern, type TrackDto, type TrackList, type TrackQuery } from "./catalog.js";
 
 type Options = {
   readTrack: (id: string) => Promise<TrackDto | null>;
   listTracks?: (query: TrackQuery) => Promise<TrackList>;
   isAssetPublished?: (id: string) => Promise<boolean>;
+  isAssetReferenced?: (id: string) => Promise<boolean>;
+  internalServiceToken?: string;
   ready: () => Promise<void>;
   close?: () => Promise<void>;
   logger?: boolean;
 };
 
 export function buildApp(options: Options) {
+  if (options.isAssetReferenced && !options.internalServiceToken?.trim()) throw new Error("INTERNAL_SERVICE_TOKEN is required");
   const app = Fastify({ logger: options.logger ?? false });
   const registry = new client.Registry();
   client.collectDefaultMetrics({ prefix: "catalog_service_", register: registry });
@@ -56,6 +60,17 @@ export function buildApp(options: Options) {
     try {
       if (!options.isAssetPublished) throw new Error("Missing publication reader");
       return { published: await options.isAssetPublished(request.params.id.toLowerCase()) };
+    } catch { return reply.code(503).send({ error: "catalog_unavailable" }); }
+  });
+  app.get<{ Params: { id: string } }>("/internal/assets/:id/references", async (request, reply) => {
+    reply.header("Cache-Control", "no-store");
+    const received = Buffer.from(request.headers.authorization ?? "");
+    const expected = Buffer.from(`Bearer ${options.internalServiceToken ?? ""}`);
+    if (!options.internalServiceToken || received.length !== expected.length || !timingSafeEqual(received, expected)) return reply.code(401).send({ error: "unauthorized" });
+    if (!uuidPattern.test(request.params.id)) return reply.code(400).send({ error: "invalid_request" });
+    try {
+      if (!options.isAssetReferenced) throw new Error("Missing references reader");
+      return { referenced: await options.isAssetReferenced(request.params.id.toLowerCase()) };
     } catch { return reply.code(503).send({ error: "catalog_unavailable" }); }
   });
   app.addHook("onClose", async () => {
