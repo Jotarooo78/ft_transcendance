@@ -19,7 +19,7 @@ test("real file bytes, metadata checks, confined paths and dependency errors", a
   await mkdir(join(dir, "directory"));
   const original: AudioAsset = { purpose: "audio", state: "ready", storageKey: "demo.wav", mimeType: "audio/wav", byteSize: BigInt(bytes.length) };
   let asset = { ...original }; let published = true; let failure = false;
-  const app = buildApp({ storageDir: dir, ready: async () => { if (failure) throw new Error("db"); },
+  const app = buildApp({ jwtSecret: "media-test-secret", storageDir: dir, ready: async () => { if (failure) throw new Error("db"); },
     readAsset: async value => value === id ? asset : null,
     isPublished: async () => { if (failure) throw new Error("catalog"); return published; } });
   t.after(async () => { await app.close(); await rm(dir, { recursive: true, force: true }); });
@@ -29,6 +29,7 @@ test("real file bytes, metadata checks, confined paths and dependency errors", a
   assert.equal(r.headers["content-length"], String(bytes.length));
   assert.equal(r.headers["cache-control"], "no-store");
   assert.equal(r.headers["accept-ranges"], "bytes");
+  assert.equal((await app.inject({ url: path, headers: { authorization: "Bearer invalid" } })).statusCode, 200);
   assert.equal((await app.inject('/assets/no/audio')).statusCode, 400);
   assert.equal((await app.inject('/assets/30000000-0000-4000-8000-000000000099/audio')).statusCode, 404);
   for (const change of [{ state: "pending" }, { purpose: "avatar" }, { storageKey: "../demo.wav" },
@@ -53,7 +54,7 @@ test("HEAD and closed, open, suffix and invalid byte ranges", async t => {
   const dir = await mkdtemp(join(tmpdir(), "media-range-")); const bytes = demoAudio(1);
   await writeFile(join(dir, "demo.wav"), bytes);
   let published = true;
-  const app = buildApp({ storageDir: dir, ready: async () => {},
+  const app = buildApp({ jwtSecret: "media-test-secret", storageDir: dir, ready: async () => {},
     readAsset: async () => ({ purpose: "audio", state: "ready", storageKey: "demo.wav", mimeType: "audio/wav", byteSize: BigInt(bytes.length) }),
     isPublished: async () => published });
   t.after(async () => { await app.close(); await rm(dir, { recursive: true, force: true }); });

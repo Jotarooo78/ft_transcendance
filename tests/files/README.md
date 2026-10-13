@@ -55,6 +55,38 @@ au certificat auto-signé de cette pile locale ; ne pas le reprendre pour un
 serveur public. Un conteneur running ou une page HTML 200 ne prouve pas la
 disponibilité de la route : vérifier également le corps JSON du service.
 
+## Vérifier la session et la propriété
+
+Depuis la racine, construire l’image de test puis lancer les contrôles Media :
+
+```bash
+docker compose -f docker-compose.yml build migrate-media
+docker compose -f docker-compose.yml run --rm --no-deps migrate-media npm test
+```
+
+`authenticate-user.ts` vérifie la signature HS256, l’expiration obligatoire et
+le sujet UUID du jeton, puis place l’identité sur la requête. Les futures routes
+privées devront utiliser cette fonction dans leur hook `onRequest`.
+`read-owned-asset.ts` reçoit cette requête et le client Prisma Media : il cherche
+simultanément `id` et `uploaderUserId`. Sans identité valide, il ne consulte pas
+la base. Un fichier étranger, sans propriétaire ou absent donne le même `null`.
+La route privée devra traduire ce résultat en 404 ; une erreur de base doit
+rester une erreur de service. Le formulaire ne fournit jamais le propriétaire.
+
+`file-access.test.ts` utilise de vrais jetons signés et une route présente
+uniquement dans le test. Une doublure de Prisma compte les lectures et applique
+les deux conditions aux fichiers de A, de B et du catalogue sans propriétaire.
+Les tests vérifient les refus avant lecture, les deux sens A/B et la résistance
+aux identifiants de propriétaire falsifiés dans le formulaire ou la requête.
+`app.test.ts` conserve les contrôles sur de vrais octets audio temporaires,
+GET, HEAD, plages et publication ; la lecture publique reste sans connexion.
+
+Ces tests ne créent ni compte ni ligne SQL. Ils prouvent les fonctions et leur
+composition Fastify, pas encore le parcours privé HTTPS/PostgreSQL/navigateur.
+Aucune route privée de gestion n’est livrée à l’étape 4. `JWT_SECRET` doit être
+non vide au démarrage ; Compose le fournit déjà via `.env`, sans exposer sa
+valeur dans les rapports.
+
 ## Données des prochains scénarios
 
 Créer A et B par l’inscription réelle avec un identifiant de campagne unique,

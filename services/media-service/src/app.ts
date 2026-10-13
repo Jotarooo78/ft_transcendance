@@ -1,4 +1,5 @@
 import Fastify from "fastify";
+import jwt from "@fastify/jwt";
 import client from "prom-client";
 import { constants } from "node:fs";
 import { open, type FileHandle } from "node:fs/promises";
@@ -20,13 +21,17 @@ function byteRange(value: string, size: number): { start: number; end: number } 
   return first < size && first <= end ? { start: first, end } : null;
 }
 type Options = {
+  jwtSecret: string;
   readAsset: (id: string) => Promise<AudioAsset | null>;
   isPublished: (id: string) => Promise<boolean>;
   storageDir: string; ready: () => Promise<void>; close?: () => Promise<void>; logger?: boolean;
 };
 
 export function buildApp(options: Options) {
+  if (!options.jwtSecret.trim()) throw new Error("JWT_SECRET is required");
   const app = Fastify({ logger: options.logger ?? false, exposeHeadRoutes: false });
+  app.register(jwt, { secret: options.jwtSecret, verify: { algorithms: ["HS256"] } });
+  app.decorateRequest("authenticatedUserId", undefined);
   const registry = new client.Registry();
   client.collectDefaultMetrics({ prefix: "media_service_", register: registry });
   app.get("/health", async () => ({ status: "ok", service: "media-service" }));

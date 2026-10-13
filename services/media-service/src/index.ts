@@ -3,6 +3,7 @@ import { publicationReader } from "./publication.js";
 import { disconnectPrisma, prisma } from "./database/prisma.js";
 
 const app = buildApp({
+  jwtSecret: process.env.JWT_SECRET ?? "",
   logger: true,
   storageDir: process.env.MEDIA_STORAGE_DIR ?? "/data/audio",
   readAsset: id => prisma.asset.findUnique({ where: { id } }),
