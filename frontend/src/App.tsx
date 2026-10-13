@@ -7,6 +7,7 @@ import CatalogPage from "./pages/CatalogPage";
 import PlaylistsPage from "./pages/PlaylistsPage";
 import UsersPage from "./pages/UsersPage";
 import HistoryPage from "./pages/HistoryPage";
+import FileUploadForm from "./components/FileUploadForm";
 
 import type { AuthenticatedUser, PublicUser } from "./types/auth";
 import { useLibrary } from "./hooks/useLibrary";
@@ -27,7 +28,7 @@ import "./App.css";
 
 type PublicPage = "register" | "login";
 
-type PrivatePage = "profile" | "catalog" | "playlists" | "history" | "users";
+type PrivatePage = "profile" | "catalog" | "playlists" | "history" | "users" | "files";
 
 function getErrorMessage(error: unknown, fallbackMessage: string): string {
   if (error instanceof Error) {
@@ -252,6 +253,8 @@ function App() {
           <strong className="site-title">FT Music</strong>
 
           <nav className="main-navigation" aria-label="User navigation">
+            <button type="button" className={privatePage === "files" ? "navigation-button active" : "navigation-button"}
+              aria-pressed={privatePage === "files"} onClick={() => setPrivatePage("files")}>Mes fichiers</button>
             <button type="button" className={privatePage === "history" ? "navigation-button active" : "navigation-button"}
               aria-pressed={privatePage === "history"} onClick={() => setPrivatePage("history")}>History</button>
             <button
@@ -364,6 +367,7 @@ function App() {
         )}
 
         {privatePage === "history" && <HistoryPage key={currentUser.id} />}
+        {privatePage === "files" && <main className="files-page" key={currentUser.id}><h1>Mes fichiers</h1><FileUploadForm /></main>}
 
         {privatePage === "users" && (
           <UsersPage

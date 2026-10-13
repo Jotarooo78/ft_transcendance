@@ -272,6 +272,32 @@ Les tests Catalogue couvrent les trois champs de référence sans filtre de
 statut et l'authentification interne. Les preuves de références SQL réelles
 et de conservation de la lecture publique sont prévues à l'étape 11.
 
+## Envoyer depuis l’interface — étape 9
+
+La navigation privée « Mes fichiers » affiche un formulaire audio/image,
+avec contrôles de fichier vide, taille et type. Les premiers 1 Mio au plus
+permettent de reconnaître les signatures, les dimensions PNG/JPEG/WebP et
+les contenus texte/actifs indécodables ; les images dépassant les dimensions
+sont refusées avant de demander au navigateur leur décodage. Une image dont
+l'en-tête ne permet pas ce contrôle borné est refusée avec un message clair.
+Le navigateur décode réellement l'image et tente les métadonnées audio,
+avec un délai de 5 s. Un codec audio non pris en charge localement reste
+envoyable : le serveur vérifie le contenu complet. Les WAV manifestement
+tronqués et les faux audios texte sont refusés localement.
+
+Le client utilise XMLHttpRequest.upload.onprogress, sans fabriquer de
+pourcentage : octets réels, progression indéterminée si nécessaire, puis
+« validation et enregistrement » jusqu'à une réponse 201 avec objet ready
+valide. Le JWT reste en mémoire et passe dans Authorization ; FormData fixe
+sa propre frontière. Annulation, réseau, timeout, 401 et changement de
+session ne produisent aucun succès trompeur. Un 401 tardif n'efface pas une
+session plus récente. La sélection reste disponible après un refus ; les
+URL de contrôle local sont libérées à la fin ou à l'annulation.
+
+Lint et compilation frontend sont les contrôles de cette étape. La preuve
+de progressions intermédiaires sur réseau réellement ralenti, des refus
+visibles et de l'aperçu reste au scénario Chromium de l'étape 12.
+
 ## État du contrôle initial
 
 Le 13 octobre 2026, la configuration Compose est valide et la base démarre.
