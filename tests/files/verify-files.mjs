@@ -1,3 +1,4 @@
+// Verify file management through HTTPS, PostgreSQL and the real Media volume.
 import assert from 'node:assert/strict';
 import https from 'node:https';
 import { randomUUID, createHash } from 'node:crypto';

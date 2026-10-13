@@ -29,3 +29,5 @@ frontend/public/audio
 /tests/e2e/playwright-report/
 /tests/music/test-results/
 /tests/music/playwright-report/
+/tests/files/test-results/
+/tests/files/playwright-report/

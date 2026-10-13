@@ -329,13 +329,13 @@ privé de campagne. Le scénario refuse d'écraser un manifeste existant.
 ```bash
 docker compose exec -T media-service npm run seed:demo
 docker compose exec -T catalog-service npm run seed:demo
-node tests/files/http-scenario.mjs initial /tmp/transcendence-files-state.json
+node tests/files/verify-files.mjs initial /tmp/transcendence-files-state.json
 docker compose restart media-service
-node tests/files/http-scenario.mjs verify /tmp/transcendence-files-state.json
+node tests/files/verify-files.mjs verify /tmp/transcendence-files-state.json
 docker compose restart db
-node tests/files/http-scenario.mjs verify /tmp/transcendence-files-state.json
-node tests/files/http-scenario.mjs catalog-down /tmp/transcendence-files-state.json
-node tests/files/http-scenario.mjs delete /tmp/transcendence-files-state.json
+node tests/files/verify-files.mjs verify /tmp/transcendence-files-state.json
+node tests/files/verify-files.mjs catalog-down /tmp/transcendence-files-state.json
+node tests/files/verify-files.mjs delete /tmp/transcendence-files-state.json
 ```
 
 La campagne est strictement bornée au projet common_repo, à HTTPS 1443 et à
@@ -369,6 +369,44 @@ vérification après redémarrage PostgreSQL, panne Catalogue et suppression
 concurrente/idempotente réussis sur les vrais services. Aucun dossier .upload
 résiduel ; les trois audios de démonstration et le catalogue sont conservés.
 Le rendu et la progression visibles du navigateur restent à l'étape 12.
+
+## Prouver les gestes navigateur — étape 12
+
+```bash
+npm ci --prefix tests/files
+npm run install:browser --prefix tests/files
+npm test --prefix tests/files
+```
+
+Playwright est verrouillé à 1.63.0 ; réutiliser son Chromium déjà installé
+lorsqu'il correspond. Les scénarios ciblent exclusivement HTTPS 1443, avec
+un worker, zéro retry, traces et vidéos désactivées ; seules les captures
+locales d'échec sont conservées dans des dossiers ignorés par Git.
+
+Les scénarios envoient une vraie image et un WAV de 576 044 octets par
+le formulaire. Un ralentissement CDP réel à 128 Kio/s d'envoi démontre
+plusieurs valeurs intermédiaires de progression : aucun onprogress synthétique
+ni réponse ready inventée. Les tests attendent les vraies réponses 201,
+vérifient naturalWidth de l'image et la durée/lecture réelle du MP3 via les
+contrôles audio, rechargent et reconnectent avant de relire la liste.
+Un audio AIFF effectivement refusé par le décodeur local est envoyé quand
+même, validé par FFmpeg et réellement lu par son aperçu MP3 séparé.
+
+Une référence draft réelle fait refuser la suppression avec 409 : ligne et
+aperçu restent visibles. Une coupure réseau conserve aussi la ligne ; après
+reprise, le vrai DELETE la retire et le rechargement confirme l'absence.
+B ne voit aucun fichier de A. Des fichiers image +1 octet, texte faux audio,
+WAV et PNG tronqués échouent localement avant POST ; les contournements par
+requête HTTP sont refusés aussi par le serveur. Annuler un envoi en réseau
+ralenti n'ajoute aucune ligne. Une réponse A réellement obtenue auprès du
+backend est retardée pendant logout/connexion B, puis relâchée : aucune
+ancienne ligne ne réapparaît.
+
+Les fixtures et comptes sont uniques à chaque test ; le nettoyage retire
+les seules références et fichiers de ces comptes via DELETE, en exigeant
+une liste vide. Les comptes et lignes deleted restent comme suivi.
+Les résultats Chromium complètent les preuves SQL/disque, sans certifier
+tous les formats, navigateurs ou charges.
 
 ## État du contrôle initial
 
