@@ -9,14 +9,17 @@ import { FileError, audioByteLimit, imageByteLimit } from "./validate-file.js";
 sharp.cache(false); sharp.concurrency(1);
 const path = process.argv[2]!;
 const declared = process.argv[3]!.split(";", 1)[0]!.trim().toLowerCase();
+const previewPath = process.argv[4];
 
 async function runDecoder(command: string, args: string[], countOnly = false): Promise<{ text: string; bytes: number }> {
   const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
+  const preview = countOnly && previewPath ? await open(previewPath, "wx", 0o600) : undefined;
   try {
     return await new Promise((resolve, reject) => {
       // fd is seekable; file, network and playlist protocols remain forbidden.
-      const child = spawn(command, ["-v", "error", "-protocol_whitelist", "fd", "-fd", "3", ...args],
-        { stdio: ["ignore", "pipe", "pipe", file.fd] });
+      const previewArgs = preview ? ["-map", "0:a:0", "-threads", "1", "-c:a", "libmp3lame", "-b:a", "128k", "-ar", "44100", "-ac", "2", "-f", "mp3", "pipe:4"] : [];
+      const child = spawn(command, ["-v", "error", "-protocol_whitelist", "fd", "-fd", "3", ...args, ...previewArgs],
+        { stdio: preview ? ["ignore", "pipe", "pipe", file.fd, preview.fd] : ["ignore", "pipe", "pipe", file.fd] });
       let text = ""; let bytes = 0; let errors = ""; let overflow = false;
       child.stdout!.on("data", (chunk: Buffer) => {
         bytes += chunk.length;
@@ -26,7 +29,7 @@ async function runDecoder(command: string, args: string[], countOnly = false): P
       child.on("error", () => reject(new FileError(503, "decoder_unavailable")));
       child.on("close", code => code === 0 && !errors && !overflow ? resolve({ text, bytes }) : reject(new FileError(415, "invalid_file")));
     });
-  } finally { await file.close(); }
+  } finally { await file.close(); await preview?.sync(); await preview?.close(); }
 }
 
 async function decode() {
@@ -78,7 +81,14 @@ async function decode() {
   const advertised = Number(probe.streams[0].duration ?? probe.format?.duration) * 1000;
   if (!Number.isSafeInteger(durationMs) || durationMs <= 0 ||
     (Number.isFinite(advertised) && Math.abs(advertised - durationMs) > Math.max(250, advertised * 0.02))) throw new FileError(415, "invalid_duration");
-  return { ...common, purpose: "audio", mimeType: aliases[0], durationMs };
+  let previewByteSize: number | undefined;
+  if (previewPath) {
+    const preview = await open(previewPath, constants.O_RDONLY | constants.O_NOFOLLOW);
+    try { previewByteSize = (await preview.stat()).size; } finally { await preview.close(); }
+    // Bound the later authenticated Blob download independently of original size.
+    if (!previewByteSize || previewByteSize > audioByteLimit) throw new FileError(422, "preview_too_large");
+  }
+  return { ...common, purpose: "audio", mimeType: aliases[0], durationMs, previewByteSize };
 }
 
 try { process.stdout.write(JSON.stringify(await decode())); }

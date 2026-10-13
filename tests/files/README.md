@@ -167,6 +167,53 @@ Ces contrôles ne prouvent pas encore un envoi HTTPS, le stockage SQL, un
 aperçu navigateur, ni la prise en charge de fichiers maximaux de tous formats.
 Les étapes suivantes apportent ces preuves et la variante audio d'aperçu.
 
+## Recevoir et conserver — étape 6
+
+POST /api/media/assets reçoit exactement un champ fichier nommé `file`,
+avec Authorization: Bearer et aucun champ de propriétaire/chemin. La
+réception compte les octets en flux vers un dossier privé `.upload-UUID`
+du volume Media. Un seul envoi est actif par instance ; les autres donnent
+503. Une image reconnue est limitée à 25 000 000 octets dès sa réception,
+l'audio à 500 000 000. Une erreur ou un abandon ferme le flux et nettoie
+le dossier temporaire. Le nom original du navigateur n'est jamais un chemin.
+
+Après décodage, tous les audios reçoivent une variante MP3 128 kbit/s,
+44,1 kHz stéréo ; l'original reste identique. Le budget unique du worker
+inclut validation et conversion, et la variante est bornée à 500 Mo.
+Les images utilisent directement leur original validé. La lisibilité réelle
+MP3 dans Chromium sera démontrée à l'étape navigateur.
+
+Le serveur synchronise les fichiers/dossiers sur disque, installe des liens
+complets sans écrasement, puis crée en une écriture Prisma l'asset ready et
+sa variante. La valeur SQL existante `cover` représente une image, tandis
+que la réponse publique expose `usage: image`. Aucun changement de schéma
+ni écriture Catalogue n'est nécessaire. La réponse 201 contient uniquement
+id, usage, MIME, taille, durée éventuelle et état ; elle ne contient aucun
+chemin, propriétaire ou clé interne.
+
+Une panne SQL certaine supprime les seuls liens installés par l'envoi. Un
+résultat de commit impossible à déterminer conserve dossier et fichiers
+jusqu'à reprise, plutôt que risquer de retirer les octets d'un asset ready.
+Au démarrage, avant de recevoir des requêtes, `recoverUploads` examine au
+plus 1 000 dossiers .upload-UUID, consulte Media et compare les inodes :
+supprime les liens d'un envoi non enregistré, conserve ceux d'un asset
+enregistré, puis retire son dossier temporaire. SQL indisponible ou trop de
+dossiers à reprendre empêchent le démarrage ; aucun seed ni fichier portant
+une autre clé n'est effacé. Ne pas lancer ce traitement à côté d'une instance
+qui écrit activement dans le même volume ; il est conçu pour le redémarrage
+de l'unique instance Media de cette pile.
+
+Nginx autorise 501 000 000 octets sur `/api/media/assets`, enveloppe comprise,
+transmet l'envoi en flux et attend jusqu'à 330 secondes le résultat après
+réception. La limite avatar et les autres routes gardent leurs bornes.
+Les configurations principale et musicale passent `nginx -t`.
+
+Les 14 tests Media passent, dont quatre nouveaux groupes : POST audio/image
+sur vrais octets, variante MP3 décodable, refus multipart/MIME/taille,
+compensation et commit incertain avec base simulée, reprise sur disque et
+collision, et abandon d'une vraie connexion HTTP. La preuve PostgreSQL/HTTPS
+reste à l'étape 11 ; la liste et la lecture privées restent à l'étape 7.
+
 ## État du contrôle initial
 
 Le 13 octobre 2026, la configuration Compose est valide et la base démarre.

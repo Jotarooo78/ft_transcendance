@@ -99,6 +99,13 @@ exact de cette variante sera fixé lors de la production et testé dans le
 navigateur retenu. Aucun succès d’aperçu ne peut être revendiqué pour un format
 accepté mais non lisible. Les images validées ont un aperçu image.
 
+Choix de production du 13 octobre 2026 : chaque audio validé reçoit un aperçu
+MP3 distinct à 128 kbit/s, 44,1 kHz stéréo, préparé dans le budget global
+audio. Sa taille est bornée à 500 000 000 octets (refus 422 si dépassée), pour
+borner aussi son téléchargement privé en Blob. L’original est conservé sans
+modification ; les images utilisent leur original validé. La preuve de
+lecture réelle dans Chromium reste requise avant la clôture du parcours.
+
 Les lectures privées exigent une authentification et ne mettent jamais de JWT
 dans une URL. Utiliser Cache-Control: no-store ; libérer les copies et URL Blob
 du navigateur à la fermeture de l’aperçu, à la suppression ou au changement

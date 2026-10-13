@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { constants } from "node:fs";
-import { open, readFile } from "node:fs/promises";
+import { open, readFile, lstat } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 export const audioByteLimit = 500_000_000;
@@ -8,6 +8,7 @@ export const imageByteLimit = 25_000_000;
 export type ValidatedFile = {
   purpose: "audio" | "image"; mimeType: string; byteSize: number;
   checksumSha256: string; durationMs: number | null; width?: number; height?: number;
+  previewByteSize?: number;
 };
 export class FileError extends Error {
   constructor(public readonly status: number, public readonly code: string) { super(code); }
@@ -29,7 +30,7 @@ async function residentBytes(pid: number): Promise<number> {
 }
 
 export function createFileValidator() {
-  return async (path: string, declaredMime: string, limits?: { timeMs?: number; memoryBytes?: number; signal?: AbortSignal }): Promise<ValidatedFile> => {
+  return async (path: string, declaredMime: string, limits?: { timeMs?: number; memoryBytes?: number; signal?: AbortSignal; previewPath?: string }): Promise<ValidatedFile> => {
     if (busy) throw new FileError(503, "decoder_busy");
     if (process.platform !== "linux") throw new FileError(503, "decoder_unavailable");
     busy = true;
@@ -50,7 +51,7 @@ export function createFileValidator() {
       const timeMs = Math.min(limits?.timeMs ?? Infinity, image ? 30_000 : 300_000);
       const memoryBytes = Math.min(limits?.memoryBytes ?? Infinity, image ? 268_435_456 : 536_870_912);
       return await new Promise<ValidatedFile>((resolve, reject) => {
-        const worker = spawn(process.execPath, ["--max-old-space-size=64", fileURLToPath(new URL("./decode-file.js", import.meta.url)), path, declaredMime],
+        const worker = spawn(process.execPath, ["--max-old-space-size=64", fileURLToPath(new URL("./decode-file.js", import.meta.url)), path, declaredMime, limits?.previewPath ?? ""],
           { detached: true, stdio: ["ignore", "pipe", "ignore"], env: { PATH: process.env.PATH, NODE_ENV: "production" } });
         let output = ""; let failure: FileError | undefined; let finished = false; let inspecting = false;
         const stop = (error: FileError) => {
@@ -62,7 +63,13 @@ export function createFileValidator() {
         const monitor = setInterval(async () => {
           if (finished || inspecting || !worker.pid) return;
           inspecting = true;
-          try { if (await residentBytes(worker.pid) > memoryBytes && !finished) stop(new FileError(422, "processing_limit")); }
+          try {
+            if (await residentBytes(worker.pid) > memoryBytes && !finished) stop(new FileError(422, "processing_limit"));
+            if (limits?.previewPath) {
+              const preview = await lstat(limits.previewPath).catch(error => { if (error.code === "ENOENT") return null; throw error; });
+              if (preview && preview.size > audioByteLimit && !finished) stop(new FileError(422, "preview_too_large"));
+            }
+          }
           catch { if (!finished) stop(new FileError(503, "decoder_unavailable")); }
           finally { inspecting = false; }
         }, 20);

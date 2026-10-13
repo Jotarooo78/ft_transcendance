@@ -1,9 +1,12 @@
 import Fastify from "fastify";
 import jwt from "@fastify/jwt";
+import multipart from "@fastify/multipart";
 import client from "prom-client";
 import { constants } from "node:fs";
 import { open, type FileHandle } from "node:fs/promises";
 import { join } from "node:path";
+import type { FileStore } from "./file-definitions.js";
+import { registerFileUpload } from "./register-file-upload.js";
 
 export type AudioAsset = {
   purpose: string; state: string; storageKey: string; mimeType: string; byteSize: bigint | null;
@@ -25,13 +28,16 @@ type Options = {
   readAsset: (id: string) => Promise<AudioAsset | null>;
   isPublished: (id: string) => Promise<boolean>;
   storageDir: string; ready: () => Promise<void>; close?: () => Promise<void>; logger?: boolean;
+  files?: FileStore;
 };
 
 export function buildApp(options: Options) {
   if (!options.jwtSecret.trim()) throw new Error("JWT_SECRET is required");
   const app = Fastify({ logger: options.logger ?? false, exposeHeadRoutes: false });
   app.register(jwt, { secret: options.jwtSecret, verify: { algorithms: ["HS256"] } });
+  app.register(multipart);
   app.decorateRequest("authenticatedUserId", undefined);
+  if (options.files) registerFileUpload(app, options.storageDir, options.files);
   const registry = new client.Registry();
   client.collectDefaultMetrics({ prefix: "media_service_", register: registry });
   app.get("/health", async () => ({ status: "ok", service: "media-service" }));
