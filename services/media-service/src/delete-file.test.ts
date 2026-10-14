@@ -95,6 +95,21 @@ test("interrupted deletion remains deleting until recovery confirms SQL, includi
   assert.equal(await recoverDeletions(directory, state.files), 0);
 });
 
+test("deletion rereads variants after changing state so a just-attached cover cannot be orphaned", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "file-delete-cover-race-")), state = deletionStore();
+  try {
+    for (const key of ["original", "preview", "cover"]) await writeFile(join(directory, key), "image");
+    const transition = state.files.markDeleting;
+    state.files.markDeleting = async (...args) => {
+      // La pochette est ajoutée entre la première lecture et le verrouillage de suppression.
+      state.asset.variants = [...state.asset.variants, { storageKey: "cover", mimeType: "image/png", byteSize: 5n }];
+      return transition(...args);
+    };
+    await deleteFile(directory, state.files, { authenticatedUserId: owner }, id);
+    assert.deepEqual(await readdir(directory), []); assert.equal(state.asset.state, "deleted");
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
 test("references HTTP client sends service authorization and refuses bad, failed or timed out responses", async t => {
   let mode = "true"; let auth = "";
   const server = createServer((request, response) => {
@@ -103,7 +118,9 @@ test("references HTTP client sends service authorization and refuses bad, failed
     response.end(mode === "bad" ? '{"referenced":"no"}' : mode === "large" ? "x".repeat(5000) : JSON.stringify({ referenced: mode === "true" }));
   }); await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
   t.after(() => { server.closeAllConnections(); server.close(); }); const address = server.address(); assert.ok(address && typeof address !== "string");
-  const read = catalogReferences(`http://127.0.0.1:${address.port}`, "internal-test-token", 100);
+  const read = catalogReferences(`http://127.0.0.1:${address.port}`, "internal-test-token", 1000);
   assert.equal(await read(id), true); assert.equal(auth, "Bearer internal-test-token"); mode = "false"; assert.equal(await read(id), false);
-  for (mode of ["bad", "large", "failure", "timeout"]) await assert.rejects(read(id));
+  for (mode of ["bad", "large", "failure"]) await assert.rejects(read(id));
+  mode = "timeout";
+  await assert.rejects(catalogReferences(`http://127.0.0.1:${address.port}`, "internal-test-token", 50)(id));
 });

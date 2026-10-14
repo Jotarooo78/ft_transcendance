@@ -28,7 +28,11 @@ export async function deleteFile(storageDir: string, files: FileDeletion, reques
     if (current?.state === "deleted") return;
     if (current?.state !== "deleting") throw new FileError(404, "file_not_found");
   }
-  for (const key of [asset.storageKey, ...asset.variants.map(variant => variant.storageKey)]) {
+  // L’état deleting interdit désormais une nouvelle pochette ; relire évite une liste de variantes périmée.
+  const deleting = await files.read(request, id);
+  if (deleting?.state === "deleted") return;
+  if (!deleting || deleting.state !== "deleting") throw new FileError(503, "file_state_unavailable");
+  for (const key of [deleting.storageKey, ...deleting.variants.map(variant => variant.storageKey)]) {
     if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(key)) throw new FileError(503, "file_storage_unavailable");
     try {
       const path = join(storageDir, key); const stat = await lstat(path);
