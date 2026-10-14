@@ -53,9 +53,15 @@ doit être long, aléatoire, identique dans les deux conteneurs et différent de
 `JWT_SECRET`. `USER_SERVICE_URL` est fourni par Compose à Auth sous la forme
 `http://user-service:4001`.
 
+`AUTH_SIGNUP_RATE_LIMIT` et `AUTH_LOGIN_RATE_LIMIT` sont facultatives : elles
+fixent le nombre de requêtes par minute et par adresse acceptées sur
+`/api/auth/signup` et `/api/auth/login`. Sans elles, aucune limite n'est
+appliquée. Derrière Nginx, toutes les requêtes arrivent de la même adresse :
+la limite est donc commune à tous les clients.
+
 La liste des tables, des propriétaires et des cardinalités est documentée dans
 [`docs/SCHEMA_DONNEES.md`](docs/SCHEMA_DONNEES.md). Les commandes Prisma sont
-documentées dans [`services/PRISMA.md`](services/PRISMA.md).
+documentées dans [`backend/docs/PRISMA.md`](backend/docs/PRISMA.md).
 
 ## Catalogue et audio de démonstration
 

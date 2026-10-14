@@ -99,7 +99,7 @@ pas la recherche courante. La panne du détail ne doit pas effacer la liste.
 
 ## Contrôle de cette sous-action
 
-Relu contre `services/catalog-service/prisma/schema.prisma`,
+Relu contre `backend/services/catalog-service/prisma/schema.prisma`,
 `frontend/src/types/music.ts` et `frontend/src/pages/CatalogPage.tsx` à partir
 de la révision 182c75e. Chaque champ a une source ou une dérivation explicite.
 Les exemples JSON sont vérifiés syntaxiquement ; aucune API n'a été testée à

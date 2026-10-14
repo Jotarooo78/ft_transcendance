@@ -1,0 +1,41 @@
+{
+  "name": "@ft/media-service",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "start": "node dist/server.js",
+    "dev": "tsx watch src/server.ts",
+    "prebuild": "npm run prisma:generate",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "npm run prisma:generate && tsc -p tsconfig.test.json --noEmit",
+    "test": "npm run prisma:generate && tsc -p tsconfig.test-build.json && node --test \"dist-test/test/*.test.js\"",
+    "prisma:validate": "prisma validate --schema prisma/schema.prisma",
+    "prisma:generate": "prisma generate --schema prisma/schema.prisma",
+    "prisma:migrate:dev": "prisma migrate dev --config prisma.migration.config.ts",
+    "prisma:migrate:deploy": "prisma migrate deploy --config prisma.migration.config.ts",
+    "prisma:smoke": "node dist/scripts/prisma-smoke.js",
+    "seed:demo": "node dist/seed/seed-demo.js"
+  },
+  "dependencies": {
+    "@fastify/multipart": "9.4.0",
+    "@ft/service-kit": "*",
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
+    "dotenv": "^17.4.2",
+    "fastify": "^5.12.1",
+    "pg": "^8.23.0",
+    "sharp": "0.34.5",
+    "typebox": "^1.3.37"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "@types/pg": "^8.23.1",
+    "prisma": "7.10.0",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2"
+  }
+}

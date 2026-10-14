@@ -31,7 +31,8 @@ services:
 
   migrate-auth:
     build:
-      context: ../../services/auth-service
+      context: ../../backend
+      dockerfile: services/auth-service/Dockerfile
       target: build
     environment:
       AUTH_MIGRATION_DATABASE_URL: postgresql://auth_migration:per_auth_migration_test_only@db:5432/transcendence_per?schema=auth
@@ -42,7 +43,8 @@ services:
 
   migrate-users:
     build:
-      context: ../../services/user-service
+      context: ../../backend
+      dockerfile: services/user-service/Dockerfile
       target: build
     environment:
       USER_MIGRATION_DATABASE_URL: postgresql://users_migration:per_users_migration_test_only@db:5432/transcendence_per?schema=users
@@ -53,7 +55,8 @@ services:
 
   migrate-catalog:
     build:
-      context: ../../services/catalog-service
+      context: ../../backend
+      dockerfile: services/catalog-service/Dockerfile
       target: build
     environment:
       CATALOG_MIGRATION_DATABASE_URL: postgresql://catalog_migration:per_catalog_migration_test_only@db:5432/transcendence_per?schema=catalog
@@ -64,7 +67,8 @@ services:
 
   migrate-media:
     build:
-      context: ../../services/media-service
+      context: ../../backend
+      dockerfile: services/media-service/Dockerfile
       target: build
     environment:
       MEDIA_MIGRATION_DATABASE_URL: postgresql://media_migration:per_media_migration_test_only@db:5432/transcendence_per?schema=media
@@ -75,7 +79,8 @@ services:
 
   migrate-library:
     build:
-      context: ../../services/library-service
+      context: ../../backend
+      dockerfile: services/library-service/Dockerfile
       target: build
     environment:
       LIBRARY_MIGRATION_DATABASE_URL: postgresql://library_migration:per_library_migration_test_only@db:5432/transcendence_per?schema=library
@@ -86,7 +91,8 @@ services:
 
   migrate-playback:
     build:
-      context: ../../services/playback-service
+      context: ../../backend
+      dockerfile: services/playback-service/Dockerfile
       target: build
     environment:
       PLAYBACK_MIGRATION_DATABASE_URL: postgresql://playback_migration:per_playback_migration_test_only@db:5432/transcendence_per?schema=playback

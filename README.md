@@ -8,7 +8,10 @@ Avant de démarrer les conteneurs, créer le fichier `.env` local à partir de
 
 ## Services backend M1
 
-Chaque domaine propriétaire est déployé dans son propre conteneur :
+Chaque domaine propriétaire est déployé dans son propre conteneur. Le code des
+six services et de leur paquet partagé se trouve dans `backend/` ; son
+organisation et ses règles sont décrites dans
+[backend/docs/CONVENTIONS.md](backend/docs/CONVENTIONS.md).
 
 | Service            | Port interne | Responsabilité                            |
 | ------------------ | ------------ | ----------------------------------------- |
@@ -20,13 +23,13 @@ Chaque domaine propriétaire est déployé dans son propre conteneur :
 | `playback-service` | 4005         | Sessions et progression d'écoute          |
 
 Les clients et commandes Prisma sont documentés dans
-[services/PRISMA.md](services/PRISMA.md). Les six baselines matérialisent les
+[backend/docs/PRISMA.md](backend/docs/PRISMA.md). Les six baselines matérialisent les
 22 tables métier M1 et leurs cardinalités locales.
 
 Le schéma PostgreSQL, ses cardinalités et la procédure de reconstruction sont décrits dans
 [docs/SCHEMA_DONNEES.md](docs/SCHEMA_DONNEES.md).
 
-Le rôle de chaque fichier présent dans ces dossiers est résumé dans
+Le contenu de chaque service est résumé dans
 [docs/STRUCTURE_SERVICES.md](docs/STRUCTURE_SERVICES.md).
 
 ## Preuve du parcours utilisateur

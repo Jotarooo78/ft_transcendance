@@ -25,12 +25,15 @@ services:
     restart: unless-stopped
 
   # --- Microservices backend ---
-  # Chaque service : son dossier sous /services, son Dockerfile,
-  # son bloc ci-dessous. Un ami qui ajoute "game-service" copie
-  # ce bloc en changeant le nom, le build path et le port interne.
+  # Chaque service : son dossier sous backend/services, son Dockerfile,
+  # son bloc ci-dessous. Le contexte de build est backend/, car chaque image
+  # embarque aussi le paquet partagé backend/packages/service-kit.
+  # Ajouter un service : voir backend/docs/CONVENTIONS.md.
 
   auth-service:
-    build: ./services/auth-service
+    build:
+      context: ./backend
+      dockerfile: services/auth-service/Dockerfile
     container_name: ft_auth_service
     expose:
       - "4000"
@@ -49,7 +52,9 @@ services:
     restart: unless-stopped
 
   user-service:
-    build: ./services/user-service
+    build:
+      context: ./backend
+      dockerfile: services/user-service/Dockerfile
     container_name: ft_user_service
     expose:
       - "4001"
@@ -69,7 +74,9 @@ services:
 
   # Service propriétaire des métadonnées musicales et des contrôles de publication/référence.
   catalog-service:
-    build: ./services/catalog-service
+    build:
+      context: ./backend
+      dockerfile: services/catalog-service/Dockerfile
     container_name: ft_catalog_service
     expose:
       - "4002"
@@ -84,7 +91,9 @@ services:
 
   # Service propriétaire des originaux et aperçus ; les octets sont conservés dans media_data.
   media-service:
-    build: ./services/media-service
+    build:
+      context: ./backend
+      dockerfile: services/media-service/Dockerfile
     container_name: ft_media_service
     expose:
       - "4003"
@@ -104,7 +113,9 @@ services:
 
   # Service propriétaire des playlists privées et de leurs occurrences versionnées.
   library-service:
-    build: ./services/library-service
+    build:
+      context: ./backend
+      dockerfile: services/library-service/Dockerfile
     container_name: ft_library_service
     expose:
       - "4004"
@@ -122,7 +133,9 @@ services:
 
   # Service propriétaire des sessions d’écoute et des événements de progression.
   playback-service:
-    build: ./services/playback-service
+    build:
+      context: ./backend
+      dockerfile: services/playback-service/Dockerfile
     container_name: ft_playback_service
     expose:
       - "4005"
@@ -234,7 +247,8 @@ services:
   # Conteneurs de migration : utilisent la cible build et l’URL de migration, avant démarrage des services HTTP.
   migrate-auth:
     build:
-      context: ./services/auth-service
+      context: ./backend
+      dockerfile: services/auth-service/Dockerfile
       target: build
     env_file:
       - .env
@@ -247,7 +261,8 @@ services:
 
   migrate-users:
     build:
-      context: ./services/user-service
+      context: ./backend
+      dockerfile: services/user-service/Dockerfile
       target: build
     env_file:
       - .env
@@ -260,7 +275,8 @@ services:
 
   migrate-catalog:
     build:
-      context: ./services/catalog-service
+      context: ./backend
+      dockerfile: services/catalog-service/Dockerfile
       target: build
     env_file:
       - .env
@@ -273,7 +289,8 @@ services:
 
   migrate-media:
     build:
-      context: ./services/media-service
+      context: ./backend
+      dockerfile: services/media-service/Dockerfile
       target: build
     env_file:
       - .env
@@ -286,7 +303,8 @@ services:
 
   migrate-library:
     build:
-      context: ./services/library-service
+      context: ./backend
+      dockerfile: services/library-service/Dockerfile
       target: build
     env_file:
       - .env
@@ -299,7 +317,8 @@ services:
 
   migrate-playback:
     build:
-      context: ./services/playback-service
+      context: ./backend
+      dockerfile: services/playback-service/Dockerfile
       target: build
     env_file:
       - .env

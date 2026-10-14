@@ -115,7 +115,7 @@ Ne jamais supprimer globalement des tables, des comptes ou des volumes.
 
 ## Valider le contenu réel — étape 5
 
-`services/media-service/src/validate-file.ts` lance `decode-file.ts` dans un
+`backend/services/media-service/src/validation/validate-file.ts` lance `decode-file.ts` dans un
 processus Linux isolé. La fonction reçoit un temporaire interne et le MIME
 annoncé, puis renvoie type confirmé, octets, SHA-256 et durée décodée ; une
 image reçoit aussi ses dimensions. Elle ne publie ni fichier ni ligne SQL.

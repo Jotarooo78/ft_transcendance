@@ -41,7 +41,7 @@ export MUSIC_BASE_URL=https://127.0.0.1:3443
 cd "$repo_dir"
 printf '[MUSIC] Tools Node=%s npm=%s Docker=%s Compose=%s\n' "$(node --version)" "$(npm --version)" "$(docker --version)" "$(docker compose version --short)"
 printf '[MUSIC] Revision=%s campaign=%s\n' "$revision" "$campaign"
-if [[ -n "$(git status --porcelain -- tests/music services frontend nginx database)" ]]; then
+if [[ -n "$(git status --porcelain -- tests/music backend frontend nginx database)" ]]; then
   echo '[MUSIC] Source has local modifications; revision identifies committed base.'
 fi
 phase=configuration

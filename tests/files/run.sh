@@ -56,7 +56,7 @@ trap cleanup EXIT
 [[ "$(node -p 'process.versions.node.split(".")[0]')" == 22 ]]
 revision="$(git rev-parse HEAD)"
 printf '[FILES] Revision=%s Node=%s npm=%s Compose=%s\n' "$revision" "$(node --version)" "$(npm --version)" "$(docker compose version --short)"
-if [[ -n "$(git status --porcelain -- tests/files services frontend nginx database README.md)" ]]; then printf '[FILES] Source includes local changes; revision identifies committed base.\n'; fi
+if [[ -n "$(git status --porcelain -- tests/files backend frontend nginx database README.md)" ]]; then printf '[FILES] Source includes local changes; revision identifies committed base.\n'; fi
 "${base[@]}" config --quiet
 "${base[@]}" config --format json > "$work_dir/config.json"
 check prepare

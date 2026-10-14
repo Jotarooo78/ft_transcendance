@@ -32,7 +32,8 @@ services:
 
   migrate-auth:
     build:
-      context: ../../services/auth-service
+      context: ../../backend
+      dockerfile: services/auth-service/Dockerfile
       target: build
     environment:
       AUTH_MIGRATION_DATABASE_URL: postgresql://auth_migration:e2e_auth_migration_test_only@db:5432/transcendence_music?schema=auth
@@ -43,7 +44,8 @@ services:
 
   migrate-users:
     build:
-      context: ../../services/user-service
+      context: ../../backend
+      dockerfile: services/user-service/Dockerfile
       target: build
     environment:
       USER_MIGRATION_DATABASE_URL: postgresql://users_migration:e2e_users_migration_test_only@db:5432/transcendence_music?schema=users
@@ -54,7 +56,8 @@ services:
 
   migrate-catalog:
     build:
-      context: ../../services/catalog-service
+      context: ../../backend
+      dockerfile: services/catalog-service/Dockerfile
       target: build
     environment:
       CATALOG_MIGRATION_DATABASE_URL: postgresql://catalog_migration:e2e_catalog_migration_test_only@db:5432/transcendence_music?schema=catalog
@@ -65,7 +68,8 @@ services:
 
   migrate-media:
     build:
-      context: ../../services/media-service
+      context: ../../backend
+      dockerfile: services/media-service/Dockerfile
       target: build
     environment:
       MEDIA_MIGRATION_DATABASE_URL: postgresql://media_migration:e2e_media_migration_test_only@db:5432/transcendence_music?schema=media
@@ -76,7 +80,8 @@ services:
 
   migrate-library:
     build:
-      context: ../../services/library-service
+      context: ../../backend
+      dockerfile: services/library-service/Dockerfile
       target: build
     environment:
       LIBRARY_MIGRATION_DATABASE_URL: postgresql://library_migration:e2e_library_migration_test_only@db:5432/transcendence_music?schema=library
@@ -87,7 +92,8 @@ services:
 
   migrate-playback:
     build:
-      context: ../../services/playback-service
+      context: ../../backend
+      dockerfile: services/playback-service/Dockerfile
       target: build
     environment:
       PLAYBACK_MIGRATION_DATABASE_URL: postgresql://playback_migration:e2e_playback_migration_test_only@db:5432/transcendence_music?schema=playback
@@ -130,9 +136,12 @@ services:
         condition: service_completed_successfully
 
   catalog-service:
-    build: ../../services/catalog-service
+    build:
+      context: ../../backend
+      dockerfile: services/catalog-service/Dockerfile
     environment:
       CATALOG_DATABASE_URL: postgresql://catalog_runtime:e2e_catalog_runtime_test_only@db:5432/transcendence_music?schema=catalog
+      INTERNAL_SERVICE_TOKEN: e2e_test_only_internal_token_with_sufficient_length
     depends_on:
       apply-permissions:
         condition: service_completed_successfully
@@ -143,11 +152,15 @@ services:
       retries: 30
 
   media-service:
-    build: ../../services/media-service
+    build:
+      context: ../../backend
+      dockerfile: services/media-service/Dockerfile
     environment:
       MEDIA_DATABASE_URL: postgresql://media_runtime:e2e_media_runtime_test_only@db:5432/transcendence_music?schema=media
       MEDIA_STORAGE_DIR: /data/audio
       CATALOG_SERVICE_URL: http://catalog-service:4002
+      JWT_SECRET: e2e_test_only_jwt_secret_with_sufficient_length
+      INTERNAL_SERVICE_TOKEN: e2e_test_only_internal_token_with_sufficient_length
     volumes:
       - music_media_data:/data/audio
     depends_on:
@@ -162,7 +175,9 @@ services:
       retries: 30
 
   library-service:
-    build: ../../services/library-service
+    build:
+      context: ../../backend
+      dockerfile: services/library-service/Dockerfile
     environment:
       LIBRARY_DATABASE_URL: postgresql://library_runtime:e2e_library_runtime_test_only@db:5432/transcendence_music?schema=library
       JWT_SECRET: e2e_test_only_jwt_secret_with_sufficient_length
@@ -179,7 +194,9 @@ services:
       retries: 30
 
   playback-service:
-    build: ../../services/playback-service
+    build:
+      context: ../../backend
+      dockerfile: services/playback-service/Dockerfile
     environment:
       PLAYBACK_DATABASE_URL: postgresql://playback_runtime:e2e_playback_runtime_test_only@db:5432/transcendence_music?schema=playback
       JWT_SECRET: e2e_test_only_jwt_secret_with_sufficient_length
@@ -194,7 +211,9 @@ services:
       retries: 30
 
   auth-service:
-    build: ../../services/auth-service
+    build:
+      context: ../../backend
+      dockerfile: services/auth-service/Dockerfile
     environment:
       AUTH_DATABASE_URL: postgresql://auth_runtime:e2e_auth_runtime_test_only@db:5432/transcendence_music?schema=auth
       JWT_SECRET: e2e_test_only_jwt_secret_with_sufficient_length
@@ -212,7 +231,9 @@ services:
       retries: 30
 
   user-service:
-    build: ../../services/user-service
+    build:
+      context: ../../backend
+      dockerfile: services/user-service/Dockerfile
     environment:
       USER_DATABASE_URL: postgresql://users_runtime:e2e_users_runtime_test_only@db:5432/transcendence_music?schema=users
       JWT_SECRET: e2e_test_only_jwt_secret_with_sufficient_length

@@ -291,9 +291,9 @@ les propriétaires, les opérations autorisées et les refus interservices. Il a
 
 ## 7. Sources vérifiées
 
-- Dépôt : les six `services/*/prisma/schema.prisma`, les migrations Auth et
-  Users, les accès Prisma dans `services/auth-service/src` et
-  `services/user-service/src`, `.env.example` et `docker-compose.yml`.
+- Dépôt : les six `backend/services/*/prisma/schema.prisma`, les migrations Auth et
+  Users, les accès Prisma dans `backend/services/auth-service/src/repositories` et
+  `backend/services/user-service/src/repositories`, `.env.example` et `docker-compose.yml`.
 - Commit courant : `9ee690b`, ajout du champ optionnel `bio` et de sa lecture
   dans le parcours profil.
 - Notion : [première conception ER](https://app.notion.com/p/3c641a23495480f4a6c1dd068ada44d4),

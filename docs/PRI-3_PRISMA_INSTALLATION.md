@@ -2,7 +2,7 @@
 
 > Document historique. Les six services possèdent maintenant leurs modèles et
 > leur baseline. Voir [SCHEMA_DONNEES.md](SCHEMA_DONNEES.md) et
-> [../services/PRISMA.md](../services/PRISMA.md).
+> [../backend/docs/PRISMA.md](../backend/docs/PRISMA.md).
 
 ## Résultat
 
@@ -96,4 +96,4 @@ PRI-3.
   prochain `up` complet.
 
 Le mode d'emploi quotidien se trouve dans
-[`services/PRISMA.md`](../services/PRISMA.md).
+[`backend/docs/PRISMA.md`](../backend/docs/PRISMA.md).
