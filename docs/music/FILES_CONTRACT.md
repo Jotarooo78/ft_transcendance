@@ -1,6 +1,8 @@
 # Contrat des fichiers personnels
 
-Choix validés avec l’utilisateur le 12 octobre 2026. Ce document définit les
+Choix initiaux validés le 12 octobre 2026, puis parcours audio/pochette validé
+le 14 octobre 2026. Les nouvelles règles sont la cible de la rectification
+en cours ; les preuves seront ajoutées après exécution. Ce document définit les
 comportements et limites retenus. Il sert de référence commune pour
 l’interface, Media et les tests ; les preuves d’exécution sont décrites
 dans [le guide des fichiers](../../tests/files/README.md).
@@ -8,8 +10,9 @@ dans [le guide des fichiers](../../tests/files/README.md).
 ## Périmètre
 
 Le catalogue commun reste initialisé par des scripts. Un utilisateur connecté
-dispose séparément de « Mes fichiers » : envoi, liste, aperçu et suppression
-de ses propres audios et images. Les fichiers restent sur le serveur et sont
+dispose séparément de « Mes audios » : envoi, liste, aperçu et suppression
+de ses audios avec une pochette facultative. Une image seule ne peut pas être
+ajoutée dans cet espace. Les fichiers restent sur le serveur et sont
 accessibles depuis plusieurs appareils avec le même compte.
 
 Un envoi personnel ne crée ni morceau, ni artiste, ni album dans Catalogue.
@@ -39,8 +42,10 @@ OGG et Opus constituent des cas représentatifs à vérifier. La version, les
 capacités et les limites de FFmpeg utilisé seront documentées lors de la
 production. Seuls les fichiers locaux envoyés sont traités : un fichier ne
 doit pas provoquer la lecture d’une URL, d’un chemin arbitraire ou d’une
-ressource externe. La présence de vidéo ne constitue pas un fichier audio
-accepté dans ce parcours.
+ressource externe. Une véritable piste vidéo est refusée. Les images attachées
+signalées par attached_pic sont des pochettes facultatives et ne doivent pas
+faire refuser une piste audio valide. La durée provient de la piste audio,
+quel que soit son ordre dans le fichier.
 
 ## Validation et ressources
 
@@ -122,6 +127,19 @@ la confirmation serveur autorise le succès et l’ajout à la liste.
 
 ## Suppression
 
+Le propriétaire peut ajouter, remplacer et retirer la pochette d’un audio
+ready lui appartenant. Chaque opération contrôle cet audio dans une transaction
+locale avec les changements de variantes. La suppression rend l’audio deleting
+avant de relire toutes ses variantes ; aucun ajout ne peut ensuite réintroduire
+une pochette. Le nettoyage des fichiers remplacés est reprenable après panne.
+
+La pochette intégrée est extraite et validée séparément. Une image inexploitable
+produit un avertissement sans déclarer l’audio corrompu. Un traitement facultatif
+possède un budget borné et son arrêt ne doit pas annuler un audio déjà confirmé.
+Une pochette manuelle valide remplace celle affichée après confirmation ;
+un échec garde la précédente. Retirer la pochette détache la représentation
+utilisée par l’application, sans modifier le MP3 original ni ses métadonnées.
+
 Le propriétaire peut supprimer ses fichiers personnels. La suppression retire
 l’original et ses variantes, puis confirme leur indisponibilité dans la liste
 et sur les autres appareils. L’interface ne retire la ligne qu’après succès.
@@ -149,14 +167,19 @@ routes internes Media n’ont pas ce préfixe.
 
 | Méthode et route externe | Résultat attendu |
 | --- | --- |
-| POST /api/media/assets | Recevoir exactement un fichier multipart, le valider et confirmer l’asset prêt avec 201 |
-| GET /api/media/assets | Retourner avec 200 une liste bornée des fichiers prêts du compte, dans un ordre stable |
+| POST /api/media/assets | Recevoir un audio multipart et confirmer l’asset prêt avec 201, sa pochette extraite éventuelle et un avertissement séparé |
+| GET /api/media/assets | Retourner avec 200 les audios prêts du compte avec leur pochette éventuelle, dans un ordre stable |
 | GET /api/media/assets/:id/private-content | Retourner avec 200 les octets de l’aperçu autorisé |
 | HEAD /api/media/assets/:id/private-content | Même contrôle et mêmes en-têtes que GET, sans corps |
+| PUT /api/media/assets/:id/cover | Valider une image pour cet audio du compte et confirmer sa pochette avec 200 |
+| GET /api/media/assets/:id/cover | Lire les octets de la pochette du propriétaire avec 200 |
+| HEAD /api/media/assets/:id/cover | Même contrôle et mêmes en-têtes que GET, sans corps |
+| DELETE /api/media/assets/:id/cover | Retirer la pochette affichée avec 204 sans effacer l’audio |
 | DELETE /api/media/assets/:id | Confirmer avec 204 une suppression terminée, sans corps |
 
 L’objet public décrit id, usage, MIME confirmé, taille, durée audio éventuelle
-et état. Il n’expose ni storageKey, ni chemin physique, ni secret. L’aperçu
+et état, ainsi que les métadonnées de la pochette facultative. Il n’expose ni
+storageKey, ni chemin physique, ni secret. L’aperçu
 peut avoir un MIME et une taille différents de l’original ; ses en-têtes doivent
 décrire les octets effectivement transmis.
 
@@ -171,7 +194,8 @@ décrire les octets effectivement transmis.
 | 422 | Dimensions d’image ou budget de traitement dépassés |
 | 503 | Stockage, base ou contrôle indispensable indisponible, ou capacité de traitement occupée |
 
-Les erreurs JSON ont un code stable et un message exploitable sans détail
+Les erreurs distinguent format non accepté, audio réellement corrompu et
+pochette inexploitable. Les erreurs JSON ont un code stable et un message exploitable sans détail
 interne ; HEAD omet aussi les corps d’erreur. Le code ne transforme jamais un
 échec de traitement ou de persistance en succès. Les limites Nginx/multipart
 doivent laisser passer le fichier maximal et son enveloppe, en conservant les
