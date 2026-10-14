@@ -8,6 +8,15 @@ import { FileError, audioByteLimit, imageByteLimit } from "./validate-file.js";
 
 // This executable runs in its own process group under validate-file's budget.
 sharp.cache(false); sharp.concurrency(1);
+/** Piste décrite par FFprobe ; une image attached_pic est une pochette, pas une vidéo à publier. */
+type ProbeStream = {
+  /** Catégorie décodée : audio, video ou autre type refusé. */
+  codec_type?: string;
+  /** Durée annoncée de cette piste, en secondes, à confronter au décodage audio. */
+  duration?: string | number;
+  /** Indicateurs du conteneur ; attached_pic vaut 1 pour une image intégrée. */
+  disposition?: { attached_pic?: number };
+};
 /** Chemin de l’original transmis au processus de décodage ; l’accès reste un fichier local contrôlé. */
 const path = process.argv[2]!;
 /** MIME annoncé, normalisé avant comparaison au format réellement décodé. */
@@ -86,7 +95,13 @@ async function decode() {
   }
   if (!declared.startsWith("audio/") && declared !== "application/octet-stream") throw new FileError(415, "unsupported_type");
   const probe = JSON.parse((await runDecoder("ffprobe", ["-show_streams", "-show_format", "-of", "json", "fd:"])).text);
-  if (!Array.isArray(probe.streams) || probe.streams.length !== 1 || probe.streams[0].codec_type !== "audio") throw new FileError(415, "unsupported_type");
+  if (!Array.isArray(probe.streams)) throw new FileError(415, "unsupported_type");
+  const streams: ProbeStream[] = probe.streams;
+  const audioStreams = streams.filter(stream => stream.codec_type === "audio");
+  // Les pochettes sont des pistes image distinctes ; une vraie vidéo reste refusée.
+  if (audioStreams.length !== 1 || streams.some(stream => stream.codec_type !== "audio" &&
+    !(stream.codec_type === "video" && stream.disposition?.attached_pic === 1))) throw new FileError(415, "unsupported_type");
+  const audioStream = audioStreams[0]!;
   const format = String(probe.format?.format_name ?? "").split(",")[0]!;
   if (!/^[a-z0-9_]+$/.test(format) || ["hls", "concat", "dash", "image2", "image2pipe", "sdp"].includes(format)) throw new FileError(415, "unsupported_type");
   const mimes: Record<string, string[]> = {
@@ -100,7 +115,7 @@ async function decode() {
   const decoded = await runDecoder("ffmpeg", ["-nostdin", "-xerror", "-err_detect", "explode", "-threads", "1", "-f", format, "-i", "fd:",
     "-map", "0:a:0", "-threads", "1", "-ac", "1", "-ar", "8000", "-f", "s16le", "pipe:1"], true);
   const durationMs = Math.round(decoded.bytes / 16);
-  const advertised = Number(probe.streams[0].duration ?? probe.format?.duration) * 1000;
+  const advertised = Number(audioStream.duration ?? probe.format?.duration) * 1000;
   if (!Number.isSafeInteger(durationMs) || durationMs <= 0 ||
     (Number.isFinite(advertised) && Math.abs(advertised - durationMs) > Math.max(250, advertised * 0.02))) throw new FileError(415, "invalid_duration");
   let previewByteSize: number | undefined;

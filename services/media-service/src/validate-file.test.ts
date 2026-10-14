@@ -3,7 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, writeFile, rm, open, symlink } from "node:fs/promises";
+import { mkdtemp, writeFile, readFile, rm, open, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import sharp from "sharp";
@@ -37,6 +37,29 @@ test("real full audio decoding: WAV, FLAC, MP3, AAC/M4A, Ogg and Opus", async ()
     await rejects(validate(source, "image/png"), 415);
     await rejects(validate(source, "audio/mpeg"), 415, "mime_mismatch");
     await symlink(source, join(dir, "link")); await rejects(validate(join(dir, "link"), "audio/wav"), 503);
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test("MP3 accepts attached JPEG/PNG artwork, preserves original bytes and still rejects real video", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "file-attached-cover-"));
+  try {
+    const source = join(dir, "audio.wav"); await writeFile(source, demoAudio(1));
+    for (const format of ["png", "jpeg"] as const) {
+      const image = join(dir, `cover.${format}`);
+      await sharp({ create: { width: 32, height: 32, channels: 3, background: "red" } }).toFormat(format).toFile(image);
+      const mp3 = join(dir, `${format}.mp3`);
+      execFileSync("ffmpeg", ["-v", "error", "-i", source, "-i", image, "-map", "0:a:0", "-map", "1:v:0", "-c:a", "libmp3lame", "-c:v", "copy", "-disposition:v", "attached_pic", mp3]);
+      const originalHash = createHash("sha256").update(await readFile(mp3)).digest("hex");
+      const previewPath = join(dir, `${format}.preview.mp3`);
+      const result = await validate(mp3, "audio/mpeg", { previewPath });
+      assert.equal(result.purpose, "audio"); assert.equal(result.checksumSha256, originalHash);
+      assert.ok(result.durationMs! >= 5900 && result.durationMs! <= 6800);
+      const probe = JSON.parse(execFileSync("ffprobe", ["-v", "error", "-show_streams", "-of", "json", previewPath]).toString());
+      assert.equal(probe.streams.length, 1); assert.equal(probe.streams[0].codec_type, "audio");
+    }
+    const video = join(dir, "video.mkv");
+    execFileSync("ffmpeg", ["-v", "error", "-i", source, "-loop", "1", "-i", join(dir, "cover.png"), "-t", "1", "-map", "0:a:0", "-map", "1:v:0", "-c:a", "pcm_s16le", "-c:v", "ffv1", video]);
+    await rejects(validate(video, "audio/x-matroska"), 415, "unsupported_type");
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
 
