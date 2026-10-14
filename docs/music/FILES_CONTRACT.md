@@ -1,8 +1,8 @@
 # Contrat des fichiers personnels
 
 Choix initiaux validés le 12 octobre 2026, puis parcours audio/pochette validé
-le 14 octobre 2026. Les nouvelles règles sont la cible de la rectification
-en cours ; les preuves seront ajoutées après exécution. Ce document définit les
+le 14 octobre 2026. La rectification est implémentée et sa campagne complète
+a réussi le même jour. Ce document définit les
 comportements et limites retenus. Il sert de référence commune pour
 l’interface, Media et les tests ; les preuves d’exécution sont décrites
 dans [le guide des fichiers](../../tests/files/README.md).
@@ -38,9 +38,8 @@ parcours : SVG, HTML et fichiers non décodables sont refusés.
 
 « Tous les formats audio » signifie absence de liste fermée d’extensions,
 pas compatibilité universelle avec tous les codecs. WAV, FLAC, MP3, AAC/M4A,
-OGG et Opus constituent des cas représentatifs à vérifier. La version, les
-capacités et les limites de FFmpeg utilisé seront documentées lors de la
-production. Seuls les fichiers locaux envoyés sont traités : un fichier ne
+OGG et Opus sont vérifiés par les tests Media ; les pochettes intégrées sont
+également vérifiées en MP3, FLAC et M4A. Seuls les fichiers locaux envoyés sont traités : un fichier ne
 doit pas provoquer la lecture d’une URL, d’un chemin arbitraire ou d’une
 ressource externe. Une véritable piste vidéo est refusée. Les images attachées
 signalées par attached_pic sont des pochettes facultatives et ne doivent pas
@@ -103,13 +102,14 @@ aperçu ; si son format n’est pas lisible directement dans le navigateur,
 produire une variante compatible distincte avec les mêmes droits. Le format
 exact de cette variante est fixé ci-dessous et testé dans le
 navigateur retenu. Aucun succès d’aperçu ne peut être revendiqué pour un format
-accepté mais non lisible. Les images validées ont un aperçu image.
+accepté mais non lisible. La pochette validée possède une lecture image privée
+associée à l’audio ; elle ne forme pas une entrée distincte dans la liste.
 
 Choix de production du 13 octobre 2026 : chaque audio validé reçoit un aperçu
 MP3 distinct à 128 kbit/s, 44,1 kHz stéréo, préparé dans le budget global
 audio. Sa taille est bornée à 500 000 000 octets (refus 422 si dépassée), pour
 borner aussi son téléchargement privé en Blob. L’original est conservé sans
-modification ; les images utilisent leur original validé. La lecture réelle
+modification ; les pochettes utilisent leurs octets validés. La lecture réelle
 dans Chromium est prouvée, y compris pour un original AIFF non lisible
 localement dont la variante MP3 fonctionne.
 
@@ -127,17 +127,30 @@ la confirmation serveur autorise le succès et l’ajout à la liste.
 
 ## Suppression
 
+La pochette est une Variant locale de l’audio, identifiée par renditionKey=cover.
+Ce choix réutilise le schéma existant et ne demande aucune migration de données.
+Ses métadonnées et ses octets dépendent des droits et de l’état de l’audio.
+
 Le propriétaire peut ajouter, remplacer et retirer la pochette d’un audio
 ready lui appartenant. Chaque opération contrôle cet audio dans une transaction
 locale avec les changements de variantes. La suppression rend l’audio deleting
 avant de relire toutes ses variantes ; aucun ajout ne peut ensuite réintroduire
-une pochette. Le nettoyage des fichiers remplacés est reprenable après panne.
+une pochette. Une ancienne pochette devient une variante retired-cover-* avant
+effacement de ses octets et de sa trace SQL ; ce nettoyage est reprenable après panne.
+Les installations de pochette interrompues conservent un marqueur .cover-UUID.
+Au démarrage, Media vérifie la confirmation SQL avant de nettoyer ce marqueur
+ou les liens non confirmés, sans effacer une pochette active.
 
 La pochette intégrée est extraite et validée séparément. Une image inexploitable
-produit un avertissement sans déclarer l’audio corrompu. Un traitement facultatif
-possède un budget borné et son arrêt ne doit pas annuler un audio déjà confirmé.
+produit un avertissement cover_unavailable sans déclarer l’audio corrompu.
+L’analyse des en-têtes ne décode pas les pixels attachés ; la piste audio est
+ensuite entièrement décodée sous contrôle strict. L’extraction image possède
+au plus 30 secondes et 256 Mio, dans le temps restant du budget audio de 300 secondes.
+Son arrêt ne doit pas annuler un audio déjà confirmé.
 Une pochette manuelle valide remplace celle affichée après confirmation ;
-un échec garde la précédente. Retirer la pochette détache la représentation
+un échec garde la précédente. Le formulaire confirme et affiche l’audio avant
+de transférer la pochette manuelle, afin qu’un refus d’image ne masque pas cet audio.
+Retirer la pochette détache la représentation
 utilisée par l’application, sans modifier le MP3 original ni ses métadonnées.
 
 Le propriétaire peut supprimer ses fichiers personnels. La suppression retire
@@ -177,8 +190,10 @@ routes internes Media n’ont pas ce préfixe.
 | DELETE /api/media/assets/:id/cover | Retirer la pochette affichée avec 204 sans effacer l’audio |
 | DELETE /api/media/assets/:id | Confirmer avec 204 une suppression terminée, sans corps |
 
-L’objet public décrit id, usage, MIME confirmé, taille, durée audio éventuelle
-et état, ainsi que les métadonnées de la pochette facultative. Il n’expose ni
+L’objet public décrit id, usage=audio, MIME confirmé, taille, durée audio positive
+et état, ainsi que cover=null ou les métadonnées id/mimeType/byteSize de la
+pochette facultative. POST peut ajouter warning=cover_unavailable pour une
+pochette intégrée non confirmée ou inexploitable, avec l’audio déjà confirmé. Il n’expose ni
 storageKey, ni chemin physique, ni secret. L’aperçu
 peut avoir un MIME et une taille différents de l’original ; ses en-têtes doivent
 décrire les octets effectivement transmis.
@@ -197,21 +212,25 @@ décrire les octets effectivement transmis.
 Les erreurs distinguent format non accepté, audio réellement corrompu et
 pochette inexploitable. Les erreurs JSON ont un code stable et un message exploitable sans détail
 interne ; HEAD omet aussi les corps d’erreur. Le code ne transforme jamais un
-échec de traitement ou de persistance en succès. Les limites Nginx/multipart
+échec de traitement ou de persistance obligatoire en succès. Le traitement
+facultatif de la pochette rapporte son propre avertissement. Les limites Nginx/multipart
 doivent laisser passer le fichier maximal et son enveloppe, en conservant les
 limites propres aux avatars existants.
 
 ## Vérification du contrat
 
 Les cas suivants ont une réponse unique dans les règles ci-dessus ; ce contrôle
-documentaire ne remplace pas les tests futurs :
+documentaire est complété par la campagne d’exécution :
 
 - Audio valide de 500 000 000 octets : admissible en taille, encore soumis au
   décodage et au budget ; un octet de plus : 413.
-- Image PNG/JPEG/WebP de 25 000 000 octets et dimensions conformes : admissible ;
+- Pochette PNG/JPEG/WebP de 25 000 000 octets et dimensions conformes : admissible ;
   5 000 × 5 000 pixels respecte les bornes, 8 192 × 8 192 les dépasse.
 - Audio reconnu par le serveur mais non lisible localement : envoi permis,
   validation serveur et variante d’aperçu compatibles requises avant succès.
+- Audio valide avec une pochette intégrée corrompue ou trop grande : audio
+  conservé, avertissement de pochette ; MP3 tronqué malgré une pochette complète : refus.
+- Image seule dans POST assets : 415 ; une image s’associe à un audio par PUT cover.
 - Fichier tronqué ou dont la déclaration masque un autre type : refus, sans
   asset prêt ni fichier incomplet consultable.
 - Compte B visant un UUID privé connu du compte A : 404 ; A conserve son accès.
@@ -224,11 +243,15 @@ documentaire ne remplace pas les tests futurs :
 - Décodage trop lent ou trop gourmand : arrêt, refus 422 et nettoyage ; serveur
   indisponible ou occupé : 503, aucun faux succès.
 
-Les campagnes `tests/files/run.sh` démontrent ces cas sur la pile existante
-avec trois volumes neufs par lancement, deux comptes, concordance SQL/disque,
-redémarrages et vrai parcours Chromium. Deux campagnes indépendantes ont
-réussi le 13 octobre 2026, avec restauration et nettoyage vérifiés.
-Les six exigences sont étayées : types multiples, validation client/serveur,
-stockage et droits, aperçu, progression et suppression. Les preuves portent
-sur les formats/scénarios documentés, pas sur tous les codecs ou toutes les
-charges possibles ; la validation de compréhension reste personnelle.
+La campagne complète `tests/files/run.sh` a réussi le 14 octobre 2026 : 26 tests
+Media, lint et compilation frontend, 10 tests d’écoute, preuves HTTPS/SQL/disque
+et quatre parcours Chromium. Le projet isolé transcendence_audio_cover utilise
+trois volumes neufs et HTTPS 4443 ; il ne remplace pas les volumes de développement.
+Les redémarrages Media/PostgreSQL, marqueurs d’interruption, deux comptes et
+écritures de pochette/suppression réellement bloquées ensemble en PostgreSQL
+sont vérifiés. Le nettoyage final confirme seulement les trois WAV de
+démonstration avant de retirer la pile de test et ses volumes.
+Les avatars, Catalogue, Library et Playback passent les contrôles de
+non-régression. Les preuves portent sur les formats et scénarios documentés,
+pas sur tous les codecs ou toutes les charges ; la validation de compréhension
+reste personnelle.

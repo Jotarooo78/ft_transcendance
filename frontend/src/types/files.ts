@@ -11,7 +11,7 @@ export type ReadyFile = {
   mimeType: string;
   /** Taille exacte de l’original ou de la variante en octets, pas en mégaoctets. */
   byteSize: number;
-  /** Durée en millisecondes ; null lorsque cette durée n’est pas disponible ou ne s’applique pas. */
+  /** Durée en millisecondes ; les confirmations audio validées ont une valeur positive. */
   durationMs: number | null;
   /** Métadonnées de la pochette active ; null signifie visuel par défaut. */
   cover: AudioCover | null;
@@ -54,8 +54,8 @@ export const audioByteLimit = 500_000_000;
 /** Limite image : 25 000 000 octets, soit 25 Mo décimaux ; indépendante du plafond audio. */
 export const imageByteLimit = 25_000_000;
 /**
- * Vérifie les six champs publics, les formats image autorisés, les bornes de taille et la durée audio
- * positive avant d’accepter la confirmation serveur.
+ * Vérifie les métadonnées audio et la pochette facultative, leurs bornes de taille et la durée audio
+ * positive avant d’accepter une confirmation serveur ou un élément de liste.
  */
 export function isReadyFile(value: unknown): value is ReadyFile {
   if (!value || typeof value !== "object") return false;

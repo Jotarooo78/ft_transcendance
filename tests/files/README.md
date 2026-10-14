@@ -70,10 +70,10 @@ reprise d’un résultat SQL incertain. Une vraie vidéo reste refusée.
   d’écoute. Un audio personnel ne devient pas un morceau du catalogue.
 
 `browser.spec.mjs` utilise Chromium avec quatre parcours réels : pochette
-intégrée et gestion de la pochette ; progression réseau, lecture MP3,
-persistance et suppression confirmée ; prévalidation, refus serveur,
-annulation et réponse tardive d’un ancien compte ; pochette manuelle facultative
-et audio AIFF non lisible localement mais écoutable grâce à son aperçu MP3.
+intégrée, progression, écoute et suppression ; pochette manuelle prioritaire
+et refus facultatifs sans perte audio ; prévalidation, refus serveur,
+annulation et réponse tardive d’un ancien compte ; audio AIFF non lisible
+localement mais écoutable grâce à son aperçu MP3.
 Les réponses réussies proviennent de la pile réelle. Un scénario retarde une
 réponse authentique pour vérifier le changement de compte ; aucun succès
 serveur n’est inventé.
@@ -109,3 +109,10 @@ Une campagne ne prouve pas tous les codecs ni toutes les charges. Les limites
 les bornes du contrat ; un contenu doit aussi être entièrement valide. Les
 tests ne valident pas la compréhension de l’utilisateur et ne publient aucun
 morceau utilisateur dans Catalogue.
+
+La campagne complète a réussi le 14 octobre 2026 : 26 tests Media, 10 tests
+d’écoute frontend, lint/compilation, toutes les phases HTTPS et quatre parcours
+Chromium, avec suppression des fixtures et nettoyage des trois volumes vérifiés.
+Outils observés : Node 22.23.2, FFmpeg 8.1.2 et Playwright 1.63.0 avec Chromium.
+La révision de base affichée par cette exécution était `3d52753` ; les corrections
+et scénarios validés ont été publiés dans `4ef162c` sur `fix/audio-cover-upload`.

@@ -16,7 +16,9 @@ export default function FileUploadForm({
   onReady?: (file: ReadyFile) => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
+  /** Image manuelle sélectionnée, indépendante du fichier audio obligatoire. */
   const [cover, setCover] = useState<File | null>(null);
+  /** Traitement facultatif après confirmation audio ; maintient les contrôles désactivés jusqu’à sa fin. */
   const [coverBusy, setCoverBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -24,6 +26,7 @@ export default function FileUploadForm({
   const [checking, setChecking] = useState(false);
   const current = useRef<AbortController | null>(null);
   const input = useRef<HTMLInputElement | null>(null);
+  /** Champ image à vider après traitement, sans perdre un audio déjà enregistré. */
   const coverInput = useRef<HTMLInputElement | null>(null);
   useEffect(
     () => () => {
@@ -34,8 +37,9 @@ export default function FileUploadForm({
   );
   const busy = checking || progress !== null || coverBusy;
   /**
-   * Empêche une soumission concurrente, prévalide le fichier puis lance XHR. Affiche le refus ou la
-   * confirmation et libère l’opération courante à la sortie.
+ * Prévalide et transfère l’audio avec progression réelle, puis confirme sa présence avant la pochette
+ * manuelle. Un refus facultatif d’image conserve cet audio et affiche une erreur séparée.
+ * Annule l’opération courante au démontage et libère ses états à la sortie.
    */
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();

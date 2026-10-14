@@ -7,7 +7,7 @@ export type StoredFile = {
   id: string;
     /** UUID du compte ayant envoyé l’original ; null pour les fichiers sans propriétaire utilisateur. */
     uploaderUserId: string | null;
-    /** Usage interne Media ; audio et cover représentent les uploads gérés ici. */
+    /** Usage interne Media ; la gestion privée reçoit uniquement des audios et associe les images comme variantes. */
     purpose: string;
     /** État de stockage Media : ready pour l’accès, deleting pendant la suppression, deleted après confirmation. */
     state: string;

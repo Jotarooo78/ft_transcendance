@@ -5,7 +5,7 @@ import { readFilePreview } from "../services/read-files";
 import type { ReadyFile } from "../types/files";
 
 /**
- * Charge l’aperçu du fichier du compte et rend une image ou un lecteur audio. Annule la lecture et
+ * Charge l’aperçu MP3 de l’audio du compte et rend son lecteur. Annule la lecture et
  * révoque l’URL Blob à la fermeture ou au changement de session.
  */
 export default function FilePreview({

@@ -52,7 +52,7 @@ export async function readFiles(
 }
 
 /**
- * Télécharge l’image originale ou l’aperçu MP3 privé avec Authorization. Contrôle MIME, taille
+ * Télécharge l’aperçu MP3 privé avec Authorization. Contrôle MIME, taille
  * annoncée et octets réellement reçus avant de construire le Blob ; annule et libère le lecteur à la
  * sortie.
  */

@@ -12,8 +12,8 @@ export function fileReader(database: Pick<PrismaClient, "asset">): FileReader {
     /** Applique la lecture SQL filtrée par authenticatedUserId avant de renvoyer l’original et l’aperçu. */
     read: (request, id) => readOwnedAsset(database, request, id),
     /**
-     * Liste et compte les fichiers ready du compte dans un instantané PostgreSQL cohérent, avec page et
-     * taille fournies.
+     * Liste et compte les audios ready avec le même filtre propriétaire, la page et la taille fournies.
+     * Les deux lectures sont indépendantes ; une modification concurrente peut précéder l’actualisation suivante.
      */
     list: async (uploaderUserId, page, pageSize) => {
       const where = { uploaderUserId, state: "ready", purpose: "audio" };

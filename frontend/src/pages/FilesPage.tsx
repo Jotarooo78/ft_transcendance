@@ -1,4 +1,4 @@
-/** Écran Mes fichiers : liste privée paginée, upload confirmé, aperçus à la demande et suppression après réponse serveur. */
+/** Écran des audios privés : liste paginée, upload confirmé, pochette facultative, écoute et suppression confirmées. */
 import { useEffect, useRef, useState } from "react";
 import FileUploadForm from "../components/FileUploadForm";
 import FilePreview from "../components/FilePreview";
@@ -11,7 +11,7 @@ import { getAccessToken } from "../services/session";
 import type { ReadyFile } from "../types/files";
 
 /**
- * Présente les métadonnées d’un fichier, son aperçu facultatif et sa suppression ; annule la requête à
+ * Présente l’audio, son lecteur facultatif, l’édition de sa pochette et sa suppression ; annule la requête à
  * la disparition de la ligne.
  */
 function FileItem({
@@ -29,7 +29,9 @@ function FileItem({
   const [preview, setPreview] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  /** Image choisie pour cette carte ; conservée lorsqu’un remplacement est refusé. */
   const [cover, setCover] = useState<File | null>(null);
+  /** Champ image de cette seule carte, vidé après confirmation du changement. */
   const coverInput = useRef<HTMLInputElement | null>(null);
   const current = useRef<AbortController | null>(null);
   useEffect(

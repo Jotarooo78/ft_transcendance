@@ -17,6 +17,18 @@ type ProbeStream = {
   /** Indicateurs du conteneur ; attached_pic vaut 1 pour une image intégrée. */
   disposition?: { attached_pic?: number };
 };
+/** Structure du conteneur décrite par FFprobe ; le décodage audio complet vérifie ensuite sa durée réelle. */
+type ProbeFile = {
+  /** Pistes déclarées dans les en-têtes, avec leur catégorie et disposition. */
+  streams?: ProbeStream[];
+  /** Description du conteneur, distincte de la piste audio et de l’image attachée. */
+  format?: {
+    /** Noms FFmpeg du conteneur ; le premier choisit le démultiplexeur et les alias MIME. */
+    format_name?: string;
+    /** Durée annoncée en secondes, utilisée seulement si la piste audio n’en fournit pas. */
+    duration?: string;
+  };
+};
 /** Chemin de l’original transmis au processus de décodage ; l’accès reste un fichier local contrôlé. */
 const path = process.argv[2]!;
 /** MIME annoncé, normalisé avant comparaison au format réellement décodé. */
@@ -95,7 +107,8 @@ async function decode() {
   }
   if (!declared.startsWith("audio/") && declared !== "application/octet-stream") throw new FileError(415, "unsupported_type");
   // Lire d’abord les en-têtes sans décoder les images attachées : une erreur PNG ne décrit pas la piste audio.
-  let headers: { streams?: ProbeStream[]; format?: { format_name?: string; duration?: string } } | undefined;
+  /** En-têtes sans décodage des pixels ; la validation image reste un traitement facultatif distinct. */
+  let headers: ProbeFile | undefined;
   try { headers = JSON.parse((await runDecoder("ffprobe", ["-nofind_stream_info", "-show_streams", "-show_format", "-of", "json", "fd:"])).text); }
   catch (error) { if (!(error instanceof FileError) || error.status !== 415) throw error; }
   const attached = headers?.streams?.some(stream => stream.codec_type === "video" && stream.disposition?.attached_pic === 1) ?? false;
