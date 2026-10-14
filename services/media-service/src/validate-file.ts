@@ -49,7 +49,7 @@ let busy = false;
  * Additionne la mémoire résidente du processus Linux et de ses descendants via /proc. Renvoie zéro
  * pour un processus terminé ; propage une erreur de lecture inattendue.
  */
-async function residentBytes(pid: number): Promise<number> {
+export async function residentBytes(pid: number): Promise<number> {
   try {
     const status = await readFile(`/proc/${pid}/status`, "utf8");
     const children = await readFile(`/proc/${pid}/task/${pid}/children`, "utf8");
