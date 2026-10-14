@@ -11,33 +11,78 @@ import type { ReadyFile } from "../types/files";
  * Présente les métadonnées d’un fichier, son aperçu facultatif et sa suppression ; annule la requête à
  * la disparition de la ligne.
  */
-function FileItem({ file, onDeleted }: {
+function FileItem({
+  file,
+  onDeleted,
+}: {
   /** Métadonnées du fichier privé prêt à être affiché. */
   file: ReadyFile;
   /** Appelé après confirmation serveur de la suppression de cet UUID. */
-  onDeleted: (id: string) => void }) {
-  const [preview, setPreview] = useState(false); const [busy, setBusy] = useState(false); const [error, setError] = useState("");
+  onDeleted: (id: string) => void;
+}) {
+  const [preview, setPreview] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   const current = useRef<AbortController | null>(null);
-  useEffect(() => () => { current.current?.abort(); current.current = null; }, []);
+  useEffect(
+    () => () => {
+      current.current?.abort();
+      current.current = null;
+    },
+    [],
+  );
   /**
    * Demande la suppression et appelle onDeleted seulement pour la requête toujours courante après
    * confirmation. Un refus conserve la ligne et l’aperçu.
    */
   async function remove() {
-    const controller = new AbortController(); current.current = controller; setBusy(true); setError("");
-    try { await deleteFile(file.id, controller.signal); if (current.current === controller) onDeleted(file.id); }
-    catch (failure) { if (current.current === controller) setError(failure instanceof Error ? failure.message : "Suppression impossible."); }
-    finally { if (current.current === controller) { setBusy(false); current.current = null; } }
+    const controller = new AbortController();
+    current.current = controller;
+    setBusy(true);
+    setError("");
+    try {
+      await deleteFile(file.id, controller.signal);
+      if (current.current === controller) onDeleted(file.id);
+    } catch (failure) {
+      if (current.current === controller)
+        setError(
+          failure instanceof Error
+            ? failure.message
+            : "Unable to delete this file.",
+        );
+    } finally {
+      if (current.current === controller) {
+        setBusy(false);
+        current.current = null;
+      }
+    }
   }
-  return <li data-file-id={file.id} className="file-card">
-    <h2>{file.usage === "image" ? "Image" : "Audio"}</h2>
-    <p>{file.mimeType} · {(file.byteSize / 1_000_000).toFixed(2)} Mo{file.durationMs !== null ? ` · ${(file.durationMs / 1000).toFixed(1)} s` : ""}</p>
-    <p className="file-id">{file.id}</p>
-    <div className="file-actions"><button type="button" onClick={() => setPreview(value => !value)}>{preview ? "Fermer l’aperçu" : "Ouvrir l’aperçu"}</button>
-      <button type="button" disabled={busy} onClick={() => void remove()}>{busy ? "Suppression…" : "Supprimer le fichier"}</button></div>
-    {preview && <FilePreview file={file} />}
-    {error && <p role="alert" className="message error-message">{error}</p>}
-  </li>;
+  return (
+    <li data-file-id={file.id} className="file-card">
+      <h2>{file.usage === "image" ? "Image" : "Audio"}</h2>
+      <p>
+        {file.mimeType} · {(file.byteSize / 1_000_000).toFixed(2)} MB
+        {file.durationMs !== null
+          ? ` · ${(file.durationMs / 1000).toFixed(1)} s`
+          : ""}
+      </p>
+      <p className="file-id">{file.id}</p>
+      <div className="file-actions">
+        <button type="button" onClick={() => setPreview((value) => !value)}>
+          {preview ? "Close preview" : "Open preview"}
+        </button>
+        <button type="button" disabled={busy} onClick={() => void remove()}>
+          {busy ? "Deleting…" : "Delete file"}
+        </button>
+      </div>
+      {preview && <FilePreview file={file} />}
+      {error && (
+        <p role="alert" className="message error-message">
+          {error}
+        </p>
+      )}
+    </li>
+  );
 }
 
 /**
@@ -45,22 +90,37 @@ function FileItem({ file, onDeleted }: {
  * upload et distingue chargement, refus et page vide.
  */
 export default function FilesPage() {
-  const [page, setPage] = useState(1); const [retry, setRetry] = useState(0);
-  const token = getAccessToken(); const key = JSON.stringify([token, page, retry]);
+  const [page, setPage] = useState(1);
+  const [retry, setRetry] = useState(0);
+  const token = getAccessToken();
+  const key = JSON.stringify([token, page, retry]);
   const [result, setResult] = useState<{
     /** Identité de la requête ou de l’état ; empêche d’afficher une réponse devenue périmée. */
     key: string;
     /** Résultat validé ou champs de la commande regroupés par ce contrat. */
     data?: FilePage;
     /** Erreur à rendre visible pour ce résultat ; son absence représente un résultat sans erreur enregistrée. */
-    error?: string }>({ key: "" });
+    error?: string;
+  }>({ key: "" });
   useEffect(() => {
     const controller = new AbortController();
-    void readFiles(page, controller.signal).then(data => { if (!controller.signal.aborted && token === getAccessToken()) setResult({ key, data }); })
-      .catch(error => { if (!controller.signal.aborted && token === getAccessToken()) setResult({ key, error: error instanceof Error ? error.message : "Chargement impossible." }); });
+    void readFiles(page, controller.signal)
+      .then((data) => {
+        if (!controller.signal.aborted && token === getAccessToken())
+          setResult({ key, data });
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted && token === getAccessToken())
+          setResult({
+            key,
+            error:
+              error instanceof Error ? error.message : "Unable to load files.",
+          });
+      });
     return () => controller.abort();
   }, [key, page, token]);
-  const loading = result.key !== key; const data = loading ? undefined : result.data;
+  const loading = result.key !== key;
+  const data = loading ? undefined : result.data;
   const pages = Math.max(1, Math.ceil((data?.total ?? 0) / 20));
   /**
    * Retire de la page courante l’UUID confirmé supprimé et décrémente le total, seulement si le compte
@@ -68,20 +128,75 @@ export default function FilesPage() {
    */
   function deleted(id: string) {
     if (token !== getAccessToken()) return;
-    setResult(previous => previous.key === key && previous.data ? { ...previous, data: { ...previous.data,
-      items: previous.data.items.filter(file => file.id !== id), total: Math.max(0, previous.data.total - 1) } } : previous);
+    setResult((previous) =>
+      previous.key === key && previous.data
+        ? {
+            ...previous,
+            data: {
+              ...previous.data,
+              items: previous.data.items.filter((file) => file.id !== id),
+              total: Math.max(0, previous.data.total - 1),
+            },
+          }
+        : previous,
+    );
   }
-  return <main className="files-page">
-    <header><p className="page-label">Votre espace privé</p><h1>Mes fichiers</h1><p>Envoyez, prévisualisez et supprimez vos audios et images. Retrouvez-les en vous connectant depuis un autre appareil.</p></header>
-    <FileUploadForm onReady={() => { setPage(1); setRetry(value => value + 1); }} />
-    <section aria-labelledby="saved-files-title"><h2 id="saved-files-title">Fichiers conservés</h2>
-      <button type="button" disabled={loading} onClick={() => setRetry(value => value + 1)}>Actualiser les fichiers</button>
-      {loading ? <p role="status">Chargement des fichiers…</p> : result.error ? <p role="alert">{result.error}</p> : <>
-        {data?.items.length === 0 && <p>Aucun fichier sur cette page.</p>}
-        <ul className="file-list">{data?.items.map(file => <FileItem key={file.id} file={file} onDeleted={deleted} />)}</ul>
-        <nav className="pagination" aria-label="Pages des fichiers"><button type="button" disabled={page === 1} onClick={() => setPage(value => value - 1)}>Page précédente</button>
-          <span>Page {page} sur {pages}</span><button type="button" disabled={page >= pages || page >= 9999} onClick={() => setPage(value => value + 1)}>Page suivante</button></nav>
-      </>}
-    </section>
-  </main>;
+  return (
+    <main className="files-page">
+      <header>
+        <p className="page-label">Your private space</p>
+        <h1>Files</h1>
+        <p>Upload, preview, and delete your audio files and images.</p>
+      </header>
+      <FileUploadForm
+        onReady={() => {
+          setPage(1);
+          setRetry((value) => value + 1);
+        }}
+      />
+      <section aria-labelledby="saved-files-title">
+        <h2 id="saved-files-title">Saved files</h2>
+        <button
+          type="button"
+          disabled={loading}
+          onClick={() => setRetry((value) => value + 1)}
+        >
+          Refresh files
+        </button>
+        {loading ? (
+          <p role="status">Loading files…</p>
+        ) : result.error ? (
+          <p role="alert">{result.error}</p>
+        ) : (
+          <>
+            {data?.items.length === 0 && <p>No files on this page.</p>}
+            <ul className="file-list">
+              {data?.items.map((file) => (
+                <FileItem key={file.id} file={file} onDeleted={deleted} />
+              ))}
+            </ul>
+            <nav className="pagination" aria-label="File pages">
+              <button
+                type="button"
+                disabled={page === 1}
+                onClick={() => setPage((value) => value - 1)}
+              >
+                Previous page
+              </button>
+              <span>
+                Page {page} of {pages}
+              </span>
+              <button
+                type="button"
+                disabled={page >= pages || page >= 9999}
+                onClick={() => setPage((value) => value + 1)}
+              >
+                Next page
+              </button>
+            </nav>
+          </>
+        )}
+      </section>
+    </main>
+  );
 }

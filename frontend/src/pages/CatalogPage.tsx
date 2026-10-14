@@ -40,7 +40,9 @@ function CatalogPage({ playlists, onAddItem }: CatalogPageProps) {
   const [message, setMessage] = useState("");
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState("");
-  const destination = playlists.find(playlist => playlist.id === selectedPlaylistId) ?? playlists[0];
+  const destination =
+    playlists.find((playlist) => playlist.id === selectedPlaylistId) ??
+    playlists[0];
 
   /**
    * Ajoute le morceau à la playlist sélectionnée et affiche le nom confirmé par le serveur ; bloque les
@@ -48,23 +50,39 @@ function CatalogPage({ playlists, onAddItem }: CatalogPageProps) {
    */
   async function handleAdd(track: Track) {
     if (!destination || adding) return;
-    setAdding(true); setMessage(""); setAddError("");
+    setAdding(true);
+    setMessage("");
+    setAddError("");
     try {
       const confirmed = await onAddItem(destination, track.id);
       setMessage(`${track.title} added to ${confirmed.name}.`);
-    } catch (error) { setAddError(error instanceof Error ? error.message : "Unable to add track. Refresh before trying again."); }
-    finally { setAdding(false); }
+    } catch (error) {
+      setAddError(
+        error instanceof Error
+          ? error.message
+          : "Unable to add track. Refresh before trying again.",
+      );
+    } finally {
+      setAdding(false);
+    }
   }
 
   const [retry, setRetry] = useState(0);
-  const requestKey = JSON.stringify([currentPage, searchQuery, selectedGenre, sortOption, retry]);
+  const requestKey = JSON.stringify([
+    currentPage,
+    searchQuery,
+    selectedGenre,
+    sortOption,
+    retry,
+  ]);
   const [result, setResult] = useState<{
     /** Identité de la requête ou de l’état ; empêche d’afficher une réponse devenue périmée. */
     key: string;
     /** Résultat validé ou champs de la commande regroupés par ce contrat. */
     data?: CatalogList;
     /** Erreur à rendre visible pour ce résultat ; son absence représente un résultat sans erreur enregistrée. */
-    error?: string }>({ key: "" });
+    error?: string;
+  }>({ key: "" });
   const loading = result.key !== requestKey;
   const data = loading ? undefined : result.data;
   const genres = result.data?.genres ?? [];
@@ -73,12 +91,28 @@ function CatalogPage({ playlists, onAddItem }: CatalogPageProps) {
 
   useEffect(() => {
     const controller = new AbortController();
-    void getTracks({ page: currentPage, pageSize: TRACKS_PER_PAGE, q: searchQuery,
-      genre: selectedGenre === "all" ? "" : selectedGenre, sort: sortOption }, controller.signal)
-      .then(data => { if (!controller.signal.aborted) setResult({ key: requestKey, data }); })
-      .catch(error => {
-        if (!controller.signal.aborted) setResult({ key: requestKey,
-          error: error instanceof Error ? error.message : "Unable to load catalogue." });
+    void getTracks(
+      {
+        page: currentPage,
+        pageSize: TRACKS_PER_PAGE,
+        q: searchQuery,
+        genre: selectedGenre === "all" ? "" : selectedGenre,
+        sort: sortOption,
+      },
+      controller.signal,
+    )
+      .then((data) => {
+        if (!controller.signal.aborted) setResult({ key: requestKey, data });
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted)
+          setResult({
+            key: requestKey,
+            error:
+              error instanceof Error
+                ? error.message
+                : "Unable to load catalogue.",
+          });
       });
     return () => controller.abort();
   }, [currentPage, searchQuery, selectedGenre, sortOption, retry, requestKey]);
@@ -162,10 +196,16 @@ function CatalogPage({ playlists, onAddItem }: CatalogPageProps) {
           </div>
         </section>
 
-        {detailId && <TrackDetails key={detailId} id={detailId} onClose={() => {
-          setDetailId(null);
-          detailTrigger.current?.focus();
-        }} />}
+        {detailId && (
+          <TrackDetails
+            key={detailId}
+            id={detailId}
+            onClose={() => {
+              setDetailId(null);
+              detailTrigger.current?.focus();
+            }}
+          />
+        )}
 
         <section className="catalog-section" aria-labelledby="catalog-title">
           <h2 id="catalog-title">Available tracks</h2>
@@ -205,11 +245,20 @@ function CatalogPage({ playlists, onAddItem }: CatalogPageProps) {
           {addError && <p role="alert">{addError}</p>}
 
           <p className="search-result-count" aria-live="polite">
-            {loading ? "Loading catalogue…" : `${data?.total ?? 0} track(s) found`}
+            {loading
+              ? "Loading catalogue…"
+              : `${data?.total ?? 0} track(s) found`}
           </p>
 
-          {loading ? <p role="status">Loading tracks…</p> : result.error ? (
-            <div role="alert"><p>{result.error}</p><button type="button" onClick={() => setRetry(n => n + 1)}>Retry catalogue</button></div>
+          {loading ? (
+            <p role="status">Loading tracks…</p>
+          ) : result.error ? (
+            <div role="alert">
+              <p>{result.error}</p>
+              <button type="button" onClick={() => setRetry((n) => n + 1)}>
+                Retry catalogue
+              </button>
+            </div>
           ) : paginatedTracks.length === 0 ? (
             <p className="empty-search-message">No tracks match your search.</p>
           ) : (
@@ -223,16 +272,24 @@ function CatalogPage({ playlists, onAddItem }: CatalogPageProps) {
                       onPlay={handlePlay}
                     />
 
-                    <button type="button" aria-label={`Details for ${track.title}`} onClick={event => {
-                      detailTrigger.current = event.currentTarget;
-                      setDetailId(track.id);
-                    }}>Details</button>
+                    <button
+                      type="button"
+                      aria-label={`Details for ${track.title}`}
+                      onClick={(event) => {
+                        detailTrigger.current = event.currentTarget;
+                        setDetailId(track.id);
+                      }}
+                    >
+                      Details
+                    </button>
 
                     <button
                       type="button"
                       className="track-action-button add-track-button"
                       disabled={!destination || adding}
-                      onClick={() => { void handleAdd(track); }}
+                      onClick={() => {
+                        void handleAdd(track);
+                      }}
                       aria-label={`Add ${track.title} to playlist`}
                       title="Add to playlist"
                     >
@@ -275,7 +332,11 @@ function CatalogPage({ playlists, onAddItem }: CatalogPageProps) {
       </main>
 
       {selectedTrack && (
-        <AudioPlayer key={selectedTrack.id} track={selectedTrack} onClose={handleClosePlayer} />
+        <AudioPlayer
+          key={selectedTrack.id}
+          track={selectedTrack}
+          onClose={handleClosePlayer}
+        />
       )}
     </>
   );

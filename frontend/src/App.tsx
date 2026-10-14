@@ -32,7 +32,13 @@ type PublicPage = "register" | "login";
  * Pages privées nécessitant une session du compte ; files et history complètent les écrans de profil
  * et de playlists.
  */
-type PrivatePage = "profile" | "catalog" | "playlists" | "history" | "users" | "files";
+type PrivatePage =
+  | "profile"
+  | "catalog"
+  | "playlists"
+  | "history"
+  | "users"
+  | "files";
 
 function getErrorMessage(error: unknown, fallbackMessage: string): string {
   if (error instanceof Error) {
@@ -216,11 +222,18 @@ function App() {
     if (avatarFile !== null) {
       try {
         const avatarProfile = await uploadMyAvatar(avatarFile);
-        setCurrentUser((user) => user === null ? null : {
-          ...user, avatarUrl: avatarProfile.avatarUrl,
-        });
+        setCurrentUser((user) =>
+          user === null
+            ? null
+            : {
+                ...user,
+                avatarUrl: avatarProfile.avatarUrl,
+              },
+        );
       } catch {
-        throw new Error("Texte sauvegardé, avatar non envoyé. Réessayez l’envoi de l’avatar.");
+        throw new Error(
+          "Profile saved, but the avatar was not uploaded. Please try uploading it again.",
+        );
       }
     }
   }
@@ -259,10 +272,30 @@ function App() {
           <strong className="site-title">FT Music</strong>
 
           <nav className="main-navigation" aria-label="User navigation">
-            <button type="button" className={privatePage === "files" ? "navigation-button active" : "navigation-button"}
-              aria-pressed={privatePage === "files"} onClick={() => setPrivatePage("files")}>Mes fichiers</button>
-            <button type="button" className={privatePage === "history" ? "navigation-button active" : "navigation-button"}
-              aria-pressed={privatePage === "history"} onClick={() => setPrivatePage("history")}>History</button>
+            <button
+              type="button"
+              className={
+                privatePage === "files"
+                  ? "navigation-button active"
+                  : "navigation-button"
+              }
+              aria-pressed={privatePage === "files"}
+              onClick={() => setPrivatePage("files")}
+            >
+              Files
+            </button>
+            <button
+              type="button"
+              className={
+                privatePage === "history"
+                  ? "navigation-button active"
+                  : "navigation-button"
+              }
+              aria-pressed={privatePage === "history"}
+              onClick={() => setPrivatePage("history")}
+            >
+              History
+            </button>
             <button
               type="button"
               className={

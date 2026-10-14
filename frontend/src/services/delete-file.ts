@@ -8,8 +8,18 @@ import { getAccessToken } from "./session";
  */
 export async function deleteFile(id: string, signal: AbortSignal) {
   const token = getAccessToken();
-  const response = await authenticatedFetch(`/api/media/assets/${encodeURIComponent(id)}`, { method: "DELETE", signal });
-  if (signal.aborted || token !== getAccessToken()) throw new Error("Compte changé. Rechargez vos fichiers.");
-  if (response.status !== 204) throw new Error(response.status === 409 ? "Ce fichier est encore utilisé dans le catalogue. Il a été conservé." :
-    response.status === 404 ? "Ce fichier n’est plus disponible. Actualisez la liste." : "Suppression impossible. Le fichier reste affiché ; réessayez.");
+  const response = await authenticatedFetch(
+    `/api/media/assets/${encodeURIComponent(id)}`,
+    { method: "DELETE", signal },
+  );
+  if (signal.aborted || token !== getAccessToken())
+    throw new Error("The signed-in account changed. Refresh your files.");
+  if (response.status !== 204)
+    throw new Error(
+      response.status === 409
+        ? "This file is still used in the catalog and was not deleted."
+        : response.status === 404
+          ? "This file is no longer available. Refresh the list."
+          : "Unable to delete the file. It remains visible; please try again.",
+    );
 }
