@@ -1,5 +1,5 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
 
 import {
@@ -8,6 +8,7 @@ import {
   type ProfileUpdater,
   type AvatarWriter,
   type AvatarReader,
+  type AvatarDeleter,
   UsernameConflictError,
 } from "./app.js";
 import { disconnectPrisma, prisma } from "./database/prisma.js";
@@ -25,7 +26,6 @@ const internalServiceToken = process.env.INTERNAL_SERVICE_TOKEN;
 const avatarStorageDir =
   process.env.AVATAR_STORAGE_DIR ?? "/tmp/user-service-avatars";
 const onlineWindowSeconds = 120;
-
 
 if (!jwtSecret) {
   throw new Error("JWT_SECRET is required at runtime");
@@ -177,8 +177,19 @@ const writeAvatar: AvatarWriter = async (userId, fileName, bytes) => {
   return prisma.profile.upsert({
     where: { userId },
     update: { avatarUrl },
-    create: { userId, displayName: "New user", username: `user_${userId.slice(0, 8)}`, avatarUrl },
-    select: { userId: true, displayName: true, username: true, bio: true, avatarUrl: true },
+    create: {
+      userId,
+      displayName: "New user",
+      username: `user_${userId.slice(0, 8)}`,
+      avatarUrl,
+    },
+    select: {
+      userId: true,
+      displayName: true,
+      username: true,
+      bio: true,
+      avatarUrl: true,
+    },
   });
 };
 
@@ -195,6 +206,60 @@ const readAvatar: AvatarReader = async (fileName) => {
   }
 };
 
+const deleteAvatar: AvatarDeleter = async (userId) => {
+  const profile = await prisma.profile.findUnique({
+    where: { userId },
+    select: {
+      userId: true,
+      displayName: true,
+      username: true,
+      bio: true,
+      avatarUrl: true,
+    },
+  });
+
+  if (profile === null) {
+    return null;
+  }
+
+  const previousAvatarUrl = profile.avatarUrl;
+
+  const updatedProfile = await prisma.profile.update({
+    where: { userId },
+    data: { avatarUrl: null },
+    select: {
+      userId: true,
+      displayName: true,
+      username: true,
+      bio: true,
+      avatarUrl: true,
+    },
+  });
+
+  const prefix = "/api/users/avatars/";
+
+  if (previousAvatarUrl?.startsWith(prefix)) {
+    const fileName = previousAvatarUrl.slice(prefix.length);
+
+    const expectedFileName = new RegExp(
+      `^${userId}-[0-9a-f-]{36}\\.(png|jpg|webp)$`,
+      "i",
+    );
+
+    if (expectedFileName.test(fileName)) {
+      try {
+        await unlink(join(avatarStorageDir, fileName));
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+          throw error;
+        }
+      }
+    }
+  }
+
+  return updatedProfile;
+};
+
 /**
  * Application HTTP assemblée avec ses lecteurs et écrivains ; l’ouverture du port est effectuée
  * séparément.
@@ -207,6 +272,7 @@ const app = buildApp({
   profileUpdater,
   writeAvatar,
   readAvatar,
+  deleteAvatar,
 });
 
 const uuidPattern =

@@ -501,6 +501,46 @@ form > p[id$="-help"],
   width: 100%;
 }
 
+.avatar-preview-wrapper {
+  position: relative;
+  width: fit-content;
+}
+
+.avatar-editor .profile-avatar {
+  display: block;
+  margin-top: 0;
+}
+
+.remove-avatar-button {
+  position: absolute;
+  z-index: 1;
+  top: -5px;
+  right: -5px;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text);
+  background: rgb(255 255 255 / 88%);
+  font-size: 1rem;
+  line-height: 1;
+  box-shadow: 0 2px 8px rgb(58 43 70 / 16%);
+  backdrop-filter: blur(4px);
+}
+
+.remove-avatar-button:hover:not(:disabled) {
+  color: #fff;
+  border-color: var(--danger);
+  background: var(--danger);
+}
+
+.remove-avatar-button:disabled {
+  cursor: wait;
+}
+
 .playlist-form fieldset {
   display: grid;
   gap: 12px;

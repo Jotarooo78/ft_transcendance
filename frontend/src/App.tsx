@@ -20,9 +20,11 @@ import {
   removeFriend,
   updateMyProfile,
   uploadMyAvatar,
+  deleteMyAvatar,
   markPresenceOffline,
   sendPresenceHeartbeat,
 } from "./services/users";
+import type { AvatarUploadProgress } from "./services/users";
 
 import "./App.css";
 
@@ -196,6 +198,8 @@ function App() {
     username: string,
     bio: string,
     avatarFile: File | null,
+    removeAvatar: boolean,
+    onAvatarProgress: (progress: AvatarUploadProgress) => void,
   ): Promise<void> {
     const profile = await updateMyProfile({
       displayName,
@@ -221,7 +225,10 @@ function App() {
     // Le texte a déjà été confirmé. L’avatar est une seconde opération : son échec conserve le texte sauvegardé.
     if (avatarFile !== null) {
       try {
-        const avatarProfile = await uploadMyAvatar(avatarFile);
+        const avatarProfile = await uploadMyAvatar(
+          avatarFile,
+          onAvatarProgress,
+        );
         setCurrentUser((user) =>
           user === null
             ? null
@@ -233,6 +240,23 @@ function App() {
       } catch {
         throw new Error(
           "Profile saved, but the avatar was not uploaded. Please try uploading it again.",
+        );
+      }
+    } else if (removeAvatar) {
+      try {
+        const avatarProfile = await deleteMyAvatar();
+
+        setCurrentUser((user) =>
+          user === null
+            ? null
+            : {
+                ...user,
+                avatarUrl: avatarProfile.avatarUrl,
+              },
+        );
+      } catch {
+        throw new Error(
+          "Profile saved, but the avatar was not removed. Please try again.",
         );
       }
     }

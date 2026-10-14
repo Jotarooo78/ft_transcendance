@@ -32,11 +32,15 @@ declare module "@fastify/jwt" {
     /** Données du jeton ou du message, à valider avant leur utilisation. */
     payload: {
       /** Sujet du JWT : UUID du compte, vérifié avant de servir des données privées. */
-      sub?: unknown; [claim: string]: unknown };
+      sub?: unknown;
+      [claim: string]: unknown;
+    };
     /** Informations du JWT décodées et signature vérifiée par le plugin Fastify. */
     user: {
       /** Sujet du JWT : UUID du compte, vérifié avant de servir des données privées. */
-      sub?: unknown; [claim: string]: unknown };
+      sub?: unknown;
+      [claim: string]: unknown;
+    };
   }
 }
 
@@ -70,15 +74,28 @@ export type ProfileUpdater = (
 ) => Promise<ProfileDto>;
 
 /** Enregistre les octets de l’avatar et associe son nom au profil avant de confirmer le résultat. */
-export type AvatarWriter = (userId: string, fileName: string, bytes: Buffer) => Promise<ProfileDto>;
+export type AvatarWriter = (
+  userId: string,
+  fileName: string,
+  bytes: Buffer,
+) => Promise<ProfileDto>;
+
+export type AvatarDeleter = (userId: string) => Promise<ProfileDto | null>;
+
 /** Lit les octets de l’avatar demandé ; renvoie null si le fichier est absent. */
 export type AvatarReader = (fileName: string) => Promise<Buffer | null>;
 /** Limite d’avatar de 2 MiB, soit 2 097 152 octets ; distincte de la gestion générale des images Media. */
 export const maxAvatarBytes = 2 * 1024 * 1024;
 /** Correspondance des trois MIME d’avatar avec leur extension de stockage. */
-const avatarTypes = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" } as const;
+const avatarTypes = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+} as const;
 type AvatarMimeType = keyof typeof avatarTypes;
-const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const pngSignature = Buffer.from([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+]);
 /**
  * Accepte un nom d’avatar formé de l’UUID du compte et d’un UUID de fichier, avec extension image
  * autorisée.
@@ -147,6 +164,8 @@ type BuildAppOptions = {
   writeAvatar?: AvatarWriter;
   /** Lecture des octets d’un avatar par son nom contrôlé. */
   readAvatar?: AvatarReader;
+  /** Suppression de l’avatar courant et retour au comportement par défaut. */
+  deleteAvatar?: AvatarDeleter;
 };
 
 /** Reconnaît le format UUID accepté par ce contrat avant les lectures ou écritures. */
@@ -234,7 +253,9 @@ function hasValidInternalToken(
 
   const received = Buffer.from(authorization.slice(prefix.length));
   const expected = Buffer.from(expectedToken);
-  return received.length === expected.length && timingSafeEqual(received, expected);
+  return (
+    received.length === expected.length && timingSafeEqual(received, expected)
+  );
 }
 
 /**
@@ -250,11 +271,26 @@ export function buildApp({
   profileUpdater,
   writeAvatar,
   readAvatar,
+  deleteAvatar,
 }: BuildAppOptions): FastifyInstance {
-  if ((writeAvatar === undefined) !== (readAvatar === undefined)) {
-    throw new Error("writeAvatar and readAvatar must be configured together");
+  const avatarDependencies = [writeAvatar, readAvatar, deleteAvatar];
+
+  const configuredAvatarDependencies = avatarDependencies.filter(
+    (dependency) => dependency !== undefined,
+  ).length;
+
+  if (
+    configuredAvatarDependencies !== 0 &&
+    configuredAvatarDependencies !== avatarDependencies.length
+  ) {
+    throw new Error(
+      "writeAvatar, readAvatar and deleteAvatar must be configured together",
+    );
   }
-  if ((internalServiceToken === undefined) !== (provisionProfile === undefined)) {
+  if (
+    (internalServiceToken === undefined) !==
+    (provisionProfile === undefined)
+  ) {
     throw new Error(
       "internalServiceToken and provisionProfile must be configured together",
     );
@@ -313,55 +349,52 @@ export function buildApp({
     app.put<{
       /** Paramètres extraits du chemin de la route, validés avant accès au stockage. */
       Params: {
-      /** UUID du compte auquel le profil ou la demande est rattaché. */
-      userId: string };
+        /** UUID du compte auquel le profil ou la demande est rattaché. */
+        userId: string;
+      };
       /** Corps HTTP typé pour cette route ; la validation réelle reste effectuée à l’exécution. */
-      Body: unknown }>(
-      "/internal/profiles/:userId",
-      async (request, reply) => {
-        if (
-          !hasValidInternalToken(
-            request.headers.authorization,
-            internalServiceToken,
-          )
-        ) {
-          return reply.code(401).send({ error: "unauthorized" });
+      Body: unknown;
+    }>("/internal/profiles/:userId", async (request, reply) => {
+      if (
+        !hasValidInternalToken(
+          request.headers.authorization,
+          internalServiceToken,
+        )
+      ) {
+        return reply.code(401).send({ error: "unauthorized" });
+      }
+
+      const command = parseProfileProvisionCommand(request.body);
+      if (!command || command.aggregateId !== request.params.userId) {
+        return reply
+          .code(400)
+          .send({ error: "invalid profile provision command" });
+      }
+
+      try {
+        const result = await provisionProfile(command);
+        return reply.code(result.status === "created" ? 201 : 200).send({
+          status: result.status,
+          userId: command.aggregateId,
+        });
+      } catch (error) {
+        if (error instanceof UsernameTakenError) {
+          return reply.code(409).send({
+            error: error.message,
+            code: "USERNAME_TAKEN",
+          });
         }
 
-        const command = parseProfileProvisionCommand(request.body);
-        if (!command || command.aggregateId !== request.params.userId) {
-          return reply
-            .code(400)
-            .send({ error: "invalid profile provision command" });
+        if (error instanceof ProfileConflictError) {
+          return reply.code(409).send({
+            error: error.message,
+            code: "PROFILE_CONFLICT",
+          });
         }
 
-        try {
-          const result = await provisionProfile(command);
-          return reply
-            .code(result.status === "created" ? 201 : 200)
-            .send({
-              status: result.status,
-              userId: command.aggregateId,
-            });
-        } catch (error) {
-          if (error instanceof UsernameTakenError) {
-            return reply.code(409).send({
-              error: error.message,
-              code: "USERNAME_TAKEN",
-            });
-          }
-
-          if (error instanceof ProfileConflictError) {
-            return reply.code(409).send({
-              error: error.message,
-              code: "PROFILE_CONFLICT",
-            });
-          }
-
-          throw error;
-        }
-      },
-    );
+        throw error;
+      }
+    });
   }
 
   /**
@@ -388,16 +421,54 @@ export function buildApp({
     request.authenticatedUserId = subject;
   }
 
-  app.get(
-    "/me",
-    { onRequest: authenticate },
-    async (request, reply) => {
-      const profile = await readProfile(request.authenticatedUserId!);
+  app.get("/me", { onRequest: authenticate }, async (request, reply) => {
+    const profile = await readProfile(request.authenticatedUserId!);
 
-      if (!profile) {
-        return reply.code(404).send({ error: "profile not found" });
-      }
+    if (!profile) {
+      return reply.code(404).send({ error: "profile not found" });
+    }
 
+    return {
+      userId: profile.userId,
+      displayName: profile.displayName,
+      username: profile.username,
+      bio: profile.bio,
+      avatarUrl: profile.avatarUrl,
+    } satisfies ProfileDto;
+  });
+
+  app.put<{
+    /** Corps HTTP typé pour cette route ; la validation réelle reste effectuée à l’exécution. */
+    Body: unknown;
+  }>("/me/profile", { onRequest: authenticate }, async (request, reply) => {
+    const body = isRecord(request.body) ? request.body : {};
+    const displayName =
+      typeof body.displayName === "string" ? body.displayName.trim() : "";
+    const username = normalizeUsername(body.username);
+    const bio = typeof body.bio === "string" ? body.bio.trim() : body.bio;
+
+    if (!displayName || displayName.length > 60) {
+      return reply.code(400).send({
+        error: "displayName must be between 1 and 60 chars",
+      });
+    }
+    if (username === null) {
+      return reply.code(400).send({
+        error: "username must match ^[a-z0-9_]{3,24}$",
+      });
+    }
+    if (bio !== null && (typeof bio !== "string" || bio.length > 160)) {
+      return reply.code(400).send({
+        error: "bio must be null or contain no more than 160 chars",
+      });
+    }
+
+    try {
+      const profile = await profileUpdater(request.authenticatedUserId!, {
+        displayName,
+        username,
+        bio: bio === "" ? null : bio,
+      });
       return {
         userId: profile.userId,
         displayName: profile.displayName,
@@ -405,43 +476,42 @@ export function buildApp({
         bio: profile.bio,
         avatarUrl: profile.avatarUrl,
       } satisfies ProfileDto;
-    },
-  );
-
-  app.put<{
-    /** Corps HTTP typé pour cette route ; la validation réelle reste effectuée à l’exécution. */
-    Body: unknown }>(
-    "/me/profile",
-    { onRequest: authenticate },
-    async (request, reply) => {
-      const body = isRecord(request.body) ? request.body : {};
-      const displayName =
-        typeof body.displayName === "string" ? body.displayName.trim() : "";
-      const username = normalizeUsername(body.username);
-      const bio = typeof body.bio === "string" ? body.bio.trim() : body.bio;
-
-      if (!displayName || displayName.length > 60) {
-        return reply.code(400).send({
-          error: "displayName must be between 1 and 60 chars",
-        });
+    } catch (error) {
+      if (error instanceof UsernameConflictError) {
+        return reply.code(409).send({ error: error.message });
       }
-      if (username === null) {
-        return reply.code(400).send({
-          error: "username must match ^[a-z0-9_]{3,24}$",
-        });
-      }
-      if (bio !== null && (typeof bio !== "string" || bio.length > 160)) {
-        return reply.code(400).send({
-          error: "bio must be null or contain no more than 160 chars",
-        });
-      }
+      throw error;
+    }
+  });
 
-      try {
-        const profile = await profileUpdater(request.authenticatedUserId!, {
-          displayName,
-          username,
-          bio: bio === "" ? null : bio,
-        });
+  if (writeAvatar && readAvatar) {
+    app.post(
+      "/me/avatar",
+      { onRequest: authenticate },
+      async (request, reply) => {
+        if (!request.isMultipart()) {
+          return reply.code(400).send({ error: "avatar file is required" });
+        }
+        const file = await request.file();
+        if (!file || file.fieldname !== "avatar") {
+          return reply.code(400).send({ error: "avatar field is required" });
+        }
+        if (!isAvatarMimeType(file.mimetype)) {
+          return reply
+            .code(415)
+            .send({ error: "unsupported avatar mime type" });
+        }
+        const bytes = await file.toBuffer();
+        const detectedMimeType = detectAvatarMimeType(bytes);
+        if (detectedMimeType !== file.mimetype) {
+          return reply.code(415).send({
+            error: "avatar content does not match its declared mime type",
+          });
+        }
+        const extension = avatarTypes[detectedMimeType];
+        const userId = request.authenticatedUserId!;
+        const fileName = `${userId}-${randomUUID()}.${extension}`;
+        const profile = await writeAvatar(userId, fileName, bytes);
         return {
           userId: profile.userId,
           displayName: profile.displayName,
@@ -449,49 +519,36 @@ export function buildApp({
           bio: profile.bio,
           avatarUrl: profile.avatarUrl,
         } satisfies ProfileDto;
-      } catch (error) {
-        if (error instanceof UsernameConflictError) {
-          return reply.code(409).send({ error: error.message });
-        }
-        throw error;
-      }
-    },
-  );
+      },
+    );
 
-  if (writeAvatar && readAvatar) {
-    app.post("/me/avatar", { onRequest: authenticate }, async (request, reply) => {
-      if (!request.isMultipart()) {
-        return reply.code(400).send({ error: "avatar file is required" });
-      }
-      const file = await request.file();
-      if (!file || file.fieldname !== "avatar") {
-        return reply.code(400).send({ error: "avatar field is required" });
-      }
-      if (!isAvatarMimeType(file.mimetype)) {
-        return reply.code(415).send({ error: "unsupported avatar mime type" });
-      }
-      const bytes = await file.toBuffer();
-      const detectedMimeType = detectAvatarMimeType(bytes);
-      if (detectedMimeType !== file.mimetype) {
-        return reply.code(415).send({
-          error: "avatar content does not match its declared mime type",
-        });
-      }
-      const extension = avatarTypes[detectedMimeType];
-      const userId = request.authenticatedUserId!;
-      const fileName = `${userId}-${randomUUID()}.${extension}`;
-      const profile = await writeAvatar(userId, fileName, bytes);
-      return {
-        userId: profile.userId, displayName: profile.displayName,
-        username: profile.username, bio: profile.bio, avatarUrl: profile.avatarUrl,
-      } satisfies ProfileDto;
-    });
+    app.delete(
+      "/me/avatar",
+      { onRequest: authenticate },
+      async (request, reply) => {
+        const profile = await deleteAvatar!(request.authenticatedUserId!);
+
+        if (profile === null) {
+          return reply.code(404).send({ error: "profile not found" });
+        }
+
+        return {
+          userId: profile.userId,
+          displayName: profile.displayName,
+          username: profile.username,
+          bio: profile.bio,
+          avatarUrl: profile.avatarUrl,
+        } satisfies ProfileDto;
+      },
+    );
 
     app.get<{
       /** Paramètres extraits du chemin de la route, validés avant accès au stockage. */
       Params: {
-      /** Nom du fichier d’avatar, validé avant toute lecture du stockage. */
-      fileName: string } }>("/avatars/:fileName", async (request, reply) => {
+        /** Nom du fichier d’avatar, validé avant toute lecture du stockage. */
+        fileName: string;
+      };
+    }>("/avatars/:fileName", async (request, reply) => {
       const fileName = request.params.fileName;
       if (!avatarFilePattern.test(fileName)) {
         return reply.code(400).send({ error: "invalid file name" });
@@ -501,7 +558,12 @@ export function buildApp({
         return reply.code(404).send({ error: "avatar not found" });
       }
       const extension = fileName.split(".").pop();
-      const contentType = extension === "png" ? "image/png" : extension === "jpg" ? "image/jpeg" : "image/webp";
+      const contentType =
+        extension === "png"
+          ? "image/png"
+          : extension === "jpg"
+            ? "image/jpeg"
+            : "image/webp";
       return reply.type(contentType).send(bytes);
     });
   }

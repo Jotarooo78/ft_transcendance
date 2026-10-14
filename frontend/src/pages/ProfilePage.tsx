@@ -1,8 +1,8 @@
 import { getAvatarSource } from "../avatar";
 import { useState } from "react";
-
 import type { AuthenticatedUser, PublicUser } from "../types/auth";
 import EditProfileForm from "../components/EditProfileForm";
+import type { AvatarUploadProgress } from "../services/users";
 
 type ProfilePageProps = {
   user: AuthenticatedUser;
@@ -13,9 +13,12 @@ type ProfilePageProps = {
     username: string,
     bio: string,
     avatarFile: File | null,
+    removeAvatar: boolean,
+    onAvatarProgress: (progress: AvatarUploadProgress) => void,
   ) => Promise<void>;
 
   onRemoveFriend: (userId: string) => void;
+
 };
 
 function ProfilePage({
@@ -34,8 +37,17 @@ function ProfilePage({
     username: string,
     bio: string,
     avatarFile: File | null,
+    removeAvatar: boolean,
+    onAvatarProgress: (progress: AvatarUploadProgress) => void,
   ) {
-    await onUpdateProfile(displayName, username, bio, avatarFile);
+    await onUpdateProfile(
+      displayName,
+      username,
+      bio,
+      avatarFile,
+      removeAvatar,
+      onAvatarProgress,
+    );
     setIsEditing(false);
   }
 

@@ -1,12 +1,12 @@
 import { getAvatarSource } from "../avatar";
 import { useEffect, useState, type ChangeEvent, type SubmitEvent } from "react";
-
 import type { AuthenticatedUser } from "../types/auth";
 import {
   isCanonicalUsername,
   normalizeUsername,
   usernameErrorMessage,
 } from "../username";
+import type { AvatarUploadProgress } from "../services/users";
 
 type EditProfileFormProps = {
   user: AuthenticatedUser;
@@ -15,15 +15,17 @@ type EditProfileFormProps = {
     username: string,
     bio: string,
     avatarSource: File | null,
+    removeAvatar: boolean,
+    onAvatarProgress: (progress: AvatarUploadProgress) => void,
   ) => Promise<void>;
   onCancel: () => void;
 };
 
-function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
-  /*
-   * Le formulaire commence avec les informations actuelles
-   * de l'utilisateur.
-   */
+function EditProfileForm({
+  user,
+  onSave,
+  onCancel,
+}: EditProfileFormProps) {
   const [displayName, setDisplayName] = useState(user.displayName);
 
   const [username, setUsername] = useState(user.username);
@@ -34,16 +36,26 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [avatarUploadProgress, setAvatarUploadProgress] =
+    useState<AvatarUploadProgress | null>(null);
+
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+
+  const [avatarMarkedForDeletion, setAvatarMarkedForDeletion] =
+    useState(false);
 
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState(
     getAvatarSource(user.avatarUrl),
   );
 
   // Libère l’URL Blob de prévisualisation lorsque la sélection change ou que le formulaire disparaît.
-  useEffect(() => () => {
-    if (avatarPreviewUrl.startsWith("blob:")) URL.revokeObjectURL(avatarPreviewUrl);
-  }, [avatarPreviewUrl]);
+  useEffect(
+    () => () => {
+      if (avatarPreviewUrl.startsWith("blob:"))
+        URL.revokeObjectURL(avatarPreviewUrl);
+    },
+    [avatarPreviewUrl],
+  );
 
   function handleAvatarChange(event: ChangeEvent<HTMLInputElement>) {
     setErrorMessage("");
@@ -75,7 +87,26 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
     const previewUrl = URL.createObjectURL(file);
 
     setAvatarFile(file);
+    setAvatarMarkedForDeletion(false);
     setAvatarPreviewUrl(previewUrl);
+  }
+
+  function handleDeleteAvatar() {
+    if (avatarFile !== null) {
+      setAvatarFile(null);
+      setAvatarPreviewUrl(getAvatarSource(user.avatarUrl));
+      return;
+    }
+
+    const confirmed = window.confirm("Remove your current avatar?");
+
+    if (!confirmed) {
+      return;
+    }
+
+    setErrorMessage("");
+    setAvatarMarkedForDeletion(true);
+    setAvatarPreviewUrl(getAvatarSource(null));
   }
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
@@ -104,6 +135,7 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
     }
 
     setIsSubmitting(true);
+    setAvatarUploadProgress(null);
 
     try {
       await onSave(
@@ -111,6 +143,8 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
         normalizedUsername,
         trimmedBio,
         avatarFile,
+        avatarMarkedForDeletion,
+        setAvatarUploadProgress,
       );
     } catch (error) {
       if (error instanceof Error) {
@@ -126,11 +160,29 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
   return (
     <form className="edit-profile-form" onSubmit={handleSubmit}>
       <div className="avatar-editor">
-        <img
-          className="profile-avatar"
-          src={avatarPreviewUrl}
-          alt="Avatar preview"
-        />
+        <div className="avatar-preview-wrapper">
+          <img
+            className="profile-avatar"
+            src={avatarPreviewUrl}
+            alt="Avatar preview"
+          />
+
+          {(avatarFile !== null ||
+            (user.avatarUrl !== null && !avatarMarkedForDeletion)) && (
+            <button
+              type="button"
+              className="remove-avatar-button"
+              aria-label="Remove avatar"
+              title="Remove avatar"
+              disabled={isSubmitting}
+              onClick={() => {
+                handleDeleteAvatar();
+              }}
+            >
+              <span aria-hidden="true">&times;</span>
+            </button>
+          )}
+        </div>
 
         <label htmlFor="profile-avatar">
           Choose an avatar
@@ -143,6 +195,7 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
         </label>
 
         <p className="field-help">PNG, JPEG or WebP. Maximum size: 2 MB.</p>
+
       </div>
 
       <label htmlFor="profile-display-name">
@@ -197,6 +250,23 @@ function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
         <p className="message error-message" role="alert">
           {errorMessage}
         </p>
+      )}
+
+      {avatarUploadProgress !== null && (
+        <div className="avatar-upload-progress" aria-live="polite">
+          <progress
+            max={100}
+            value={avatarUploadProgress.percent ?? undefined}
+          />
+
+          <span>
+            {avatarUploadProgress.phase === "processing"
+              ? "Processing avatar..."
+              : avatarUploadProgress.percent === null
+                ? "Uploading avatar..."
+                : `Uploading avatar: ${avatarUploadProgress.percent}%`}
+          </span>
+        </div>
       )}
 
       <div className="edit-profile-actions">
