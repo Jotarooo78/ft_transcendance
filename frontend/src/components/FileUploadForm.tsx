@@ -37,9 +37,9 @@ export default function FileUploadForm({
   );
   const busy = checking || progress !== null || coverBusy;
   /**
- * Prévalide et transfère l’audio avec progression réelle, puis confirme sa présence avant la pochette
- * manuelle. Un refus facultatif d’image conserve cet audio et affiche une erreur séparée.
- * Annule l’opération courante au démontage et libère ses états à la sortie.
+   * Prévalide et transfère l’audio avec progression réelle affichée en pourcentage, puis confirme sa présence avant la pochette
+   * manuelle. Un refus facultatif d’image conserve cet audio et affiche une erreur séparée.
+   * Annule l’opération courante au démontage et libère ses états à la sortie.
    */
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -138,8 +138,7 @@ export default function FileUploadForm({
             <p>
               {progress.percent === null
                 ? "Uploading…"
-                : `${progress.percent}% uploaded`}{" "}
-              — {progress.loaded.toLocaleString("en-US")} bytes transferred
+                : `${progress.percent}%`}
             </p>
           </>
         )}
