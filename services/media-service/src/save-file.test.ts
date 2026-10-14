@@ -81,13 +81,11 @@ test("authenticated POST stores real original and MP3 preview; owner and paths n
   assert.equal((await post(multipart(bytes, "audio/wav", second))).statusCode, 400);
   assert.equal(data.records.size, 1); assert.equal((await readdir(directory)).length, 2);
   const png = await sharp({ create: { width: 16, height: 16, channels: 3, background: "blue" } }).png().toBuffer();
-  const image = await post(multipart(png, "image/png")); assert.equal(image.statusCode, 201, image.body);
-  assert.equal(image.json().usage, "image"); assert.equal(image.json().durationMs, null);
-  const imageAsset = data.records.get(image.json().id)!;
-  assert.deepEqual(await readFile(join(directory, imageAsset.storageKey)), png);
+  const image = await post(multipart(png, "image/png")); assert.equal(image.statusCode, 415, image.body);
+  assert.equal(image.json().error, "audio_required");
   const tooLarge = Buffer.alloc(25_000_001); png.copy(tooLarge);
   assert.equal((await post(multipart(tooLarge, "image/png"))).statusCode, 413);
-  assert.equal(data.records.size, 2); assert.equal((await readdir(directory)).length, 3);
+  assert.equal(data.records.size, 1); assert.equal((await readdir(directory)).length, 2);
 });
 
 test("SQL failure compensates; uncertain commits retain durable markers and recover without deleting confirmed files", async t => {

@@ -8,6 +8,8 @@ import { fileReader } from "./database/list-files.js";
 import { fileDeletion } from "./database/mark-file-deleted.js";
 import { catalogReferences } from "./check-catalog-references.js";
 import { recoverDeletions } from "./delete-file.js";
+import { coverStore } from "./database/save-audio-cover.js";
+import { recoverCoverUploads, cleanRetiredCovers } from "./save-audio-cover.js";
 
 /** Dossier du volume durable Media ; les chemins publics ne doivent pas le révéler. */
 const storageDir = process.env.MEDIA_STORAGE_DIR ?? "/data/audio";
@@ -17,6 +19,10 @@ const catalogUrl = process.env.CATALOG_SERVICE_URL ?? "http://catalog-service:40
 /** Suppression privée et contrôle de références injectés dans l’application. */
 const fileDeletes = fileDeletion(prisma, catalogReferences(catalogUrl, process.env.INTERNAL_SERVICE_TOKEN ?? ""));
 await recoverUploads(storageDir, files);
+/** Pochettes rattachées à un audio ; leurs traces de stockage sont reprises avant les suppressions. */
+const fileCovers = coverStore(prisma);
+await recoverCoverUploads(storageDir, fileCovers);
+await cleanRetiredCovers(storageDir, fileCovers);
 await recoverDeletions(storageDir, fileDeletes);
 
 /**
@@ -28,6 +34,7 @@ const app = buildApp({
   logger: true,
   storageDir,
   files,
+  fileCovers,
   fileReads: fileReader(prisma),
   fileDeletes,
   /** Lit les métadonnées nécessaires à la route audio publique depuis le schéma Media. */

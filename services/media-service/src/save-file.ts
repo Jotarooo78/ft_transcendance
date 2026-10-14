@@ -54,7 +54,7 @@ export async function recoverUploads(storageDir: string, store: FileStore, maxim
 }
 
 /**
- * Reçoit et valide un fichier dans un dossier privé, lui attribue un nouvel UUID et publie ses octets
+ * Reçoit et valide un audio dans un dossier privé, refuse une image seule, puis lui attribue un UUID et publie ses octets
  * sans écraser un fichier existant avant de créer ses lignes SQL. Chaque upload possède sa copie, même
  * si le contenu est identique.
  * @param storageDir Volume durable Media.
@@ -74,6 +74,7 @@ export async function saveFile(storageDir: string, owner: string, store: FileSto
     const mime = await receive(source);
     if (signal?.aborted) throw new FileError(400, "upload_aborted");
     const file = await validate(source, mime, { signal, previewPath: preview });
+    if (file.purpose !== "audio") throw new FileError(415, "audio_required");
     if (signal?.aborted) throw new FileError(400, "upload_aborted");
     const storageKey = `${id}.original`; const previewKey = file.purpose === "audio" ? `${id}.preview.mp3` : undefined;
     await syncDirectory(staging);

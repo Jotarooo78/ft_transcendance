@@ -7,6 +7,7 @@ import { constants } from "node:fs";
 import { open, type FileHandle } from "node:fs/promises";
 import { join } from "node:path";
 import type { FileStore, FileReader, FileDeletion } from "./file-definitions.js";
+import type { CoverStore } from "./cover-definitions.js";
 import { registerFileUpload } from "./register-file-upload.js";
 import { registerFileReads } from "./register-file-reads.js";
 import { registerFileDeletion } from "./register-file-deletion.js";
@@ -67,6 +68,8 @@ type Options = {
     logger?: boolean;
   /** Opérations d’enregistrement de fichiers injectées dans l’application. */
   files?: FileStore;
+  /** Associations atomiques des pochettes facultatives aux audios privés. */
+  fileCovers?: CoverStore;
   /** Lecture privée et liste des fichiers injectées dans l’application. */
   fileReads?: FileReader;
   /** Suppression privée et contrôle de références injectés dans l’application. */
@@ -83,7 +86,7 @@ export function buildApp(options: Options) {
   app.register(jwt, { secret: options.jwtSecret, verify: { algorithms: ["HS256"] } });
   app.register(multipart);
   app.decorateRequest("authenticatedUserId", undefined);
-  if (options.files) registerFileUpload(app, options.storageDir, options.files);
+  if (options.files) registerFileUpload(app, options.storageDir, options.files, options.fileCovers, options.fileReads);
   if (options.fileReads) registerFileReads(app, options.storageDir, options.fileReads);
   if (options.fileDeletes) registerFileDeletion(app, options.storageDir, options.fileDeletes);
   const registry = new client.Registry();

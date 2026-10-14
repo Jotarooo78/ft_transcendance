@@ -30,7 +30,7 @@ export function registerFileReads(app: FastifyInstance, storageDir: string, file
     /** Paramètres extraits du chemin de la route, validés avant accès au stockage. */
     Params: {
     /** Identifiant de cette entité ; distinct des identifiants des objets liés. */
-    id: string } }>({ method: ["GET", "HEAD"], url: "/assets/:id/private-content", onRequest: authenticateUser,
+    id: string; content: string } }>({ method: ["GET", "HEAD"], url: "/assets/:id/:content", onRequest: authenticateUser,
     /**
      * Lit uniquement l’aperçu du propriétaire vérifié. HEAD renvoie les mêmes métadonnées sans corps ; une
      * fermeture de connexion arrête le flux.
@@ -41,15 +41,19 @@ export function registerFileReads(app: FastifyInstance, storageDir: string, file
        * d’un autre compte.
        */
       const refuse = (status: number, error: string) => reply.code(status).send(request.method === "HEAD" ? undefined : { error, message: "Aperçu indisponible." });
+      const target = request.params.content;
+      if (target !== "private-content" && target !== "cover") return refuse(404, "file_not_found");
       if (!uuidPattern.test(request.params.id)) return refuse(400, "invalid_request");
       let handle: FileHandle | undefined;
       try {
         const asset = await files.read(request, request.params.id.toLowerCase());
         if (!asset || asset.uploaderUserId !== request.authenticatedUserId || asset.state !== "ready" || !["audio", "cover"].includes(asset.purpose)) return refuse(404, "file_not_found");
-        const content = asset.purpose === "audio" ? asset.variants[0] : asset;
+        const image = target === "cover" || asset.purpose !== "audio";
+        const content = target === "cover" ? asset.variants.find(variant => variant.renditionKey === "cover") :
+          asset.purpose === "audio" ? asset.variants.find(variant => variant.renditionKey === "private-preview") : asset;
         if (!content || !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(content.storageKey) || content.byteSize === null || content.byteSize <= 0n ||
-          content.byteSize > BigInt(asset.purpose === "audio" ? audioByteLimit : imageByteLimit) ||
-          !(asset.purpose === "audio" ? content.mimeType === "audio/mpeg" : ["image/png", "image/jpeg", "image/webp"].includes(content.mimeType))) return refuse(404, "file_not_found");
+          content.byteSize > BigInt(image ? imageByteLimit : audioByteLimit) ||
+          !(image ? ["image/png", "image/jpeg", "image/webp"].includes(content.mimeType) : content.mimeType === "audio/mpeg")) return refuse(404, "file_not_found");
         handle = await open(join(storageDir, content.storageKey), constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
         const stat = await handle.stat();
         if (!stat.isFile() || stat.size !== Number(content.byteSize)) return refuse(404, "file_not_found");

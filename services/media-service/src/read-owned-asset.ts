@@ -5,7 +5,7 @@ import { uuidPattern } from "./authenticate-user.js";
 
 // The owner must come from authenticateUser, never from form or query data.
 /**
- * Renvoie le fichier du compte authentifié et sa variante private-preview, ou null si l’identité
+ * Renvoie le fichier du compte avec son aperçu MP3 et sa pochette active, ou null si l’identité
  * manque, l’UUID est invalide ou le fichier appartient à un autre compte.
  */
 export async function readOwnedAsset(
@@ -17,5 +17,5 @@ export async function readOwnedAsset(
   // Fail closed even if a future caller forgets the authentication hook.
   if (typeof owner !== "string" || !uuidPattern.test(owner) || !uuidPattern.test(id)) return null;
   return database.asset.findFirst({ where: { id: id.toLowerCase(), uploaderUserId: owner.toLowerCase() },
-    include: { variants: { where: { renditionKey: "private-preview" } } } });
+    include: { variants: { where: { renditionKey: { in: ["private-preview", "cover"] } } } } });
 }

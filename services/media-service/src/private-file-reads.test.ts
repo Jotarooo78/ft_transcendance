@@ -37,8 +37,8 @@ test("private list queries both owner and state, preserves deterministic paging 
   const headers = { authorization: `Bearer ${token}` };
   const result = await app.inject({ url: "/assets?page=2&pageSize=1", headers });
   assert.equal(result.statusCode, 200); const data = result.json(); assert.equal(data.total, 2); assert.equal(data.page, 2);
-  assert.deepEqual(Object.keys(data.items[0]).sort(), ["id", "usage", "state", "mimeType", "byteSize", "durationMs"].sort());
-  assert.deepEqual(calls[0], { where: { uploaderUserId: owner, state: "ready", purpose: { in: ["audio", "cover"] } }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1, skip: 1 });
+  assert.deepEqual(Object.keys(data.items[0]).sort(), ["id", "usage", "state", "mimeType", "byteSize", "durationMs", "cover"].sort());
+  assert.deepEqual(calls[0], { where: { uploaderUserId: owner, state: "ready", purpose: "audio" }, include: { variants: { where: { renditionKey: "cover" } } }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1, skip: 1 });
   for (const query of ["page=0", "pageSize=101", "page=1&page=2", "page=10000", "uploaderUserId=other", "pageSize=1.5"]) {
     assert.equal((await app.inject({ url: `/assets?${query}`, headers })).statusCode, 400);
   }
@@ -49,7 +49,7 @@ test("owner-only GET/HEAD serves exact image or MP3 variant bytes with no-store 
   await writeFile(join(directory, "preview.mp3"), bytes); await writeFile(join(directory, "image.png"), bytes);
   await symlink(join(directory, "preview.mp3"), join(directory, "link")); await mkdir(join(directory, "directory"));
   const original = { id, uploaderUserId: owner, purpose: "audio", state: "ready", storageKey: "original.flac", mimeType: "audio/flac", byteSize: 500n, durationMs: 6000n, checksumSha256: "hash",
-    variants: [{ storageKey: "preview.mp3", mimeType: "audio/mpeg", byteSize: BigInt(bytes.length) }] };
+    variants: [{ renditionKey: "private-preview", storageKey: "preview.mp3", mimeType: "audio/mpeg", byteSize: BigInt(bytes.length) }] };
   let asset = { ...original }; let fail = false;
   const reads: FileReader = {
     /** Doublure du scénario pour liste privée du compte ; la réponse ou la panne est contrôlée par le test. */

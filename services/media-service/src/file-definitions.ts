@@ -24,9 +24,15 @@ export type StoredFile = {
    * stockage.
    */
   checksumSha256: string | null;
+  /** Représentations chargées avec l’audio, utilisées pour exposer sa pochette facultative. */
+  variants?: FileVariant[];
 };
 /** Métadonnées d’une représentation dérivée, par exemple l’aperçu MP3, conservée sous sa propre clé. */
 export type FileVariant = {
+  /** Identifiant public de cette représentation, utile pour renouveler un aperçu remplacé. */
+  id?: string;
+  /** private-preview pour l’audio, cover pour la pochette, retired-cover-* pour les traces à nettoyer. */
+  renditionKey?: string;
   /** Nom interne du fichier sur le volume durable ; ne doit pas être exposé au client. */
   storageKey: string;
   /** Type MIME du contenu vérifié, utilisé pour servir les octets avec leur format. */
@@ -82,6 +88,11 @@ export type FileDeletion = {
  * fichiers déjà validés ; aucun chemin, propriétaire ou checksum n’est renvoyé.
  */
 export function publicFile(file: StoredFile) {
+  const cover = file.variants?.find(variant => variant.renditionKey === "cover");
   return { id: file.id, usage: file.purpose === "audio" ? "audio" : "image", state: file.state,
-    mimeType: file.mimeType, byteSize: Number(file.byteSize), durationMs: file.durationMs === null ? null : Number(file.durationMs) };
+    mimeType: file.mimeType, byteSize: Number(file.byteSize), durationMs: file.durationMs === null ? null : Number(file.durationMs),
+    cover: cover ? publicCover(cover) : null };
 }
+
+/** Métadonnées minimales d’une pochette ; ses octets exigent un nouvel accès privé par l’audio. */
+export function publicCover(cover: FileVariant) { return { id: cover.id, mimeType: cover.mimeType, byteSize: Number(cover.byteSize) }; }
