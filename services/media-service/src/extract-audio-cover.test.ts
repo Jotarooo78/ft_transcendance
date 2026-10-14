@@ -44,8 +44,10 @@ test("unusable cover and bounded extraction do not invalidate the audio", async 
     await assert.rejects(extractAudioCover(mp3, join(directory, "memory"), { memoryBytes: 1 }), error => error instanceof FileError && error.code === "processing_limit");
     const controller = new AbortController(); controller.abort();
     await assert.rejects(extractAudioCover(mp3, join(directory, "abort"), { signal: controller.signal }), error => error instanceof FileError && error.code === "upload_aborted");
-    const broken = await readFile(mp3); const png = await readFile(image); const offset = broken.indexOf(png);
-    assert.ok(offset >= 0); broken.fill(0, offset + 48, offset + 56);
+    const broken = await readFile(mp3); const png = await readFile(image); const offset = broken.indexOf(png), idat = png.indexOf(Buffer.from("IDAT"));
+    assert.ok(offset >= 0 && idat >= 0);
+    // Détruire les pixels compressés, pas un simple commentaire PNG que le décodeur peut ignorer.
+    broken.fill(0, offset + idat + 6, offset + idat + 14);
     const corruptCover = join(directory, "corrupt-cover.mp3"); await writeFile(corruptCover, broken);
     assert.equal((await createFileValidator()(corruptCover, "audio/mpeg")).purpose, "audio");
     await assert.rejects(extractAudioCover(corruptCover, join(directory, "broken-image")));

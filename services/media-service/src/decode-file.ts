@@ -94,7 +94,12 @@ async function decode() {
     return { ...common, purpose: "image", mimeType, durationMs: null, width, height };
   }
   if (!declared.startsWith("audio/") && declared !== "application/octet-stream") throw new FileError(415, "unsupported_type");
-  const probe = JSON.parse((await runDecoder("ffprobe", ["-show_streams", "-show_format", "-of", "json", "fd:"])).text);
+  // Lire d’abord les en-têtes sans décoder les images attachées : une erreur PNG ne décrit pas la piste audio.
+  let headers: { streams?: ProbeStream[]; format?: { format_name?: string; duration?: string } } | undefined;
+  try { headers = JSON.parse((await runDecoder("ffprobe", ["-nofind_stream_info", "-show_streams", "-show_format", "-of", "json", "fd:"])).text); }
+  catch (error) { if (!(error instanceof FileError) || error.status !== 415) throw error; }
+  const attached = headers?.streams?.some(stream => stream.codec_type === "video" && stream.disposition?.attached_pic === 1) ?? false;
+  const probe = attached ? headers! : JSON.parse((await runDecoder("ffprobe", ["-show_streams", "-show_format", "-of", "json", "fd:"])).text);
   if (!Array.isArray(probe.streams)) throw new FileError(415, "unsupported_type");
   const streams: ProbeStream[] = probe.streams;
   const audioStreams = streams.filter(stream => stream.codec_type === "audio");
@@ -112,7 +117,8 @@ async function decode() {
   };
   const aliases = mimes[format] ?? [`audio/x-${format}`];
   if (declared !== "application/octet-stream" && !aliases.includes(declared)) throw new FileError(415, "mime_mismatch");
-  const decoded = await runDecoder("ffmpeg", ["-nostdin", "-xerror", "-err_detect", "explode", "-threads", "1", "-f", format, "-i", "fd:",
+  // Le décodeur lit ensuite tous les paquets audio sous contrôle strict ; il ne sonde pas les pixels facultatifs.
+  const decoded = await runDecoder("ffmpeg", ["-nostdin", "-xerror", "-err_detect", "explode", "-threads", "1", ...(attached ? ["-nofind_stream_info"] : []), "-f", format, "-i", "fd:",
     "-map", "0:a:0", "-threads", "1", "-ac", "1", "-ar", "8000", "-f", "s16le", "pipe:1"], true);
   const durationMs = Math.round(decoded.bytes / 16);
   const advertised = Number(audioStream.duration ?? probe.format?.duration) * 1000;

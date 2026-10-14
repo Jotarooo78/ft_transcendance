@@ -114,7 +114,10 @@ test("publication HTTP client rejects malformed, failed and timed-out responses"
   t.after(() => { server.closeAllConnections(); server.close(); });
   const address = server.address();
   assert.ok(address && typeof address !== "string");
-  const read = publicationReader(`http://127.0.0.1:${address.port}`, 100);
+  // Les réponses normales restent testées sous charge ; seul le serveur volontairement bloqué a un délai court.
+  const read = publicationReader(`http://127.0.0.1:${address.port}`, 1000);
   assert.equal(await read(id), true); mode = "false"; assert.equal(await read(id), false);
-  for (mode of ["bad", "failure", "timeout"]) await assert.rejects(read(id));
+  for (mode of ["bad", "failure"]) await assert.rejects(read(id));
+  mode = "timeout";
+  await assert.rejects(publicationReader(`http://127.0.0.1:${address.port}`, 50)(id));
 });

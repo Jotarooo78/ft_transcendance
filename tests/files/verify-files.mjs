@@ -1,9 +1,9 @@
-/** Preuves HTTPS, SQL et disque du cycle privé de fichiers ; utilise la pile common_repo et les cibles vérifiées par le runner. */
+/** Preuves HTTPS, SQL et disque des audios privés et pochettes sur la pile isolée du runner. */
 // Verify file management through HTTPS, PostgreSQL and the real Media volume.
 import assert from 'node:assert/strict';
 import https from 'node:https';
 import { randomUUID, createHash } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { readFile, writeFile, stat } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
@@ -17,8 +17,10 @@ export const root = fileURLToPath(new URL('../../', import.meta.url));
  * Origine HTTPS autorisée de la campagne ; les gardes qui suivent empêchent une cible extérieure au
  * périmètre prévu.
  */
-export const base = new URL(process.env.FILES_BASE_URL ?? 'https://127.0.0.1:1443');
-assert.equal(base.href, 'https://127.0.0.1:1443/');
+export const base = new URL(process.env.FILES_BASE_URL ?? 'https://127.0.0.1:4443');
+assert.equal(base.href, 'https://127.0.0.1:4443/');
+/** Préfixe Compose unique partagé par les témoins synchrones et le verrou SQL de concurrence. */
+const composeArguments=['compose','-p','transcendence_audio_cover','--env-file','/dev/null','-f',`${root}tests/music/compose.yml`,'-f',`${root}tests/files/compose.yml`];
 /** Mot de passe public réservé aux comptes jetables de cette campagne ; jamais un secret utilisateur. */
 const password = 'Files-test-only-password-2026';
 /** Calcule l’empreinte des octets pour comparer original, aperçu et témoins après redémarrage. */
@@ -27,22 +29,19 @@ const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 export const uuid = value => { assert.match(value, /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i); return value; };
 
 /**
- * Exécute Docker Compose pour common_repo avec l’override de campagne autorisé, une entrée facultative
- * et une sortie bornée.
+ * Exécute uniquement la pile audio/pochette isolée, avec entrée facultative et sortie bornée.
  */
 export function compose(args, input, maximum = 4 * 1024 * 1024) {
-  const override = process.env.FILES_COMPOSE_OVERRIDE;
-  if (override) assert.ok(override.startsWith('/tmp/transcendence-files-') && override.endsWith('.yml'));
-  return execFileSync('docker', ['compose', '-p', 'common_repo', '-f', `${root}docker-compose.yml`, ...(override ? ['-f', override] : []), ...args],
+  return execFileSync('docker', [...composeArguments, ...args],
     { cwd: root, input, maxBuffer: maximum, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
 }
 /**
- * Ajoute une garde sur la base transcendence et passe les valeurs via les variables psql ; arrête à la
+ * Ajoute une garde sur la base isolée et passe les valeurs via les variables psql ; arrête à la
  * première erreur SQL.
  */
 export function sql(query, variables = {}) {
   const argumentsList = Object.entries(variables).flatMap(([key, value]) => ['-v', `${key}=${value}`]);
-  const guarded = `DO $$ BEGIN IF current_database() <> 'transcendence' THEN RAISE EXCEPTION 'Wrong database'; END IF; END $$;\n${query}`;
+  const guarded = `DO $$ BEGIN IF current_database() <> 'transcendence_music' THEN RAISE EXCEPTION 'Wrong database'; END IF; END $$;\n${query}`;
   return compose(['exec', '-T', 'db', 'sh', '-c', 'exec psql -X -q -A -t -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 "$@"', 'psql', ...argumentsList], guarded);
 }
 /**
@@ -111,7 +110,9 @@ export function multipart(bytes, mime, field = 'file') {
 /** Envoie les octets par HTTPS et exige une confirmation 201 avant de renvoyer les métadonnées. */
 export async function upload(token, bytes, mime) {
   const file = expect(await request('/api/media/assets', { method: 'POST', token, ...multipart(bytes, mime) }), 201);
-  uuid(file.id); assert.equal(file.state, 'ready'); assert.deepEqual(Object.keys(file).sort(), ['id','usage','state','mimeType','byteSize','durationMs'].sort());
+  uuid(file.id); assert.equal(file.state, 'ready'); assert.equal(file.usage, 'audio');
+  assert.deepEqual(Object.keys(file).filter(key=>key!=='warning').sort(), ['id','usage','state','mimeType','byteSize','durationMs','cover'].sort());
+  if(file.cover) uuid(file.cover.id);
   return file;
 }
 /**
@@ -149,7 +150,36 @@ export async function writeState(path, state, initial = false) { await writeFile
 async function recordFile(token, account, bytes, mime) {
   const file = await upload(token, bytes, mime);
   const preview = await request(`/api/media/assets/${file.id}/private-content`, { token }); expect(preview, 200);
-  return { ...file, ownerId: account.id, checksum: sha256(bytes), previewChecksum: sha256(preview.bytes), previewBytes: preview.bytes.length };
+  const cover = file.cover ? expectCover(await request(`/api/media/assets/${file.id}/cover`, {token})) : null;
+  return { ...file, ownerId: account.id, checksum: sha256(bytes), previewChecksum: sha256(preview.bytes), previewBytes: preview.bytes.length,
+    coverChecksum: cover ? sha256(cover.bytes) : null };
+}
+/** Vérifie une réponse image privée et renvoie ses octets pour les empreintes. */
+function expectCover(response) { expect(response,200); assert.equal(response.headers['cache-control'],'no-store'); return response; }
+/**
+ * Produit de vrais MP3 avec PNG/JPEG intégrés et des pochettes trop larges/corrompues, via FFmpeg et Sharp
+ * dans le conteneur de test. Supprime ses temporaires après lecture ; ne touche jamais aux originaux stockés.
+ */
+export function coverFixtures() {
+  const result=compose(['exec','-T','media-service','node','--input-type=module','-e',`
+    import {mkdtemp,readFile,writeFile,rm} from 'node:fs/promises';
+    import {execFileSync} from 'node:child_process'; import sharp from 'sharp';
+    const directory=await mkdtemp('/tmp/cover-fixtures-'); const fixtures={};
+    try {
+      for(const [name,width,format] of [['png',32,'png'],['jpeg',32,'jpeg'],['wide',8193,'png']]) {
+        const image=directory+'/'+name, audio=directory+'/'+name+'.mp3';
+        await sharp({create:{width,height:16,channels:3,background:'red'}}).toFormat(format).toFile(image);
+        execFileSync('ffmpeg',['-v','error','-i','/data/audio/demo-1.wav','-i',image,'-map','0:a','-map','1:v','-c:a','libmp3lame','-c:v','copy','-disposition:v','attached_pic',audio]);
+        fixtures[name+'.mp3']=(await readFile(audio)).toString('base64'); fixtures[name+'.image']=(await readFile(image)).toString('base64');
+      }
+      const broken=Buffer.from(fixtures['png.mp3'],'base64'), png=Buffer.from(fixtures['png.image'],'base64');
+      const offset=broken.indexOf(png), idat=png.indexOf(Buffer.from('IDAT'));
+      if(offset<0 || idat<0) throw new Error('Missing artwork'); broken.fill(0,offset+idat+6,offset+idat+14);
+      fixtures['broken-cover.mp3']=broken.toString('base64');
+      process.stdout.write(JSON.stringify(fixtures));
+    } finally {await rm(directory,{recursive:true,force:true});}
+  `]);
+  return Object.fromEntries(Object.entries(JSON.parse(result)).map(([name,bytes])=>[name,Buffer.from(bytes,'base64')]));
 }
 /**
  * Compare les métadonnées SQL et les octets sur disque aux témoins. Pour deleted, exige l’absence des
@@ -161,8 +191,10 @@ async function verifyStored(file, token, state = 'ready') {
   assert.match(sql(assertions, { asset_id: file.id, owner_id: file.ownerId, purpose: file.usage === 'audio' ? 'audio' : 'cover', state,
     bytes: file.byteSize, checksum: file.checksum, duration: file.durationMs ?? 0 }), /FILE_SQL_PASS/);
   if (state === 'deleted') {
+    const keys=sql(`SELECT storage_key FROM media.variants WHERE asset_id='${file.id}';`).trim().split('\n').filter(Boolean);
+    keys.forEach(key=>assert.match(key,/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/));
     const result = compose(['exec', '-T', 'media-service', 'node', '--input-type=module', '-e',
-      'import { lstat } from "node:fs/promises"; const id=process.argv[1]; for (const key of [id+".original",id+".preview.mp3"]) { try { await lstat("/data/audio/"+key); throw new Error("Deleted bytes remain"); } catch(e) { if(e.code!=="ENOENT") throw e; } } console.log("DISK_ABSENT_PASS");', file.id]);
+      'import { lstat } from "node:fs/promises"; const id=process.argv[1]; for (const key of [id+".original",id+".preview.mp3",...JSON.parse(process.argv[2])]) { try { await lstat("/data/audio/"+key); throw new Error("Deleted bytes remain"); } catch(e) { if(e.code!=="ENOENT") throw e; } } console.log("DISK_ABSENT_PASS");', file.id,JSON.stringify(keys)]);
     assert.match(result, /DISK_ABSENT_PASS/); expect(await request(`/api/media/assets/${file.id}/private-content`, { token }), 404); return;
   }
   const result = compose(['exec', '-T', 'media-service', 'node', '--input-type=module', '-e',
@@ -173,6 +205,14 @@ async function verifyStored(file, token, state = 'ready') {
   assert.equal(response.headers['cache-control'], 'no-store'); assert.equal(response.headers['content-type'], file.usage === 'audio' ? 'audio/mpeg' : file.mimeType);
   assert.equal(Number(response.headers['content-length']), file.previewBytes);
   const head = await request(`/api/media/assets/${file.id}/private-content`, { method: 'HEAD', token }); expect(head, 200); assert.equal(head.bytes.length, 0);
+  const storedCover=sql(`SELECT id FROM media.variants WHERE asset_id='${file.id}' AND rendition_key='cover';`).trim();
+  assert.equal(storedCover,file.cover?.id ?? '');
+  const cover=await request(`/api/media/assets/${file.id}/cover`,{token});
+  if(file.cover) {
+    expectCover(cover); assert.equal(sha256(cover.bytes),file.coverChecksum); assert.equal(cover.headers['content-type'],file.cover.mimeType);
+    assert.equal(cover.bytes.length,file.cover.byteSize);
+    const headCover=await request(`/api/media/assets/${file.id}/cover`,{method:'HEAD',token}); expect(headCover,200); assert.equal(headCover.bytes.length,0);
+  } else expect(cover,404);
 }
 /**
  * Relit les fichiers des comptes de campagne et les compare aux témoins après les redémarrages, sans
@@ -180,37 +220,114 @@ async function verifyStored(file, token, state = 'ready') {
  */
 async function verify(state) {
   await waitReady(); const tokenA = await login(state.a); const tokenB = await login(state.b);
-  const aIds = expect(await request('/api/media/assets?pageSize=100', { token: tokenA }), 200).items.map(file => file.id);
-  const bIds = expect(await request('/api/media/assets?pageSize=100', { token: tokenB }), 200).items.map(file => file.id);
+  const aList = expect(await request('/api/media/assets?pageSize=100', { token: tokenA }), 200).items;
+  const aIds = aList.map(file => file.id);
+  const bList = expect(await request('/api/media/assets?pageSize=100', { token: tokenB }), 200).items;
+  const bIds = bList.map(file => file.id);
   for (const file of state.files) {
     const isA = file.ownerId === state.a.id; assert.ok((isA ? aIds : bIds).includes(file.id)); assert.ok(!(isA ? bIds : aIds).includes(file.id));
+    assert.deepEqual((isA ? aList : bList).find(item=>item.id===file.id).cover,file.cover);
     await verifyStored(file, isA ? tokenA : tokenB);
     expect(await request(`/api/media/assets/${file.id}/private-content`, { token: isA ? tokenB : tokenA }), 404);
+    expect(await request(`/api/media/assets/${file.id}/cover`, { token: isA ? tokenB : tokenA }), 404);
+    expect(await request(`/api/media/assets/${file.id}/cover`, { method:'PUT', token:isA ? tokenB : tokenA, ...multipart(Buffer.from('no'),'image/png') }),404);
+    expect(await request(`/api/media/assets/${file.id}/cover`, { method:'DELETE', token:isA ? tokenB : tokenA }),404);
     expect(await request(`/api/media/assets/${file.id}`, { method: 'DELETE', token: isA ? tokenB : tokenA }), 404);
     await verifyStored(file, isA ? tokenA : tokenB);
   }
+  if(state.recovery) {
+    const {active,unconfirmed,retired}=state.recovery;
+    for(const id of [active,unconfirmed,retired]) uuid(id);
+    const result=compose(['exec','-T','media-service','node','--input-type=module','-e',
+      'import {lstat} from "node:fs/promises"; for(const key of JSON.parse(process.argv[1])) { try {await lstat("/data/audio/"+key); throw new Error("Recovery bytes remain");} catch(error) {if(error.code!=="ENOENT") throw error;} } console.log("RECOVERY_PASS");',
+      JSON.stringify([`.cover-${active}`,`.cover-${unconfirmed}`,`${unconfirmed}.cover`,`${retired}.cover`])]);
+    assert.match(result,/RECOVERY_PASS/);
+    assert.equal(sql(`SELECT count(*) FROM media.variants WHERE storage_key='${retired}.cover';`).trim(),'0');
+  }
+}
+/**
+ * Reconstitue trois interruptions connues sur disque : pochette SQL confirmée, installation sans SQL
+ * et ancienne pochette retirée. Le prochain redémarrage doit préserver la première et nettoyer les autres.
+ */
+async function prepareRecovery(state) {
+  const file=state.files[1], key=sql(`SELECT storage_key FROM media.variants WHERE id='${uuid(file.cover.id)}';`).trim();
+  assert.match(key,/^[a-f0-9-]{36}\.cover$/);
+  const active=uuid(key.slice(0,-6)), unconfirmed=randomUUID(), retired=randomUUID();
+  compose(['exec','-T','media-service','node','--input-type=module','-e',`
+    import {mkdir,writeFile,link} from 'node:fs/promises';
+    const [active,unconfirmed,retired]=process.argv.slice(1), root='/data/audio/';
+    for(const id of [active,unconfirmed]) await mkdir(root+'.cover-'+id,{mode:0o700});
+    await link(root+active+'.cover',root+'.cover-'+active+'/image');
+    await writeFile(root+'.cover-'+unconfirmed+'/image','unconfirmed',{flag:'wx'});
+    await link(root+'.cover-'+unconfirmed+'/image',root+unconfirmed+'.cover');
+    await writeFile(root+retired+'.cover','old image',{flag:'wx'});
+  `,active,unconfirmed,retired]);
+  sql(`INSERT INTO media.variants(asset_id,rendition_key,storage_key,mime_type,byte_size) VALUES ('${uuid(file.id)}','retired-cover-${retired}','${retired}.cover','image/png',9);`);
+  state.recovery={active,unconfirmed,retired}; await writeState(state.path,state);
 }
 /**
  * Installe des références Catalogue ciblées puis prouve les refus de suppression ; retire ses fixtures
  * dans le nettoyage.
  */
 async function references(state) {
-  const token = await login(state.a); const [audio, cover, image] = state.files.filter(file => file.ownerId === state.a.id);
-  const ids = { track: randomUUID(), release: randomUUID(), artist: randomUUID() };
+  const token = await login(state.a); const audio = state.files[0];
+  const ids = { track: randomUUID() };
   state.references = ids; await writeState(state.path, state);
-  sql(`INSERT INTO catalog.tracks(id,title,audio_asset_id,duration_ms,status) VALUES ('${uuid(ids.track)}','Files reference fixture','${uuid(audio.id)}',6000,'draft');
-    INSERT INTO catalog.releases(id,title,release_type,cover_asset_id,status) VALUES ('${uuid(ids.release)}','Files reference fixture','single','${uuid(cover.id)}','draft');
-    INSERT INTO catalog.artists(id,name,slug,image_asset_id) VALUES ('${uuid(ids.artist)}','Files reference fixture','files-${uuid(ids.artist)}','${uuid(image.id)}');`);
+  sql(`INSERT INTO catalog.tracks(id,title,audio_asset_id,duration_ms,status) VALUES ('${uuid(ids.track)}','Files reference fixture','${uuid(audio.id)}',6000,'draft');`);
   try {
-    for (const file of [audio, cover, image]) { expect(await request(`/api/media/assets/${file.id}`, { method: 'DELETE', token }), 409); await verifyStored(file, token); }
+    expect(await request(`/api/media/assets/${audio.id}`, { method: 'DELETE', token }), 409); await verifyStored(audio, token);
     const existing = await request('/api/media/assets/30000000-0000-4000-8000-000000000001/audio'); expect(existing, 200); assert.equal(existing.bytes.length, 96044);
-    sql(`DO $$ BEGIN IF (SELECT count(*) FROM catalog.tracks WHERE id='${ids.track}' AND audio_asset_id='${audio.id}' AND status='draft')<>1 OR
-      (SELECT count(*) FROM catalog.releases WHERE id='${ids.release}' AND cover_asset_id='${cover.id}' AND status='draft')<>1 OR
-      (SELECT count(*) FROM catalog.artists WHERE id='${ids.artist}' AND image_asset_id='${image.id}')<>1 THEN RAISE EXCEPTION 'Lost catalogue references'; END IF; END $$;`);
+    sql(`DO $$ BEGIN IF (SELECT count(*) FROM catalog.tracks WHERE id='${ids.track}' AND audio_asset_id='${audio.id}' AND status='draft')<>1 THEN RAISE EXCEPTION 'Lost catalogue references'; END IF; END $$;`);
   } finally {
-    sql(`DELETE FROM catalog.tracks WHERE id='${uuid(ids.track)}'; DELETE FROM catalog.releases WHERE id='${uuid(ids.release)}'; DELETE FROM catalog.artists WHERE id='${uuid(ids.artist)}';`);
+    sql(`DELETE FROM catalog.tracks WHERE id='${uuid(ids.track)}';`);
     delete state.references; await writeState(state.path, state);
   }
+}
+/**
+ * Retient la ligne audio dans une vraie transaction PostgreSQL pour faire attendre simultanément
+ * un remplacement de pochette et une suppression HTTPS. Relâche toujours le verrou, puis exige une
+ * suppression cohérente, aucun ajout tardif et aucun fichier orphelin.
+ */
+async function concurrentCoverDeletion(state) {
+  const token=await login(state.a), fixtures=coverFixtures();
+  const before=compose(['exec','-T','media-service','node','--input-type=module','-e',
+    'import {readdir} from "node:fs/promises"; console.log(JSON.stringify((await readdir("/data/audio")).sort()));']).trim();
+  const file=await recordFile(token,state.a,fixtures['png.mp3'],'audio/mpeg');
+  const session=spawn('docker',[...composeArguments,'exec','-T','db','psql','-X','-q','-A','-t','-U','e2e_admin','-d','transcendence_music','-v','ON_ERROR_STOP=1'],{cwd:root,stdio:['pipe','pipe','pipe']});
+  let output='', requests;
+  /** Attend le témoin imprimé après acquisition du verrou, avec délai et erreur de processus bornés. */
+  const locked=new Promise((resolve,reject)=>{
+    const timer=setTimeout(()=>reject(new Error('SQL lock timeout')),10_000);
+    session.stdout.on('data',chunk=>{output+=String(chunk); if(output.includes('LOCK_READY')) {clearTimeout(timer); resolve();}});
+    session.on('error',error=>{clearTimeout(timer); reject(error);});
+    session.on('close',()=>{clearTimeout(timer); reject(new Error('SQL lock closed early'));});
+  });
+  /** Confirme la fermeture propre de psql sans publier son contenu ni aucune identité de session. */
+  const closed=new Promise((resolve,reject)=>{session.on('error',reject); session.on('close',code=>code===0?resolve():reject(new Error('SQL session failed')));});
+  void closed.catch(()=>{});
+  session.stderr.resume();
+  session.stdin.write(`BEGIN; SELECT id FROM media.assets WHERE id='${uuid(file.id)}' FOR UPDATE; SELECT 'LOCK_READY';\n`);
+  try {
+    await locked;
+    requests=Promise.allSettled([
+      request(`/api/media/assets/${file.id}/cover`,{method:'PUT',token,...multipart(fixtures['jpeg.image'],'image/jpeg')}),
+      request(`/api/media/assets/${file.id}`,{method:'DELETE',token})]);
+    let waiting=0;
+    for(let attempt=0;attempt<100;attempt++) {
+      waiting=Number(sql("SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND usename='media_runtime' AND wait_event_type='Lock';").trim());
+      if(waiting>=2) break;
+      await delay(50);
+    }
+    assert.ok(waiting>=2,'Both real writes must be blocked on the audio row');
+  } finally {session.stdin.end('COMMIT;\n'); await closed;}
+  const [put,removed]=await requests;
+  assert.equal(put.status,'fulfilled'); assert.equal(removed.status,'fulfilled');
+  assert.ok([200,404].includes(put.value.status)); expect(removed.value,204);
+  await verifyStored(file,token,'deleted');
+  const after=compose(['exec','-T','media-service','node','--input-type=module','-e',
+    'import {readdir} from "node:fs/promises"; console.log(JSON.stringify((await readdir("/data/audio")).sort()));']).trim();
+  assert.equal(after,before);
+  console.log('[FILES HTTP] PASS concurrent cover/delete blocked together in PostgreSQL; no late cover or orphan bytes');
 }
 /**
  * Vérifie les parcours existants avatar, catalogue, playlists et écoute avec deux comptes sur la vraie
@@ -256,29 +373,49 @@ export async function main(mode, statePath) {
   await waitReady();
   if (mode === 'initial') {
     try { await stat(statePath); throw new Error('State file exists; use a new campaign path'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
-    const campaign = randomUUID().replaceAll('-', '').slice(0, 10); const fixtures = await createFixtures(`${statePath}.fixtures`);
+    const campaign = randomUUID().replaceAll('-', '').slice(0, 10); const fixtures = await createFixtures(`${statePath}.fixtures`); const covers=coverFixtures();
     const state = { path: statePath, campaign, a: await createAccount(campaign, 'a'), b: await createAccount(campaign, 'b'), files: [] };
     await writeState(statePath, state, true);
     const tokenA = await login(state.a), tokenB = await login(state.b);
-    for (const [token, account, bytes, mime] of [[tokenA,state.a,fixtures['audio.wav'],'audio/wav'], [tokenA,state.a,fixtures['image.png'],'image/png'],
-      [tokenA,state.a,fixtures['image.png'],'image/png'], [tokenB,state.b,fixtures['image.png'],'image/png']]) {
+    for (const [token, account, bytes, mime] of [[tokenA,state.a,fixtures['audio.wav'],'audio/wav'], [tokenA,state.a,covers['png.mp3'],'audio/mpeg'],
+      [tokenA,state.a,covers['jpeg.mp3'],'audio/mpeg'], [tokenB,state.b,fixtures['audio.wav'],'audio/wav'],
+      [tokenA,state.a,covers['wide.mp3'],'audio/mpeg'],[tokenA,state.a,covers['broken-cover.mp3'],'audio/mpeg']]) {
       state.files.push(await recordFile(token, account, bytes, mime)); await writeState(statePath, state);
     }
+    assert.equal(state.files[0].cover,null);
+    assert.equal(state.files[1].cover.mimeType,'image/png'); assert.equal(state.files[2].cover.mimeType,'image/jpeg');
+    for(const file of state.files.slice(4)) { assert.equal(file.cover,null); assert.equal(file.warning,'cover_unavailable'); }
+    const audio=state.files[0];
+    for(const [bytes,mime] of [[covers['png.image'],'image/png'],[covers['jpeg.image'],'image/jpeg']]) {
+      audio.cover=expect(await request(`/api/media/assets/${audio.id}/cover`,{method:'PUT',token:tokenA,...multipart(bytes,mime)}),200).cover;
+      audio.coverChecksum=sha256(bytes); await verifyStored(audio,tokenA);
+    }
+    for(const [bytes,mime,status] of [[fixtures['truncated.png'],'image/png',415],[covers['wide.image'],'image/png',422],[fixtures['false.mp3'],'image/png',415]]) {
+      expect(await request(`/api/media/assets/${audio.id}/cover`,{method:'PUT',token:tokenA,...multipart(bytes,mime)}),status); await verifyStored(audio,tokenA);
+    }
+    expect(await request(`/api/media/assets/${audio.id}/cover`,{method:'DELETE',token:tokenA}),204);
+    audio.cover=null; audio.coverChecksum=null; await verifyStored(audio,tokenA);
+    // Ajout manuel prioritaire sur le PNG intégré ; les empreintes audio et aperçu restent identiques.
+    const embedded=state.files[1];
+    embedded.cover=expect(await request(`/api/media/assets/${embedded.id}/cover`,{method:'PUT',token:tokenA,...multipart(covers['jpeg.image'],'image/jpeg')}),200).cover;
+    embedded.coverChecksum=sha256(covers['jpeg.image']); await verifyStored(embedded,tokenA); await writeState(statePath,state);
     expect(await request('/api/media/assets'), 401);
     for (const [bytes, mime, status] of [[fixtures['audio.wav'],'image/png',415], [fixtures['truncated.wav'],'audio/wav',415],
       [fixtures['truncated.png'],'image/png',415], [fixtures['empty.wav'],'audio/wav',400], [fixtures['false.mp3'],'audio/mpeg',415], [fixtures['active.svg'],'image/svg+xml',415]]) {
       expect(await request('/api/media/assets', { method: 'POST', token: tokenA, ...multipart(bytes, mime) }), status);
     }
+    expect(await request('/api/media/assets', { method: 'POST', token: tokenA, ...multipart(fixtures['image.png'],'image/png') }),415);
     const tooLarge = Buffer.alloc(25_000_001); fixtures['image.png'].copy(tooLarge);
-    expect(await request('/api/media/assets', { method: 'POST', token: tokenA, ...multipart(tooLarge,'image/png') }), 413);
+    expect(await request(`/api/media/assets/${audio.id}/cover`, { method: 'PUT', token: tokenA, ...multipart(tooLarge,'image/png') }),413);
     await oversizedAudio(tokenA);
     expect(await request('/api/catalog/internal/assets/30000000-0000-4000-8000-000000000001/references'), 404);
     expect(await request('/api/media/assets/30000000-0000-4000-8000-000000000001', { method: 'DELETE', token: tokenA }), 404);
-    await verify(state); await references(state);
-    console.log('[FILES HTTP] PASS uploads, content refusals, owner isolation, SQL/disk, three reference protections and public audio');
+    await verify(state); await references(state); await concurrentCoverDeletion(state);
+    console.log('[FILES HTTP] PASS audio only, embedded PNG/JPEG, optional broken/oversized covers, replace/remove, unchanged originals, owner isolation, SQL/disk and catalogue protection');
+    await prepareRecovery(state);
   } else {
     const state = await readState(statePath); assert.equal(state.path, statePath);
-    if (mode === 'verify') { await verify(state); console.log('[FILES HTTP] PASS persisted UUIDs, checksums, private bytes and owner isolation'); }
+    if (mode === 'verify') { await verify(state); console.log('[FILES HTTP] PASS persisted UUIDs, checksums, private covers, owner isolation and SQL/disk recovery'); }
     else if(mode === 'non-regression') await nonRegression(state);
     else if (mode === 'catalog-down') {
       const token = await login(state.a); const file = state.files[0];

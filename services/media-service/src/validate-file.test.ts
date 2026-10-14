@@ -40,7 +40,7 @@ test("real full audio decoding: WAV, FLAC, MP3, AAC/M4A, Ogg and Opus", async ()
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
 
-test("MP3 accepts attached JPEG/PNG artwork, preserves original bytes and still rejects real video", async () => {
+test("audio accepts attached JPEG/PNG artwork, preserves bytes and still rejects truncated audio or real video", async () => {
   const dir = await mkdtemp(join(tmpdir(), "file-attached-cover-"));
   try {
     const source = join(dir, "audio.wav"); await writeFile(source, demoAudio(1));
@@ -56,6 +56,16 @@ test("MP3 accepts attached JPEG/PNG artwork, preserves original bytes and still 
       assert.ok(result.durationMs! >= 5900 && result.durationMs! <= 6800);
       const probe = JSON.parse(execFileSync("ffprobe", ["-v", "error", "-show_streams", "-of", "json", previewPath]).toString());
       assert.equal(probe.streams.length, 1); assert.equal(probe.streams[0].codec_type, "audio");
+      const truncated = join(dir, `${format}.truncated.mp3`), original = await readFile(mp3);
+      // La pochette et les en-têtes restent complets, mais la fin de la piste audio manque.
+      await writeFile(truncated, original.subarray(0, Math.floor(original.length / 2)));
+      await rejects(validate(truncated, "audio/mpeg"), 415);
+    }
+    for (const [extension, codec, mime] of [["flac", "flac", "audio/flac"], ["m4a", "aac", "audio/mp4"]]) {
+      const file = join(dir, `attached.${extension}`);
+      execFileSync("ffmpeg", ["-v", "error", "-i", source, "-i", join(dir, "cover.png"), "-map", "0:a:0", "-map", "1:v:0", "-c:a", codec!, "-c:v", "copy", "-disposition:v", "attached_pic", file]);
+      const result = await validate(file, mime!, { previewPath: join(dir, `${extension}.preview.mp3`) });
+      assert.equal(result.purpose, "audio"); assert.ok(result.durationMs! > 5900);
     }
     const video = join(dir, "video.mkv");
     execFileSync("ffmpeg", ["-v", "error", "-i", source, "-loop", "1", "-i", join(dir, "cover.png"), "-t", "1", "-map", "0:a:0", "-map", "1:v:0", "-c:a", "pcm_s16le", "-c:v", "ffv1", video]);
