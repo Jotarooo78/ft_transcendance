@@ -3,8 +3,8 @@
 export type ReadyFile = {
   /** Identifiant de cette entité ; distinct des identifiants des objets liés. */
   id: string;
-  /** Catégorie publique audio ou image ; les images sont représentées par cover dans le modèle SQL. */
-  usage: "audio" | "image";
+  /** Seuls les audios forment des entrées ; les images sont leurs pochettes facultatives. */
+  usage: "audio";
   /** ready uniquement : le serveur a confirmé le fichier avant de le présenter au client. */
   state: "ready";
   /** Type MIME du contenu vérifié, utilisé pour servir les octets avec leur format. */
@@ -13,7 +13,28 @@ export type ReadyFile = {
   byteSize: number;
   /** Durée en millisecondes ; null lorsque cette durée n’est pas disponible ou ne s’applique pas. */
   durationMs: number | null;
+  /** Métadonnées de la pochette active ; null signifie visuel par défaut. */
+  cover: AudioCover | null;
+  /** L’audio est confirmé, mais son image intégrée n’a pas pu être utilisée. */
+  warning?: "cover_unavailable";
 };
+/** Représentation image d’un audio ; l’identifiant change après remplacement. */
+export type AudioCover = {
+  /** UUID de la représentation, sans chemin de stockage. */
+  id: string;
+  /** Format réel de l’image validée. */
+  mimeType: string;
+  /** Taille exacte en octets, bornée à 25 Mo. */
+  byteSize: number;
+};
+/** Refuse les métadonnées de pochette inattendues avant toute lecture dans le navigateur. */
+export function isAudioCover(value: unknown): value is AudioCover {
+  if (!value || typeof value !== "object") return false;
+  const cover = value as Record<string, unknown>;
+  return typeof cover.id === "string" && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(cover.id) &&
+    typeof cover.mimeType === "string" && ["image/png", "image/jpeg", "image/webp"].includes(cover.mimeType) &&
+    Number.isSafeInteger(cover.byteSize) && Number(cover.byteSize) > 0 && Number(cover.byteSize) <= imageByteLimit;
+}
 /**
  * Progression réelle du transfert puis validation serveur. percent et total sont null lorsque le
  * navigateur ne peut pas mesurer le total.
@@ -45,17 +66,13 @@ export function isReadyFile(value: unknown): value is ReadyFile {
       file.id,
     ) &&
     file.state === "ready" &&
-    (file.usage === "audio" || file.usage === "image") &&
+    file.usage === "audio" &&
     typeof file.mimeType === "string" &&
     Number.isSafeInteger(file.byteSize) &&
     Number(file.byteSize) > 0 &&
-    Number(file.byteSize) <=
-      (file.usage === "image" ? imageByteLimit : audioByteLimit) &&
-    (file.usage === "audio"
-      ? file.mimeType.startsWith("audio/") &&
-        Number.isSafeInteger(file.durationMs) &&
-        Number(file.durationMs) > 0
-      : ["image/png", "image/jpeg", "image/webp"].includes(file.mimeType) &&
-        file.durationMs === null)
+    Number(file.byteSize) <= audioByteLimit && file.mimeType.startsWith("audio/") &&
+    Number.isSafeInteger(file.durationMs) && Number(file.durationMs) > 0 &&
+    (file.cover === null || isAudioCover(file.cover)) &&
+    (file.warning === undefined || file.warning === "cover_unavailable")
   );
 }

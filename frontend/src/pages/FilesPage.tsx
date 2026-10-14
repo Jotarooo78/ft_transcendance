@@ -2,6 +2,9 @@
 import { useEffect, useRef, useState } from "react";
 import FileUploadForm from "../components/FileUploadForm";
 import FilePreview from "../components/FilePreview";
+import AudioCover from "../components/AudioCover";
+import { replaceAudioCover, removeAudioCover } from "../services/update-audio-cover";
+import { validateFile } from "../services/validate-file";
 import { readFiles, type FilePage } from "../services/read-files";
 import { deleteFile } from "../services/delete-file";
 import { getAccessToken } from "../services/session";
@@ -14,15 +17,20 @@ import type { ReadyFile } from "../types/files";
 function FileItem({
   file,
   onDeleted,
+  onChanged,
 }: {
   /** Métadonnées du fichier privé prêt à être affiché. */
   file: ReadyFile;
   /** Appelé après confirmation serveur de la suppression de cet UUID. */
   onDeleted: (id: string) => void;
+  /** Remplace les métadonnées de cette seule carte après confirmation serveur. */
+  onChanged: (file: ReadyFile) => void;
 }) {
   const [preview, setPreview] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [cover, setCover] = useState<File | null>(null);
+  const coverInput = useRef<HTMLInputElement | null>(null);
   const current = useRef<AbortController | null>(null);
   useEffect(
     () => () => {
@@ -57,9 +65,27 @@ function FileItem({
       }
     }
   }
+  /** Ajoute/remplace l’image ou retire son association, sans renvoyer ni effacer l’audio. */
+  async function changeCover(remove = false) {
+    if (busy || (!remove && !cover)) return;
+    const controller = new AbortController(); current.current = controller; setBusy(true); setError("");
+    try {
+      if (remove) {
+        await removeAudioCover(file.id, controller.signal);
+        if (current.current === controller) onChanged({ ...file, cover: null });
+      } else {
+        await validateFile(cover!, controller.signal, "image");
+        const saved = await replaceAudioCover(file.id, cover!, controller.signal);
+        if (current.current === controller) onChanged({ ...file, cover: saved });
+      }
+      if (current.current === controller) { setCover(null); if (coverInput.current) coverInput.current.value = ""; }
+    } catch (failure) { if (current.current === controller) setError(failure instanceof Error ? failure.message : "Unable to change the cover."); }
+    finally { if (current.current === controller) { current.current = null; setBusy(false); } }
+  }
   return (
     <li data-file-id={file.id} className="file-card">
-      <h2>{file.usage === "image" ? "Image" : "Audio"}</h2>
+      <AudioCover file={file} />
+      <h2>Audio</h2>
       <p>
         {file.mimeType} · {(file.byteSize / 1_000_000).toFixed(2)} MB
         {file.durationMs !== null
@@ -72,8 +98,17 @@ function FileItem({
           {preview ? "Close preview" : "Open preview"}
         </button>
         <button type="button" disabled={busy} onClick={() => void remove()}>
-          {busy ? "Deleting…" : "Delete file"}
+          Delete audio
         </button>
+      </div>
+      <div className="cover-editor">
+        <label htmlFor={`cover-${file.id}`}>Cover image</label>
+        <input id={`cover-${file.id}`} type="file" accept="image/png,image/jpeg,image/webp" ref={coverInput} disabled={busy} onChange={event => setCover(event.target.files?.[0] ?? null)} />
+        <div className="file-actions">
+          <button type="button" disabled={busy || !cover} onClick={() => void changeCover()}>{file.cover ? "Replace cover" : "Add cover"}</button>
+          {file.cover && <button type="button" disabled={busy} onClick={() => void changeCover(true)}>Remove cover</button>}
+        </div>
+        {busy && <p role="status">Saving changes…</p>}
       </div>
       {preview && <FilePreview file={file} />}
       {error && (
@@ -141,12 +176,18 @@ export default function FilesPage() {
         : previous,
     );
   }
+  /** Garde le total et l’audio existants, tout en affichant la nouvelle pochette confirmée. */
+  function changed(file: ReadyFile) {
+    if (token !== getAccessToken()) return;
+    setResult(previous => previous.key === key && previous.data ? { ...previous, data: { ...previous.data,
+      items: previous.data.items.map(item => item.id === file.id ? file : item) } } : previous);
+  }
   return (
     <main className="files-page">
       <header>
         <p className="page-label">Your private space</p>
-        <h1>Files</h1>
-        <p>Upload, preview, and delete your audio files and images.</p>
+        <h1>My audio</h1>
+        <p>Add and listen to your audio, with an optional cover. Your files stay private.</p>
       </header>
       <FileUploadForm
         onReady={() => {
@@ -155,7 +196,7 @@ export default function FilesPage() {
         }}
       />
       <section aria-labelledby="saved-files-title">
-        <h2 id="saved-files-title">Saved files</h2>
+        <h2 id="saved-files-title">Saved audio</h2>
         <button
           type="button"
           disabled={loading}
@@ -172,7 +213,7 @@ export default function FilesPage() {
             {data?.items.length === 0 && <p>No files on this page.</p>}
             <ul className="file-list">
               {data?.items.map((file) => (
-                <FileItem key={file.id} file={file} onDeleted={deleted} />
+                <FileItem key={file.id} file={file} onDeleted={deleted} onChanged={changed} />
               ))}
             </ul>
             <nav className="pagination" aria-label="File pages">

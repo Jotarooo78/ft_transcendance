@@ -48,6 +48,7 @@ function getErrorMessage(error: unknown, fallbackMessage: string): string {
   return fallbackMessage;
 }
 
+/** Coordonne la session et les pages ; l’espace My audio regroupe les audios privés et leurs pochettes. */
 function App() {
   const [currentPage, setCurrentPage] = useState<PublicPage>("register");
 
@@ -282,7 +283,7 @@ function App() {
               aria-pressed={privatePage === "files"}
               onClick={() => setPrivatePage("files")}
             >
-              Files
+              My audio
             </button>
             <button
               type="button"

@@ -83,13 +83,15 @@ export function sendFile(
           400: "Invalid upload or empty file.",
           409: "This file is currently in use.",
           413: "The file exceeds the allowed size.",
-          415: "Invalid or corrupted content, or unsupported format.",
+          415: "This audio format is not supported.",
           422: "Image dimensions or processing limits exceeded.",
           503: "The service is busy or unavailable. Please try again.",
         };
         return reject(
           new Error(
-            messages[xhr.status] ??
+            ((data as { error?: string })?.error === "audio_required" ? "Choose an audio file. Images are only covers." :
+              ["invalid_file", "invalid_duration"].includes((data as { error?: string })?.error ?? "") ? "The audio is corrupted or cannot be decoded." :
+              (data as { error?: string })?.error === "mime_mismatch" ? "The declared audio type does not match its content." : messages[xhr.status]) ??
               "The file was not confirmed as ready. Refresh the list before trying again.",
           ),
         );

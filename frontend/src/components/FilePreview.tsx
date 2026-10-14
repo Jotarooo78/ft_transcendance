@@ -23,11 +23,12 @@ export default function FilePreview({
     error?: string;
   }>({ key: "" });
   const token = getAccessToken();
-  const key = JSON.stringify([token, file.id]);
+  const id = file.id;
+  const key = JSON.stringify([token, id]);
   useEffect(() => {
     const controller = new AbortController();
     let url: string | undefined;
-    void readFilePreview(file, controller.signal)
+    void readFilePreview({ id }, controller.signal)
       .then((blob) => {
         if (controller.signal.aborted || token !== getAccessToken()) return;
         url = URL.createObjectURL(blob);
@@ -45,16 +46,10 @@ export default function FilePreview({
       controller.abort();
       if (url) URL.revokeObjectURL(url);
     };
-  }, [file, key, token]);
+  }, [id, key, token]);
   if (result.key !== key) return <p role="status">Loading preview…</p>;
   if (result.error) return <p role="alert">{result.error}</p>;
-  return file.usage === "image" ? (
-    <img
-      className="file-image-preview"
-      src={result.url}
-      alt="Uploaded file preview"
-    />
-  ) : (
+  return (
     <audio
       controls
       preload="metadata"

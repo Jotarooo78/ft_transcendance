@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, type SubmitEvent } from "react";
 import { validateFile } from "../services/validate-file";
 import { sendFile } from "../services/send-file";
+import { replaceAudioCover } from "../services/update-audio-cover";
 import type { ReadyFile, UploadProgress } from "../types/files";
 
 /**
@@ -15,12 +16,15 @@ export default function FileUploadForm({
   onReady?: (file: ReadyFile) => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
+  const [cover, setCover] = useState<File | null>(null);
+  const [coverBusy, setCoverBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [checking, setChecking] = useState(false);
   const current = useRef<AbortController | null>(null);
   const input = useRef<HTMLInputElement | null>(null);
+  const coverInput = useRef<HTMLInputElement | null>(null);
   useEffect(
     () => () => {
       current.current?.abort();
@@ -28,7 +32,7 @@ export default function FileUploadForm({
     },
     [],
   );
-  const busy = checking || progress !== null;
+  const busy = checking || progress !== null || coverBusy;
   /**
    * Empêche une soumission concurrente, prévalide le fichier puis lance XHR. Affiche le refus ou la
    * confirmation et libère l’opération courante à la sortie.
@@ -54,10 +58,23 @@ export default function FileUploadForm({
         controller.signal,
       );
       if (current.current !== controller || controller.signal.aborted) return;
-      setMessage("File uploaded and stored on the server.");
+      setMessage(asset.warning ? "Audio saved. Its embedded cover could not be used; you can add another cover." : "Audio saved on the server.");
       setFile(null);
       if (input.current) input.current.value = "";
       onReady?.(asset);
+      if (cover) {
+        setProgress(null); setCoverBusy(true);
+        try {
+          await validateFile(cover, controller.signal, "image");
+          const savedCover = await replaceAudioCover(asset.id, cover, controller.signal);
+          if (current.current !== controller || controller.signal.aborted) return;
+          onReady?.({ ...asset, cover: savedCover, warning: undefined });
+          setMessage("Audio and cover saved on the server.");
+        } catch (failure) {
+          if (current.current === controller) setError(`Audio saved. The cover was not confirmed: ${failure instanceof Error ? failure.message : "Please retry the cover from the audio card."}`);
+        }
+      }
+      setCover(null); if (coverInput.current) coverInput.current.value = "";
     } catch (failure) {
       if (current.current === controller)
         setError(
@@ -68,6 +85,7 @@ export default function FileUploadForm({
     } finally {
       if (current.current === controller) {
         setChecking(false);
+        setCoverBusy(false);
         setProgress(null);
         current.current = null;
       }
@@ -75,10 +93,11 @@ export default function FileUploadForm({
   }
   return (
     <form className="file-upload-form" onSubmit={submit}>
-      <label htmlFor="private-file">Choose an audio file or image</label>
+      <label htmlFor="private-file">Audio file</label>
       <input
         id="private-file"
         type="file"
+        accept="audio/*,.mp3,.wav,.flac,.m4a,.aac,.ogg,.opus,.aiff,.wma"
         ref={input}
         disabled={busy}
         onChange={(event) => {
@@ -87,12 +106,13 @@ export default function FileUploadForm({
           setMessage("");
         }}
       />
+      <label htmlFor="optional-cover">Cover image (optional)</label>
+      <input id="optional-cover" type="file" accept="image/png,image/jpeg,image/webp" ref={coverInput} disabled={busy} onChange={event => setCover(event.target.files?.[0] ?? null)} />
       <p className="field-help">
-        Audio: 500 MB. PNG, JPEG, or WebP: 25 MB, 25 million pixels, and 8,192
-        pixels per side.
+        Audio: 500 MB. Embedded artwork is used automatically. Optional PNG, JPEG or WebP cover: 25 MB, 25 million pixels, 8,192 pixels per side.
       </p>
       <button type="submit" disabled={!file || busy}>
-        Upload file
+        Add audio
       </button>
       {busy && (
         <button type="button" onClick={() => current.current?.abort()}>
@@ -101,6 +121,7 @@ export default function FileUploadForm({
       )}
       <div aria-live="polite">
         {checking && <p>Checking the file on this device…</p>}
+        {coverBusy && <><progress aria-label="Cover upload" /><p>Audio saved. Checking and adding its cover…</p></>}
         {progress?.phase === "sending" && (
           <>
             <progress
