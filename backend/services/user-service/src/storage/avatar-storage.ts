@@ -7,12 +7,12 @@
  *   redémarrage du conteneur. La base ne garde que l'adresse de l'avatar.
  */
 
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 /**
  * @brief Type de l'objet renvoyé par `createAvatarStorage` : préparer le dossier, écrire un
- *   fichier, lire un fichier.
+ *   fichier, lire un fichier, supprimer un fichier.
  */
 export type AvatarStorage = ReturnType<typeof createAvatarStorage>
 
@@ -21,7 +21,7 @@ export type AvatarStorage = ReturnType<typeof createAvatarStorage>
  * @details Les noms de fichier reçus ici doivent déjà avoir été vérifiés (voir `isAvatarFileName`
  *   dans domain/avatar.ts) : ce fichier ne refait pas ce contrôle.
  * @param directory Chemin du dossier où ranger les avatars.
- * @returns Un objet offrant `prepare`, `write` et `read`.
+ * @returns Un objet offrant `prepare`, `write`, `read` et `remove`.
  */
 export function createAvatarStorage(directory: string) {
   return {
@@ -55,6 +55,24 @@ export function createAvatarStorage(directory: string) {
           return null
         }
         throw error
+      }
+    },
+
+    /**
+     * @brief Supprime une image d'avatar du disque.
+     * @details Un fichier déjà absent n'est pas une erreur : le résultat voulu (l'image n'existe
+     *   plus) est atteint. Cela rend la suppression rejouable, par exemple si une première
+     *   tentative a effacé le fichier puis échoué juste après. Toute autre erreur (droits
+     *   insuffisants, disque en panne) est relancée.
+     * @param fileName Nom du fichier, déjà vérifié.
+     */
+    async remove(fileName: string): Promise<void> {
+      try {
+        await unlink(join(directory, fileName))
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+          throw error
+        }
       }
     },
   }

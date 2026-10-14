@@ -1,12 +1,13 @@
 /**
  * @file avatars.service.ts
- * @brief Règles métier des avatars : enregistrer une nouvelle image de profil et relire une image
- *   existante.
+ * @brief Règles métier des avatars : enregistrer une nouvelle image de profil, la relire et la
+ *   supprimer.
  */
 
 import { randomUUID } from 'node:crypto'
 import {
   avatarContentType,
+  avatarFileNameOf,
   avatarFileName,
   avatarUrl,
   detectAvatarMimeType,
@@ -17,20 +18,24 @@ import {
   avatarNotFound,
   avatarTypeMismatch,
   invalidAvatarName,
+  profileNotFound,
   unsupportedAvatarType,
 } from '../domain/errors.js'
 import { toProfile, type Profile } from '../domain/profile.js'
 import type { ProfilesRepository } from '../repositories/profiles.repository.js'
 import type { AvatarStorage } from '../storage/avatar-storage.js'
 
-/** @brief Type de l'objet renvoyé par `createAvatarsService` : les opérations `save` et `read`. */
+/**
+ * @brief Type de l'objet renvoyé par `createAvatarsService` : les opérations `save`, `read` et
+ *   `remove`.
+ */
 export type AvatarsService = ReturnType<typeof createAvatarsService>
 
 /**
  * @brief Crée le service des avatars.
  * @param profiles Repository des profils, pour enregistrer l'adresse de l'avatar.
  * @param storage Stockage des fichiers sur le disque.
- * @returns Un objet offrant `save` et `read`.
+ * @returns Un objet offrant `save`, `read` et `remove`.
  */
 export function createAvatarsService(profiles: ProfilesRepository, storage: AvatarStorage) {
   return {
@@ -75,6 +80,31 @@ export function createAvatarsService(profiles: ProfilesRepository, storage: Avat
         throw avatarNotFound()
       }
       return { bytes, contentType: avatarContentType(fileName) }
+    },
+
+    /**
+     * @brief Supprime l'avatar de l'utilisateur connecté : le profil retrouve l'image par défaut.
+     * @details Étapes : 1) lire le profil pour connaître l'adresse de l'avatar actuel ; 2) retirer
+     *   cette adresse du profil en base ; 3) effacer le fichier du disque. La base est modifiée
+     *   avant le disque : si l'effacement échoue, le profil n'affiche déjà plus l'image et il ne
+     *   reste qu'un fichier orphelin, alors que l'ordre inverse laisserait un profil pointant vers
+     *   un fichier disparu. Un profil sans avatar est un cas normal : la suppression est alors
+     *   sans effet sur le disque et renvoie simplement le profil.
+     * @param userId Identifiant de l'utilisateur connecté.
+     * @returns Le profil à jour, avec `avatarUrl` à null.
+     * @throws {DomainError} 404 `profile not found` si le compte n'a pas de profil.
+     */
+    async remove(userId: string): Promise<Profile> {
+      const current = await profiles.find(userId)
+      if (current === null) {
+        throw profileNotFound()
+      }
+      const updated = await profiles.clearAvatar(userId)
+      const fileName = avatarFileNameOf(current.avatarUrl, userId)
+      if (fileName !== null) {
+        await storage.remove(fileName)
+      }
+      return toProfile(updated)
     },
   }
 }

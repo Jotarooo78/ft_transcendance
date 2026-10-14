@@ -125,6 +125,7 @@ test('avatar names are validated before any storage access', async (t) => {
     avatars: {
       prepare: async () => undefined,
       write: async () => undefined,
+      remove: async () => undefined,
       read: async () => {
         reads++
         return null
@@ -144,4 +145,51 @@ test('avatar names are validated before any storage access', async (t) => {
   assert.equal(absent.statusCode, 404)
   assert.deepEqual(absent.json(), { error: 'avatar not found' })
   assert.equal(reads, 1)
+})
+
+test('DELETE /me/avatar clears the profile, removes only its own file and can be replayed', async (t) => {
+  const { app, bearer, userId, avatars, upload } = await setup()
+  t.after(() => app.close())
+  const del = (subject: unknown = userId) =>
+    app.inject({ method: 'DELETE', url: '/me/avatar', headers: bearer(subject) })
+
+  // Un fichier voisin, au bon format mais d'un autre compte, ne doit jamais être touché.
+  const otherId = newUserId()
+  const foreign = `${otherId}-${newUserId()}.png`
+  avatars.files.set(foreign, png)
+
+  const uploaded = await upload(png, 'image/png')
+  assert.equal(uploaded.statusCode, 200, uploaded.body)
+  assert.equal(avatars.files.size, 2)
+
+  const removed = await del()
+  assert.equal(removed.statusCode, 200, removed.body)
+  assert.equal(removed.json().avatarUrl, null)
+  assert.deepEqual([...avatars.files.keys()], [foreign])
+
+  // Sans avatar, la suppression est sans effet mais réussit.
+  const again = await del()
+  assert.equal(again.statusCode, 200)
+  assert.equal(again.json().avatarUrl, null)
+  assert.deepEqual([...avatars.files.keys()], [foreign])
+})
+
+test('DELETE /me/avatar refuses anonymous callers and unknown profiles', async (t) => {
+  const { app, bearer } = await setup()
+  t.after(() => app.close())
+  for (const subject of [null, 'not-a-uuid', 42]) {
+    const response = await app.inject({
+      method: 'DELETE',
+      url: '/me/avatar',
+      headers: bearer(subject),
+    })
+    assert.equal(response.statusCode, 401)
+  }
+  const stranger = await app.inject({
+    method: 'DELETE',
+    url: '/me/avatar',
+    headers: bearer(newUserId()),
+  })
+  assert.equal(stranger.statusCode, 404)
+  assert.deepEqual(stranger.json(), { error: 'profile not found' })
 })

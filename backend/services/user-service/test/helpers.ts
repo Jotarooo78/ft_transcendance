@@ -75,6 +75,11 @@ export function memoryStores(initial: Profile[] = []) {
       profiles.set(userId, updated)
       return updated
     },
+    clearAvatar: async (userId) => {
+      const updated = { ...profiles.get(userId)!, avatarUrl: null }
+      profiles.set(userId, updated)
+      return updated
+    },
   }
 
   const socialRepository: SocialRepository = {
@@ -116,6 +121,9 @@ export function memoryAvatars() {
         files.set(fileName, bytes)
       },
       read: async (fileName: string) => files.get(fileName) ?? null,
+      remove: async (fileName: string) => {
+        files.delete(fileName)
+      },
     },
   }
 }

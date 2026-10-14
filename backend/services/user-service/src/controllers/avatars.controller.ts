@@ -15,7 +15,7 @@ import type { AvatarsService } from '../services/avatars.service.js'
 
 /**
  * @brief Type de l'objet renvoyé par `createAvatarsController` : une fonction pour l'envoi, une
- *   pour la lecture.
+ *   pour la lecture, une pour la suppression.
  */
 export type AvatarsController = ReturnType<typeof createAvatarsController>
 
@@ -73,6 +73,15 @@ export function createAvatarsController(avatars: AvatarsService) {
     async show(request: FastifyRequest<{ Params: { fileName: string } }>, reply: FastifyReply) {
       const { bytes, contentType } = await avatars.read(request.params.fileName)
       return reply.type(contentType).send(bytes)
+    },
+
+    /**
+     * @brief Répond à `DELETE /me/avatar` : supprime l'image de profil de l'utilisateur connecté.
+     * @param request Requête reçue ; l'identité vient du jeton de connexion, jamais du client.
+     * @returns Le profil à jour, sans adresse d'avatar.
+     */
+    async remove(request: FastifyRequest) {
+      return avatars.remove(request.userId)
     },
   }
 }

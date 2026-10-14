@@ -141,5 +141,19 @@ export function createProfilesRepository(prisma: Database) {
         select: profileFields,
       })
     },
+
+    /**
+     * @brief Retire l'adresse d'avatar d'un compte : son profil n'a plus d'image.
+     * @details Le profil doit exister ; le service le vérifie avant d'appeler cette opération.
+     * @param userId Identifiant du compte.
+     * @returns Le profil à jour, avec `avatarUrl` à null.
+     */
+    clearAvatar(userId: string): Promise<Profile> {
+      return prisma.profile.update({
+        where: { userId },
+        data: { avatarUrl: null },
+        select: profileFields,
+      })
+    },
   }
 }

@@ -86,6 +86,27 @@ export const avatarFileName = (userId: string, fileId: string, mimeType: AvatarM
 export const avatarUrl = (fileName: string) => `/api/users/avatars/${fileName}`
 
 /**
+ * @brief Retrouve le nom du fichier d'un avatar à partir de l'adresse enregistrée dans le profil.
+ * @details C'est l'opération inverse de `avatarUrl`. Elle sert à la suppression : la base ne garde
+ *   que l'adresse, et il faut en déduire quel fichier effacer sur le disque. Trois précautions
+ *   évitent d'effacer un fichier qui n'est pas un avatar de ce compte. L'adresse doit commencer
+ *   par le préfixe attendu, le nom extrait doit avoir exactement le format des avatars (donc aucun
+ *   `/` ni `..`), et il doit commencer par l'identifiant du compte, de sorte qu'un profil ne peut
+ *   jamais provoquer la suppression de l'image d'un autre.
+ * @param url Adresse d'avatar lue dans le profil, ou null si le profil n'en a pas.
+ * @param userId Identifiant du compte propriétaire du profil.
+ * @returns Le nom du fichier à supprimer, ou null s'il n'y a rien de sûr à supprimer.
+ */
+export function avatarFileNameOf(url: string | null, userId: string): string | null {
+  const prefix = avatarUrl('')
+  if (url === null || !url.startsWith(prefix)) {
+    return null
+  }
+  const fileName = url.slice(prefix.length)
+  return isAvatarFileName(fileName) && fileName.startsWith(`${userId}-`) ? fileName : null
+}
+
+/**
  * @brief Déduit de l'extension d'un avatar le type d'image à annoncer au navigateur.
  * @param fileName Nom du fichier.
  * @returns Le type d'image.
