@@ -49,6 +49,17 @@ test('publication authenticates owner, reserves before writing and serializes ar
     })
   assert.equal((await send(data)).statusCode, 401)
   assert.equal((await send({ ...data, artistUserId: userId }, 'Bearer session')).statusCode, 400)
+  // Conserve les refus de limites et d’identité de la branche audio avant refactoring.
+  for (const invalid of [
+    { ...data, title: ' ' },
+    { ...data, title: 'a'.repeat(201) },
+    { ...data, description: 'a'.repeat(5001) },
+    { ...data, createdByUserId: userId },
+    { ...data, artistName: 'Someone else' },
+    { ...data, audioAssetId: 'wrong' },
+  ]) {
+    assert.equal((await send(invalid, 'Bearer session')).statusCode, 400)
+  }
   assert.deepEqual(calls, [])
   const result = await send(data, 'Bearer session')
   assert.equal(result.statusCode, 201, result.body)
