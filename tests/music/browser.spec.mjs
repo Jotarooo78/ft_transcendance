@@ -23,7 +23,7 @@ function playbackSql(id) {
 const playbackProgress = r => r.request().method() === 'PUT' && /\/api\/playback\/sessions\/[^/]+\/progress$/.test(r.url()) && r.status() === 200;
 /**
  * Ouvre le morceau de démonstration et attend la vraie session ainsi que les octets Media ; lance le
- * lecteur natif et renvoie session et élément audio.
+ * lecteur commun et renvoie la session et son élément audio réel.
  */
 async function startPlayback(page) {
   await page.getByRole('button', { name:'Catalog', exact:true }).click();
@@ -54,7 +54,7 @@ test('playback: real listening, pause, seek, SQL, history and account isolation'
   await expect.poll(()=>audio.evaluate(a=>a.currentTime)).toBeGreaterThan(1.1);
   const pauseSaved=page.waitForResponse(playbackProgress);
   await audio.evaluate(a=>a.pause()); await pauseSaved;
-  await expect(page.locator('.listening-status')).toContainText('Listening progress saved.');
+  await expect(page.locator('.listening-status')).toHaveCount(0);
   const paused=(await readHistory()).items[0];
   expect(paused.id).toBe(session.id); expect(paused.listenedMs).toBeGreaterThan(400);
   // Intentional real-time observation: no synthetic timeupdate/playing events.
@@ -153,7 +153,7 @@ test('playback: lost response after SQL write, bounded retry and audible save fa
   await page.waitForTimeout(400); expect(failed).toBe(3);
   failProgress=false;
   await page.getByRole('button',{name:'Retry saving',exact:true}).click();
-  await expect(page.locator('.listening-status')).toContainText('Listening progress saved.');
+  await expect(page.locator('.listening-status')).toHaveCount(0);
   const closedResponse=page.waitForResponse(r=>r.url().endsWith(`/${session.id}/close`) && r.status()===200);
   await page.getByRole('button',{name:'Close audio player',exact:true}).click();
   const closed=await(await closedResponse).json(),sql=playbackSql(session.id);
@@ -326,8 +326,9 @@ test('media: real decode, playback, seek and recovery', async ({page}) => {
   const pattern='**/api/media/assets/30000000-0000-4000-8000-000000000001/audio';
   await page.route(pattern,route=>route.fulfill({status:404,body:'unavailable'}));
   await first.getByRole('button',{name:'Play Aube — demo',exact:true}).click();
-  await expect(page.getByRole('alert')).toHaveText('Audio is unavailable. Close the player and try again.');
-  await second.getByRole('button',{name:'Play Brise — demo',exact:true}).click();
+  // Un fichier indisponible est sauté ; la file continue sur le morceau suivant.
+  await expect(page.getByText('An unavailable track was skipped.', {exact:true})).toBeVisible();
+  await expect(second.getByRole('button',{name:'Pause Brise — demo',exact:true})).toBeVisible();
   await expect.poll(()=>audio.evaluate(a=>a.duration)).toBeCloseTo(6,1);
   await expect(page.getByRole('alert')).toHaveCount(0);
   await page.unroute(pattern);

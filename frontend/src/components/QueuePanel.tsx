@@ -8,13 +8,20 @@ import PlayerIcon from "./PlayerIcon";
 export default function QueuePanel() {
   const player = useMusicPlayer(),
     panel = useRef<HTMLElement>(null);
+  const showQueue = player.showQueue;
   useEffect(() => {
     const origin = document.activeElement;
     panel.current?.focus();
+    /** Échap fonctionne aussi après le retrait d’une ligne qui possédait le focus. */
+    function escape(event: KeyboardEvent) {
+      if (event.key === "Escape" && !event.defaultPrevented) showQueue(false);
+    }
+    window.addEventListener("keydown", escape);
     return () => {
+      window.removeEventListener("keydown", escape);
       if (origin instanceof HTMLElement && origin.isConnected) origin.focus();
     };
-  }, []);
+  }, [showQueue]);
   const next = upcoming(player.queue);
   return (
     <aside

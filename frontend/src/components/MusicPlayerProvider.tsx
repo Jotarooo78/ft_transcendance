@@ -201,7 +201,7 @@ export default function MusicPlayerProvider({
     if (
       !options.restart &&
       active?.track.id === track.id &&
-      active.occurrence === occurrence
+      (!options.ids || active.occurrence === occurrence)
     ) {
       resume();
       return;

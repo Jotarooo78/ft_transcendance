@@ -57,7 +57,8 @@ redémarrages et Chromium avant nettoyage. Prérequis et commandes dans
 Le temps déclaré par le lecteur est plafonné par le serveur. Un déplacement
 dans le morceau ne représente pas une durée écoutée. Une fermeture brutale
 peut perdre les dernières mesures et laisser une session ouverte ; aucune
-qualification R15, statistique commerciale ou reprise automatique n'est activée.
+qualification R15 ni statistique commerciale n'est activée. La reprise locale du
+lecteur est décrite dans le contrat de lecture et reste toujours en pause.
 
 The **Library** tab separates liked tracks, saved projects, followed artists,
 owned playlists, saved public playlists and uploads. Following an artist does
@@ -67,7 +68,13 @@ have stable links; making one private immediately rejects further public reads.
 The desktop catalogue offers artist, project and track results; recent additions
 lead the project/track hub and artists are listed by name.
 
-`bash tests/projects/run.sh` verifies the complete project/library journey on
+The shared desktop player provides previous/next, shuffle, repeat off/queue/one,
+seek, volume and an editable playback queue. Click a track row to play it;
+buttons and links keep their own actions. Queue, position and preferences are
+restored paused for the same account in the same browser. See
+[the playback contract](docs/music/PLAYBACK_CONTRACT.md) for behavior and limits.
+
+`bash tests/projects/run.sh` verifies the complete project/library/player journey on
 port 5445 with disposable accounts and volumes. It uses the Chromium dependency
 from `tests/files` (`npm ci --prefix tests/files`, then
 `npm run install:browser --prefix tests/files`). Catalogue/Library migrations and

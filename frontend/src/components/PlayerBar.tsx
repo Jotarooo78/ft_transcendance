@@ -39,7 +39,7 @@ export default function PlayerBar({
         document.querySelector("dialog[open]") ||
         (event.target instanceof Element &&
           event.target.closest(
-            'input, textarea, select, button, a, summary, [contenteditable="true"], [role="button"], [role="slider"]',
+            'input, textarea, select, button, a, summary, [contenteditable], [role="button"], [role="slider"]',
           ))
       )
         return;

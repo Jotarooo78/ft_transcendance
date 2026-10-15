@@ -29,7 +29,8 @@ export default function MusicTrackRow({
   const player = useMusicPlayer();
   const occurrence = queueIds?.[queueIndex ?? 0] ?? track.id;
   const active =
-    player.currentId === track.id && player.currentOccurrence === occurrence;
+    player.currentId === track.id &&
+    (!queueIds || player.currentOccurrence === occurrence);
   /** Un clic sur la surface de la ligne reprend le titre courant sans le recommencer. */
   function play() {
     player.play(track, queue, { ids: queueIds, index: queueIndex, source });

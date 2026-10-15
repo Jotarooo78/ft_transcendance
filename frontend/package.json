@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "test:music": "node --experimental-strip-types --test src/services/listening-clock.test.ts",
+    "test:music": "node --experimental-strip-types --test src/services/listening-clock.test.ts src/services/music-queue.test.ts src/storage/player-storage.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {

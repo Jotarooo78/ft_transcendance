@@ -833,3 +833,56 @@ Nettoyage final vérifié : aucun conteneur ni volume ne subsiste pour
 concurrence `tr_music_projects_schema` a également été arrêtée et supprimée.
 Les fichiers de plan préexistants et le dossier local `services/` n’ont pas été
 inclus dans les commits de cette évolution.
+
+## Lecteur commun — commandes, file et reprise
+
+Travail réalisé sur `feat/music-projects-library`, dans l’ordre du plan validé
+ici avec l’utilisateur. Les anciens uploads indépendants restent inchangés.
+
+- [x] Règles de file séparées : occurrences, navigation, répétition, aléatoire,
+  ajouts et retraits ; tests déterministes.
+- [x] Moteur unique relié aux commandes et au suivi existant ; lecture réelle
+  distincte des confirmations de sauvegarde.
+- [x] Barre fixe, panneau de file, progression, volume, clavier et focus ; captures
+  desktop inspectées, largeur contrôlée à 1024, 1280 et 1440 pixels.
+- [x] Lignes cliquables, contrôles imbriqués indépendants, playlists complètes et
+  doublons, boutons aléatoires, titres aimés au-delà des pages visibles.
+- [x] Reprise locale validée par compte : métadonnées relues, position bornée,
+  démarrage en pause, stockage corrompu ignoré et réponses tardives écartées.
+- [x] Tests unitaires, lint et compilation frontend ; campagne lecteur Chromium
+  et cinq parcours historiques avec témoins SQL réussis.
+
+La campagne `tests/projects/verify-player.mjs` utilise des comptes, playlists,
+audios et sessions réels. Elle couvre les trois modes de répétition et leur
+interaction avec suivant, les quatre occurrences d’une playlist comportant un
+doublon, l’ordre mélangé puis rétabli, les liens/likes/menus indépendants du clic,
+la reprise après rechargement et la séparation de deux comptes. Les 127 références
+de likes sont simulées pour isoler les deux niveaux de pagination ; leur audio
+reste réel. Les pannes injectées prouvent l’arrêt d’une file totalement illisible,
+la reprise réseau, la conservation d’une sauvegarde après 503 et le retrait après
+404. Une sélection récente résiste à une ancienne restauration retardée.
+
+Le défaut de focus observé après retrait d’une occurrence a été corrigé : Échap
+ferme le panneau même lorsque le bouton retiré avait le focus, puis celui-ci
+revient à l’ouverture de file. Un titre courant cliqué depuis un autre écran
+reprend sans recommencer ; les doublons explicites restent distingués.
+
+La validation utilise les piles jetables `transcendence_projects` (5445) et
+`transcendence_music` (3443). Le Docker local ne dispose toujours pas de Buildx :
+les images backend de test existantes, dont le code backend est inchangé, ont
+été réutilisées avec le frontend actuel monté en lecture seule. Aucun déploiement
+ni changement de données de développement n’a été effectué.
+
+Pour reconstruire localement les images et voir l’interface : `make setup`
+(équivalent à `docker compose up -d --build`). Les données sont conservées.
+La connexion reste en mémoire ; la reprise s’effectue après reconnexion.
+Les grandes listes de likes attendent le chargement borné de leurs détails,
+et la sauvegarde locale accepte jusqu’à 10 000 occurrences. Ces limites sont
+décrites dans `PLAYBACK_CONTRACT.md`.
+
+Clôture : le parcours complet `verify-projects.mjs` a été rejoué avec le lecteur
+final et passe également. Après les tests, aucun conteneur ni volume des deux
+piles jetables ne subsiste. Les changements préexistants dans `docs/music-plan`
+et le dossier local `services/` restent hors des commits. Les synchronisations
+intermédiaires n’ont intégré aucun nouveau commit distant et n’ont rencontré
+aucun conflit.

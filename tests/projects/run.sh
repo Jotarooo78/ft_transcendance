@@ -27,3 +27,6 @@ trap cleanup EXIT
 created=true
 "${compose[@]}" up -d --wait nginx
 node tests/projects/verify-projects.mjs
+
+# Vérifie les commandes du lecteur avec les publications réelles créées juste avant.
+node tests/projects/verify-player.mjs

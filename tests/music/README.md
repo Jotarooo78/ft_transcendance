@@ -187,3 +187,19 @@ Les playlists publiques restent modifiables par leur propriétaire ; `unlisted`
 est refusé par le contrat actuel. Le parcours complémentaire
 `bash tests/projects/run.sh` couvre les projets multi-pistes et les collections
 sur sa propre pile 5445. Les résultats observés figurent dans EXECUTION.md.
+
+### Commandes et reprise du lecteur
+
+`bash tests/projects/run.sh` exécute maintenant aussi
+`tests/projects/verify-player.mjs` après la création des publications de test.
+Il vérifie les commandes communes, répétition, aléatoire, occurrences répétées,
+menus indépendants du clic de ligne, retrait de file sans mutation de playlist,
+clavier, reprise en pause, comptes distincts et erreurs bornées. Les 127 likes
+sont des réponses simulées de Catalogue/Library pour prouver les deux niveaux
+de pagination ; comptes, playlists, fichiers audio et sessions sont réels.
+Les preuves navigateur de ce dossier restent complémentaires : elles contrôlent
+les mesures d’écoute et les reprises d’envoi avec témoins SQL.
+
+La barre ne montre plus les confirmations ordinaires de sauvegarde. Les tests
+attendent leurs réponses HTTP et vérifient l’absence d’erreur visible après
+confirmation. Un fichier audio indisponible passe désormais au suivant.
