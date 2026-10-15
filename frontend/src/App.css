@@ -926,58 +926,57 @@ form > p[id$="-help"],
   }
 }
 
-/* Parcours de publication : panneau clair, pochette latérale et actions orange proches du formulaire SoundCloud. */
-:root:has(.publish-page) { background: #f5f5f5; }
-.publish-page { width: min(100% - 32px, 1040px); max-width: 1040px; margin: 0 auto; padding: 46px 24px 80px; color: #242424; }
+/* Le formulaire de publication reprend les couleurs communes du thème crème, rose et lavande. */
+.publish-page { width: min(100% - 32px, 1040px); max-width: 1040px; margin: 0 auto; padding: 46px 24px 80px; color: var(--text-h); }
 .publish-page > header { margin-bottom: 28px; }
-.publish-page > header h1 { color: #262626; font-size: clamp(28px, 4vw, 38px); margin: 6px 0 10px; }
-.publish-page > header p { color: #707070; }
-.publish-page .publish-eyebrow { font-size: 11px; letter-spacing: .18em; color: #ff8152; font-weight: 700; }
+.publish-page > header h1 { color: var(--text-h); font-size: clamp(28px, 4vw, 38px); margin: 6px 0 10px; }
+.publish-page > header p { color: var(--text); }
+.publish-page .publish-eyebrow { font-size: 11px; letter-spacing: .18em; color: var(--accent); font-weight: 700; }
 .publish-form { display: block; }
-.publish-form, .publish-success { background: #fff; border: 1px solid #e6e6e6; border-radius: 6px; box-shadow: 0 8px 35px #0002; overflow: hidden; }
+.publish-form, .publish-success { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; box-shadow: var(--shadow); overflow: hidden; }
 .publish-form button, .publish-success button { font: inherit; letter-spacing: normal; text-transform: none; border-radius: 4px; }
-.audio-dropzone { min-height: 350px; margin: 26px; padding: 50px 20px; border: 2px dashed #d6d6d6; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: background .15s, border-color .15s; }
-.audio-dropzone.is-dragging { border-color: #f50; background: #fff6f1; }
-.audio-dropzone h2 { font-size: 23px; color: #242424; margin: 12px 0 4px; }
-.audio-dropzone p { color: #707070; }
-.upload-symbol { color: #f50; font-size: 44px; font-weight: 300; line-height: 1; }
-.publish-page .publish-primary { background: #f50; color: #fff; border: 1px solid #f50; padding: 11px 24px; box-shadow: none; min-height: 44px; }
-.publish-page .publish-primary:hover:not(:disabled) { background: #e94b00; border-color: #e94b00; }
+.audio-dropzone { min-height: 350px; margin: 26px; padding: 50px 20px; border: 2px dashed var(--accent-border); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: background .15s, border-color .15s; }
+.audio-dropzone.is-dragging { border-color: var(--accent); background: var(--accent-bg); }
+.audio-dropzone h2 { font-size: 23px; color: var(--text-h); margin: 12px 0 4px; }
+.audio-dropzone p { color: var(--text); }
+.upload-symbol { color: var(--accent); font-size: 44px; font-weight: 300; line-height: 1; }
+.publish-page .publish-primary { background: var(--accent); color: var(--surface); border: 1px solid var(--accent); padding: 11px 24px; box-shadow: none; min-height: 44px; }
+.publish-page .publish-primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
 .publish-page .publish-primary:disabled { opacity: .5; cursor: not-allowed; }
-.publish-page .publish-help { color: #777; font-size: 12px; line-height: 1.6; margin: 14px 0 0; }
+.publish-page .publish-help { color: var(--text); font-size: 12px; line-height: 1.6; margin: 14px 0 0; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); border: 0; }
-.upload-status { background: #fafafa; border-bottom: 1px solid #e7e7e7; padding: 16px 28px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: 13px; }
+.upload-status { background: var(--surface-soft); border-bottom: 1px solid var(--border); padding: 16px 28px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: 13px; }
 .upload-filename { flex: 1 1 200px; overflow-wrap: anywhere; }
-.upload-status progress { accent-color: #f50; height: 6px; width: 160px; }
-.upload-ready { color: #337647; }
+.upload-status progress { accent-color: var(--accent); height: 6px; width: 160px; }
+.upload-ready { color: var(--success); }
 .publish-layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 34px; padding: 32px; }
-.publish-artwork-preview { position: relative; aspect-ratio: 1; background: #eee; overflow: hidden; }
-.publish-artwork-preview > img, .publish-artwork-preview .audio-cover { width: 100%; height: 100%; object-fit: contain; border-radius: 0; background: #eee; }
-.publish-artwork-placeholder, .publish-artwork-preview .audio-cover-placeholder { width: 100%; height: 100%; display: grid; place-items: center; font-size: 70px; color: #b2b2b2; background: linear-gradient(135deg, #e8e8e8, #f4f4f4); border-radius: 0; }
-.publish-page .cover-select { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); white-space: nowrap; background: #fffe; color: #333; border: 1px solid #bbb; padding: 8px 14px; font-size: 13px; }
+.publish-artwork-preview { position: relative; aspect-ratio: 1; background: var(--surface-soft); overflow: hidden; }
+.publish-artwork-preview > img, .publish-artwork-preview .audio-cover { width: 100%; height: 100%; object-fit: contain; border-radius: 0; background: var(--surface-soft); }
+.publish-artwork-placeholder, .publish-artwork-preview .audio-cover-placeholder { width: 100%; height: 100%; display: grid; place-items: center; font-size: 70px; color: var(--lavender-ink); background: linear-gradient(135deg, var(--accent-bg), var(--lavender)); border-radius: 0; }
+.publish-page .cover-select { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); white-space: nowrap; background: var(--surface); color: var(--text-h); border: 1px solid var(--accent-border); padding: 8px 14px; font-size: 13px; }
 .publish-fields { display: flex; flex-direction: column; gap: 9px; }
-.publish-fields label, .publish-label { display: block; color: #333; font-size: 14px; font-weight: 600; margin-top: 4px; }
-.publish-fields input, .publish-fields textarea { box-sizing: border-box; width: 100%; border: 1px solid #ccc; border-radius: 3px; background: #fff; color: #222; padding: 11px 12px; font: inherit; font-size: 14px; }
-.publish-fields input:focus, .publish-fields textarea:focus { outline: 2px solid #ffb18a; outline-offset: 1px; }
+.publish-fields label, .publish-label { display: block; color: var(--text-h); font-size: 14px; font-weight: 600; margin-top: 4px; }
+.publish-fields input, .publish-fields textarea { box-sizing: border-box; width: 100%; border: 1px solid var(--border); border-radius: 3px; background: var(--surface); color: var(--text-h); padding: 11px 12px; font: inherit; font-size: 14px; }
+.publish-fields input:focus, .publish-fields textarea:focus { outline: 2px solid var(--lavender-ink); outline-offset: 1px; }
 .publish-fields textarea { resize: vertical; min-height: 135px; }
-.publish-fields input:disabled, .publish-fields textarea:disabled { background: #f6f6f6; }
-.publish-fields textarea::placeholder { color: #888; }
-.publish-optional, .publish-counter { color: #888; font-size: 12px; font-weight: 400; }
+.publish-fields input:disabled, .publish-fields textarea:disabled { background: var(--surface-soft); }
+.publish-fields textarea::placeholder { color: var(--text); }
+.publish-optional, .publish-counter { color: var(--text); font-size: 12px; font-weight: 400; }
 .publish-counter { text-align: right; }
 .publishing-artist { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; }
 .publishing-artist img, .artist-avatar-placeholder { flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
-.artist-avatar-placeholder { display: grid; place-items: center; background: #eee; color: #777; }
+.artist-avatar-placeholder { display: grid; place-items: center; background: var(--accent-bg); color: var(--accent); }
 .publishing-artist strong { font-size: 14px; }
-.publishing-artist div > span { display: block; color: #888; font-size: 12px; }
-.publish-footer { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 20px 32px; border-top: 1px solid #eee; }
-.publish-footer p { font-size: 12px; color: #777; max-width: 260px; margin: 0; }
+.publishing-artist div > span { display: block; color: var(--text); font-size: 12px; }
+.publish-footer { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 20px 32px; border-top: 1px solid var(--border); }
+.publish-footer p { font-size: 12px; color: var(--text); max-width: 260px; margin: 0; }
 .publish-footer > div { display: flex; gap: 12px; align-items: center; }
-.publish-page .publish-text-button { color: #555; border: none; background: transparent; padding: 8px; box-shadow: none; font-size: 13px; }
-.publish-error { margin: 0; padding: 18px 28px; background: #fff1eb; color: #972e10; font-size: 14px; }
-.publish-artwork [role=alert] { color: #972e10; font-size: 13px; overflow-wrap: anywhere; }
+.publish-page .publish-text-button { color: var(--text); border: none; background: transparent; padding: 8px; box-shadow: none; font-size: 13px; }
+.publish-error { margin: 0; padding: 18px 28px; background: var(--danger-bg); color: var(--danger); font-size: 14px; }
+.publish-artwork [role=alert] { color: var(--danger); font-size: 13px; overflow-wrap: anywhere; }
 .publish-success { text-align: center; padding: 60px 24px; }
-.publish-success h2 { color: #242424; }
-.publish-success-icon { font-size: 38px; color: #f50; }
+.publish-success h2 { color: var(--text-h); }
+.publish-success-icon { font-size: 38px; color: var(--accent); }
 .track-artwork { width: 100%; max-width: 240px; height: 200px; object-fit: contain; border-radius: 8px; background: #272936; margin-bottom: 12px; }
 .track-artwork-placeholder { display: grid; place-items: center; color: #989aa9; font-size: 50px; }
 .artist-link { border: 0; padding: 0; background: transparent; color: #93421a; text-decoration: underline; text-underline-offset: 3px; text-transform: none; letter-spacing: normal; }
