@@ -1,10 +1,11 @@
 /** Lecture bornée des métadonnées pour les listes complètes, sans multiplier les requêtes d’un doublon. */
-import { getTrack } from "./catalog";
+import { getTrack, TrackReadError } from "./catalog";
 import type { Track } from "../types/music";
 /** Charge au plus huit détails simultanément ; conserve une place nulle pour une référence indisponible. */
 export async function readTrackDetails(
   ids: string[],
   signal: AbortSignal,
+  strict = false,
 ): Promise<Record<string, Track | null>> {
   const unique = [...new Set(ids)],
     result: Record<string, Track | null> = {};
@@ -15,7 +16,12 @@ export async function readTrackDetails(
       const id = unique[index++];
       try {
         result[id] = await getTrack(id, signal);
-      } catch {
+      } catch (error) {
+        if (
+          strict &&
+          !(error instanceof TrackReadError && error.status === 404)
+        )
+          throw error;
         result[id] = null;
       }
     }

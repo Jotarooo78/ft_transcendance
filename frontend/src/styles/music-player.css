@@ -433,3 +433,15 @@ body.has-music-player {
   background: var(--surface-soft);
   transform: none;
 }
+/* Une reprise momentanément impossible reste visible même sans morceau chargé. */
+.player-empty-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px;
+  background: var(--lavender);
+  color: var(--text-h);
+  font-size: 13px;
+}

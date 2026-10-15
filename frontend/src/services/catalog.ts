@@ -104,6 +104,16 @@ export async function getTracks(
   return data;
 }
 
+/** Refus HTTP d’un détail, afin de distinguer disparition et panne lors d’une reprise. */
+export class TrackReadError extends Error {
+  /** Statut confirmé par Catalogue. */ readonly status: number;
+  /** Conserve le statut sans exposer la réponse brute. */
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
 /**
  * Charge le détail par UUID et exige une réponse correspondant au morceau demandé ; distingue le 404
  * des autres refus et supporte l’annulation.
@@ -117,9 +127,12 @@ export async function getTrack(
     { signal },
   );
   if (response.status === 404)
-    throw new Error("This track is no longer available.");
+    throw new TrackReadError(404, "This track is no longer available.");
   if (!response.ok)
-    throw new Error(`Unable to load track (${response.status}). Please retry.`);
+    throw new TrackReadError(
+      response.status,
+      `Unable to load track (${response.status}). Please retry.`,
+    );
   const track: unknown = await response.json();
   if (!isTrack(track) || track.id !== id)
     throw new Error("Invalid track response. Please retry.");

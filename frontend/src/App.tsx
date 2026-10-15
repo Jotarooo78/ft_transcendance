@@ -307,7 +307,7 @@ function App() {
 
   if (currentUser !== null) {
     return (
-      <MusicPlayerProvider key={currentUser.id}>
+      <MusicPlayerProvider key={currentUser.id} accountId={currentUser.id}>
         <CollectionsProvider>
           <header className="site-header">
             <strong className="site-title">FT Music</strong>
