@@ -1,5 +1,13 @@
 /** État React des playlists du compte ; les réponses anciennes et les changements de session ne doivent pas réintroduire des données privées. */
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
+import { RequestError } from "../services/request-json";
+import {
+  sendPlaylistAction,
+  duplicatePlaylist,
+  setPlaylistArtwork,
+  type PlaylistCommand,
+  type PlaylistAction,
+} from "../services/playlist-actions";
 import { useResource } from "./useResource";
 import {
   addPlaylistItem,
@@ -20,6 +28,10 @@ import type { MusicPlaylist } from "../types/music";
  */
 export function useLibrary(ownerId: string | null, visible = true) {
   const token = getAccessToken();
+  /** Intentions non confirmées, isolées par token ; une relecture n’en change pas la version. */
+  const pending = useRef(new Map<string, PlaylistAction>());
+  const copies = useRef(new Map<string, { id: string; version: number }>());
+  const creations = useRef(new Map<string, string>());
   const resource = useResource(
     useCallback(
       async (signal) => {
@@ -49,11 +61,27 @@ export function useLibrary(ownerId: string | null, visible = true) {
   ) {
     requireCurrentAccount();
     const resume = resource.pause();
+    const key = JSON.stringify([token, name, description, visibility]);
+    const creationId = creations.current.get(key) ?? crypto.randomUUID();
+    creations.current.set(key, creationId);
     try {
-      const playlist = await createPlaylist(name, description, visibility);
+      const playlist = await createPlaylist(
+        name,
+        description,
+        visibility,
+        creationId,
+      );
       requireCurrentAccount();
-      resource.update((items) => [playlist, ...(items ?? [])]);
+      resource.update((items) => [
+        playlist,
+        ...(items ?? []).filter((item) => item.id !== playlist.id),
+      ]);
+      creations.current.delete(key);
       return playlist;
+    } catch (error) {
+      if (error instanceof RequestError && error.status < 500)
+        creations.current.delete(key);
+      throw error;
     } finally {
       resume();
     }
@@ -116,6 +144,78 @@ export function useLibrary(ownerId: string | null, visible = true) {
     );
   }
   return {
+    /** Applique une commande ; l’identifiant retourné permet d’annuler un retrait précis. */
+    async perform(playlist: MusicPlaylist, command: PlaylistCommand) {
+      requireCurrentAccount();
+      // Une réponse perdue peut être suivie d'une relecture montrant déjà les titres ajoutés.
+      // La confirmation de doublons recalculée ne doit pas créer une deuxième intention.
+      const key = JSON.stringify([
+        token,
+        playlist.id,
+        command.kind === "add"
+          ? { kind: command.kind, trackIds: command.trackIds }
+          : command,
+      ]);
+      const action = pending.current.get(key) ?? {
+        ...command,
+        operationId: crypto.randomUUID(),
+        expectedVersion: playlist.version,
+      };
+      pending.current.set(key, action);
+      try {
+        const confirmed = await mutate(playlist, () =>
+          sendPlaylistAction(playlist.id, action),
+        );
+        pending.current.delete(key);
+        return { playlist: confirmed, operationId: action.operationId };
+      } catch (error) {
+        if (
+          error instanceof LibraryMutationError ||
+          (error instanceof RequestError && error.status < 500)
+        )
+          pending.current.delete(key);
+        throw error;
+      }
+    },
+    /** Ajoute la copie confirmée à la bibliothèque du compte courant. */
+    async duplicate(playlist: MusicPlaylist) {
+      requireCurrentAccount();
+      const key = `${token}:${playlist.id}`;
+      const intent = copies.current.get(key) ?? {
+        id: crypto.randomUUID(),
+        version: playlist.version,
+      };
+      copies.current.set(key, intent);
+      const resume = resource.pause();
+      try {
+        const copy = await duplicatePlaylist(
+          playlist.id,
+          intent.id,
+          intent.version,
+        );
+        requireCurrentAccount();
+        resource.update((items) => [
+          copy,
+          ...(items ?? []).filter((p) => p.id !== copy.id),
+        ]);
+        copies.current.delete(key);
+        return copy;
+      } catch (error) {
+        if (
+          error instanceof LibraryMutationError ||
+          (error instanceof RequestError && error.status < 500)
+        )
+          copies.current.delete(key);
+        throw error;
+      } finally {
+        resume();
+      }
+    },
+    /** Met à jour l’image sans confondre son échec avec celui de l’envoi Media. */
+    artwork: (playlist: MusicPlaylist, assetId: string | null) =>
+      mutate(playlist, () =>
+        setPlaylistArtwork(playlist.id, assetId, playlist.version),
+      ),
     playlists: ownerId ? (resource.data ?? []) : [],
     loading: ownerId !== null && resource.loading,
     error: resource.error,

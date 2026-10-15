@@ -18,6 +18,13 @@ en clair sont exclusivement des identifiants de test dans une pile isolée.
 Le préfixe historique e2e des mots de passe est conservé pour reprendre les
 mêmes rôles de test ; il ne relie pas les stockages des deux projets.
 
+La campagne navigateur peut aussi utiliser la pile jetable des projets :
+`MUSIC_BASE_URL=https://127.0.0.1:5445 npm test` depuis `tests/music`.
+Le témoin SQL sélectionne alors exclusivement `transcendence_projects`.
+Installer auparavant les seeds Catalogue et Media dans cette même pile ; aucune
+autre origine n'est acceptée. History est accessible via Library et les playlists
+via Library → My playlists → la carte de la playlist.
+
 Les six migrations existantes construisent leurs schémas, puis
 apply-permissions attribue propriétaires et permissions. Son tmpfs évite le
 volume de données anonyme hérité de l'image PostgreSQL. Catalogue reçoit

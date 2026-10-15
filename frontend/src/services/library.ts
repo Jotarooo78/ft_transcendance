@@ -19,6 +19,18 @@ export function isPlaylist(value: unknown): value is MusicPlaylist {
     typeof p.version === "number" &&
     Number.isSafeInteger(p.version) &&
     p.version > 0 &&
+    (p.ownerUserId === undefined ||
+      (typeof p.ownerUserId === "string" &&
+        /^[a-f0-9-]{36}$/i.test(p.ownerUserId))) &&
+    (p.coverAssetId === undefined ||
+      p.coverAssetId === null ||
+      (typeof p.coverAssetId === "string" &&
+        /^[a-f0-9-]{36}$/i.test(p.coverAssetId))) &&
+    ["createdAt", "updatedAt"].every(
+      (key) =>
+        p[key] === undefined ||
+        (typeof p[key] === "string" && Number.isFinite(Date.parse(p[key]))),
+    ) &&
     Array.isArray(p.items) &&
     p.items.every(
       (item) =>
@@ -27,7 +39,10 @@ export function isPlaylist(value: unknown): value is MusicPlaylist {
         typeof item.id === "string" &&
         typeof item.trackId === "string" &&
         Number.isInteger(item.position) &&
-        item.position > 0,
+        item.position > 0 &&
+        (item.addedAt === undefined ||
+          (typeof item.addedAt === "string" &&
+            Number.isFinite(Date.parse(item.addedAt)))),
     )
   );
 }
@@ -105,14 +120,21 @@ export async function createPlaylist(
   name: string,
   description: string,
   visibility: MusicPlaylist["visibility"] = "private",
+  creationId?: string,
 ): Promise<MusicPlaylist> {
   const response = await authenticatedFetch("/api/library/playlists", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, description, visibility }),
+    body: JSON.stringify({
+      name,
+      description,
+      visibility,
+      ...(creationId ? { creationId } : {}),
+    }),
   });
   if (!response.ok)
-    throw new Error(
+    throw new RequestError(
+      response.status,
       response.status === 400
         ? "Check the playlist name and description."
         : "Unable to create playlist. Please try again.",

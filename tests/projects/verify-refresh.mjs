@@ -194,6 +194,7 @@ try {
       json: { items: sessions, total: sessions.length, page: 1, pageSize: 20 },
     }),
   );
+  await page.getByRole("button", { name: "Library", exact: true }).click();
   await page.getByRole("button", { name: "History", exact: true }).click();
   await until(
     async () => (await page.locator("[data-session-id]").count()) === 20,
@@ -213,7 +214,8 @@ try {
     ) < 1,
   );
   console.log("[REFRESH] PASS stable history anchor after insertion");
-  await page.getByRole("button", { name: "Playlists", exact: true }).click();
+  await page.getByRole("button", { name: "My playlists", exact: true }).click();
+  await page.getByRole("button", { name: /Stable playlist.*tracks/ }).click();
   await page
     .getByRole("button", { name: "Edit playlist", exact: true })
     .click();
@@ -227,7 +229,7 @@ try {
   });
   await focus(page);
   await page
-    .getByRole("heading", { name: "Tracks in Changed elsewhere", exact: true })
+    .getByRole("heading", { name: "Changed elsewhere", exact: true })
     .waitFor();
   assert.equal(
     await editor.getByLabel("Name", { exact: true }).inputValue(),
@@ -245,9 +247,15 @@ try {
     .getByRole("button", { name: "Save changes", exact: true })
     .click();
   await page
-    .getByRole("heading", { name: "Tracks in My unsaved name", exact: true })
+    .getByRole("heading", { name: "My unsaved name", exact: true })
     .waitFor();
   // Un GET lu avant une création arrive après elle : il ne doit pas enlever la nouvelle playlist.
+  await page
+    .getByRole("button", { name: "Back to library", exact: false })
+    .click();
+  await page
+    .getByRole("button", { name: "Create a playlist", exact: true })
+    .click();
   let release, arrived;
   const gate = new Promise((r) => (release = r)),
     captured = new Promise((r) => (arrived = r));
@@ -266,14 +274,17 @@ try {
   });
   await focus(page);
   await captured;
-  const create = page.locator(".playlist-form");
+  const create = page.getByRole("form", {
+    name: "Create playlist",
+    exact: true,
+  });
   await create.getByLabel("Name", { exact: true }).fill("Created during read");
   await create
     .getByRole("button", { name: "Create playlist", exact: true })
     .click();
   await page
     .getByRole("heading", {
-      name: "Tracks in Created during read",
+      name: "Created during read",
       exact: true,
     })
     .waitFor();
@@ -283,7 +294,7 @@ try {
   assert.equal(
     await page
       .getByRole("heading", {
-        name: "Tracks in Created during read",
+        name: "Created during read",
         exact: true,
       })
       .count(),
@@ -374,6 +385,7 @@ try {
     return route.fulfill({ json: track });
   });
   await page.getByRole("button", { name: "Library", exact: true }).click();
+  await page.getByRole("button", { name: "Liked tracks", exact: true }).click();
   await focus(page);
   await until(
     async () => (await page.locator(".music-track-row").count()) === 24,
@@ -449,7 +461,7 @@ try {
     await page.getByText("Saved public A", { exact: true }).count(),
     0,
   );
-  await page.getByText("Item unavailable", { exact: true }).waitFor();
+  await page.getByText("Playlist unavailable", { exact: true }).waitFor();
   console.log(
     "[REFRESH] PASS mixed saved-playlist revocation and transient failure",
   );

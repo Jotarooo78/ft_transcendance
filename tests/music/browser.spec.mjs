@@ -3,6 +3,19 @@ import { test, expect } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
+/** Ouvre l'historique à son nouvel emplacement dans la bibliothèque. */
+async function openHistory(page) {
+  await page.getByRole('button', { name: 'Library', exact: true }).click();
+  await page.getByRole('button', { name: 'History', exact: true }).click();
+}
+/** Ouvre la première playlist du compte si elle existe, après lecture de sa collection. */
+async function openPlaylists(page) {
+  await page.getByRole('button', { name: 'Library', exact: true }).click();
+  await page.getByRole('button', { name: 'My playlists', exact: true }).click();
+  await expect(page.getByText('Loading playlists…', { exact: true })).toHaveCount(0);
+  if (await page.locator('.playlist-card').count()) await page.locator('.playlist-card').first().click();
+}
+
 // Read-only SQL witness, confined to the same disposable project as the browser.
 /**
  * Témoin SQL en lecture seule d’une session et de ses événements, confiné à transcendence_music après
@@ -15,7 +28,8 @@ function playbackSql(id) {
     'events',(SELECT json_agg(json_build_object('sequence',sequence,'positionMs',position_ms,
       'listenedMsTotal',listened_ms_total) ORDER BY sequence) FROM playback.events WHERE session_id=s.id))
     FROM playback.sessions s WHERE current_database()='transcendence_music' AND s.id='${id}'::uuid;`;
-  return JSON.parse(execFileSync('docker', ['compose','-p','transcendence_music','--env-file','/dev/null',
+  const project = process.env.MUSIC_BASE_URL === 'https://127.0.0.1:5445' ? 'transcendence_projects' : 'transcendence_music';
+  return JSON.parse(execFileSync('docker', ['compose','-p',project,'--env-file','/dev/null',
     '-f',fileURLToPath(new URL('./compose.yml', import.meta.url)),'exec','-T','db','psql','-U','e2e_admin',
     '-d','transcendence_music','-v','ON_ERROR_STOP=1','-At','-c',query], { encoding:'utf8', timeout:10000 }).trim());
 }
@@ -75,18 +89,18 @@ test('playback: real listening, pause, seek, SQL, history and account isolation'
   expect(sql.listenedMs).toBe(closed.listenedMs); expect(sql.lastSequence).toBe(closed.lastSequence);
   expect(sql.events).toEqual(sent); expect(sql.events.length).toBe(closed.lastSequence);
   expect(sql.qualified).toBe(false); expect(sql.endedAt).not.toBeNull();
-  await page.getByRole('button',{name:'History',exact:true}).click();
+  await openHistory(page);
   const row=page.locator(`[data-session-id="${session.id}"]`);
   await expect(row).toContainText('Aube — demo');
   await expect(row.locator('time')).toHaveAttribute('datetime',closed.startedAt);
   await page.reload(); await login(page,user);
-  await page.getByRole('button',{name:'History',exact:true}).click();
+  await openHistory(page);
   expect((await readHistory()).items.find(item=>item.id===session.id).listenedMs).toBe(closed.listenedMs);
   // Catalogue failure must preserve the stored facts and disable replay.
   const tracks='**/api/catalog/tracks/20000000-0000-4000-8000-000000000001';
   await page.route(tracks,route=>route.fulfill({status:404,body:'{}'}));
   await page.getByRole('button',{name:'Catalog',exact:true}).click();
-  await page.getByRole('button',{name:'History',exact:true}).click();
+  await openHistory(page);
   await expect(row).toContainText('Track unavailable');
   await expect(row.getByRole('button',{name:'Play Aube — demo',exact:true})).toHaveCount(0);
   expect((await readHistory()).items.find(item=>item.id===session.id).listenedMs).toBe(closed.listenedMs);
@@ -118,7 +132,7 @@ test('playback: real listening, pause, seek, SQL, history and account isolation'
   await page.getByRole('button',{name:'Log out',exact:true}).click();
   await page.getByRole('button',{name:'Register',exact:true}).click();
   await createAccount(page,'eco_other');
-  await page.getByRole('button',{name:'History',exact:true}).click();
+  await openHistory(page);
   await expect(page.getByText('No listening sessions on this page.',{exact:true})).toBeVisible();
   release(); await complete; await page.unroute(lists);
   await expect(page.locator('[data-session-id]')).toHaveCount(0);
@@ -169,9 +183,10 @@ test('library: confirmed gestures, failures, persistence and account isolation',
   const tokenA = (await (await loginResponse).json()).token;
   const witness = JSON.stringify([{ id: 'legacy-local', name: 'Local witness only', description: 'preserve', trackIds: [] }]);
   await page.evaluate(value => localStorage.setItem('ft-music:playlists:v1', value), witness);
-  await page.getByRole('button', { name: 'Playlists', exact: true }).click();
-  await expect(page.getByText('No playlists yet.', { exact: true })).toBeVisible();
-  const create = page.locator('.playlist-form');
+  await openPlaylists(page);
+  await expect(page.getByText('Create your first playlist to collect music you love.', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Create a playlist', exact: true }).click();
+  const create = page.getByRole('form', { name: 'Create playlist', exact: true });
   await create.getByLabel('Name', { exact: true }).fill('Browser library');
   await create.getByLabel('Description', { exact: true }).fill('Keep draft');
   // Labelled network failures exercise UI behavior, not server persistence.
@@ -184,17 +199,18 @@ test('library: confirmed gestures, failures, persistence and account isolation',
   const creation = page.waitForResponse(r => r.url().endsWith('/api/library/playlists') && r.request().method() === 'POST' && r.status() === 201);
   await create.getByRole('button', { name: 'Create playlist', exact: true }).click();
   const empty = await (await creation).json(); expect(empty.items).toEqual([]); expect(empty.version).toBe(1);
-  await expect(page.getByRole('heading', { name: 'Tracks in Browser library', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Browser library', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Catalog', exact: true }).click();
+  await page.getByLabel('Search music', { exact: true }).fill('Aube');
   const add = page.getByRole('combobox', { name: 'Add Aube — demo to playlist', exact: true });
   for (let n = 0; n < 2; n++) {
     const response = page.waitForResponse(r => r.url().endsWith(`/${empty.id}/items`) && r.request().method() === 'POST' && r.status() === 200);
     await add.selectOption(empty.id); await response; await expect(add).toBeEnabled();
   }
-  await page.getByRole('button', { name: 'Playlists', exact: true }).click();
+  await openPlaylists(page);
   const rows = page.locator('[data-item-id]'); await expect(rows).toHaveCount(2);
   const ids = await rows.evaluateAll(elements => elements.map(e => e.dataset.itemId)); expect(new Set(ids).size).toBe(2);
-  const itemPattern = `**/api/library/playlists/${empty.id}/items/*`;
+  const itemPattern = `**/api/library/playlists/${empty.id}/actions`;
   await page.route(itemPattern, route => route.abort());
   await rows.first().getByRole('button', { name: 'Remove track', exact: true }).click();
   await expect(page.getByRole('alert')).toBeVisible(); await expect(rows).toHaveCount(2); await page.unroute(itemPattern);
@@ -215,8 +231,8 @@ test('library: confirmed gestures, failures, persistence and account isolation',
   const changed = await page.request.patch(`/api/library/playlists/${empty.id}`, { headers, data: { name: 'Changed elsewhere', expectedVersion: 4 } });
   expect(changed.status()).toBe(200);
   await edit.getByRole('button', { name: 'Save changes', exact: true }).click();
-  await expect(edit.getByRole('alert')).toContainText('Your action was not applied');
-  await expect(page.getByRole('heading', { name: 'Tracks in Changed elsewhere', exact: true })).toBeVisible();
+  await expect(edit.getByRole('alert')).toContainText(/Your action was not applied|Your inputs are preserved/);
+  await expect(page.getByRole('heading', { name: 'Changed elsewhere', exact: true })).toBeVisible();
   await expect(edit.getByLabel('Name', { exact: true })).toHaveValue('Renamed library');
   const updated = page.waitForResponse(r => r.request().method() === 'PATCH' && r.status() === 200);
   await edit.getByRole('button', { name: 'Save changes', exact: true }).click();
@@ -224,14 +240,14 @@ test('library: confirmed gestures, failures, persistence and account isolation',
   expect(persisted.id).toBe(empty.id); expect(persisted.items[0].id).toBe(ids[1]); expect(persisted.version).toBe(6);
   // A new login after reload must issue a fresh Library read with the same identities.
   await page.reload(); await login(page, userA);
-  await page.getByRole('button', { name: 'Playlists', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Tracks in Renamed library', exact: true })).toBeVisible();
+  await openPlaylists(page);
+  await expect(page.getByRole('heading', { name: 'Renamed library', exact: true })).toBeVisible();
   await expect(rows.first()).toHaveAttribute('data-item-id', ids[1]);
-  const fresh = await browser.newContext({ baseURL: 'https://127.0.0.1:3443', ignoreHTTPSErrors: true });
+  const fresh = await browser.newContext({ baseURL: process.env.MUSIC_BASE_URL ?? 'https://127.0.0.1:3443', ignoreHTTPSErrors: true });
   try {
     const other = await fresh.newPage(); await other.goto('/'); await login(other, userA);
-    await other.getByRole('button', { name: 'Playlists', exact: true }).click();
-    await expect(other.getByRole('heading', { name: 'Tracks in Renamed library', exact: true })).toBeVisible();
+    await openPlaylists(other);
+    await expect(other.getByRole('heading', { name: 'Renamed library', exact: true })).toBeVisible();
     await expect(other.locator('[data-item-id]')).toHaveAttribute('data-item-id', ids[1]);
   } finally { await fresh.close(); }
   // Delay a real A response across logout/login B; release only after B's list is visible.
@@ -247,28 +263,28 @@ test('library: confirmed gestures, failures, persistence and account isolation',
   await page.getByRole('button', { name: 'Log out', exact: true }).click();
   await page.getByRole('button', { name: 'Register', exact: true }).click();
   const userB = await createAccount(page, 'library_b');
-  await page.getByRole('button', { name: 'Playlists', exact: true }).click();
-  await expect(page.getByText('No playlists yet.', { exact: true })).toBeVisible();
+  await openPlaylists(page);
+  await expect(page.getByText('Create your first playlist to collect music you love.', { exact: true })).toBeVisible();
   release(); await page.unrouteAll({ behavior: 'wait' });
   await expect(page.locator('.playlist-card')).toHaveCount(0);
   await page.getByRole('button', { name: 'Log out', exact: true }).click(); await login(page, userA);
-  await page.getByRole('button', { name: 'Playlists', exact: true }).click();
+  await openPlaylists(page);
   await expect(rows.first()).toHaveAttribute('data-item-id', ids[1]);
   expect(await page.evaluate(() => localStorage.getItem('ft-music:playlists:v1'))).toBe(witness);
   // Unavailable Catalogue details keep the stored occurrence and its Remove control.
   const trackPattern = '**/api/catalog/tracks/20000000-0000-4000-8000-000000000001';
   await page.route(trackPattern, route => route.fulfill({ status: 404, body: '{}' }));
   await page.getByRole('button', { name: 'Catalog', exact: true }).click();
-  await page.getByRole('button', { name: 'Playlists', exact: true }).click();
+  await openPlaylists(page);
   await expect(rows.first()).toContainText('Track unavailable');
   await expect(rows.first().getByRole('button', { name: 'Remove track', exact: true })).toBeEnabled();
   await page.unroute(trackPattern); await page.getByRole('button', { name: 'Retry track details', exact: true }).click();
-  await page.getByRole('button', { name: 'Play Aube — demo', exact: true }).click(); await expect(page.locator('audio')).toHaveCount(1);
+  await rows.getByRole('button', { name: 'Play Aube — demo', exact: true }).click(); await expect(page.locator('audio')).toHaveCount(1);
   let deleteCount = 0; page.on('request', r => { if (r.method() === 'DELETE') deleteCount++; });
   page.once('dialog', dialog => dialog.dismiss()); await page.getByRole('button', { name: 'Delete playlist', exact: true }).click(); expect(deleteCount).toBe(0);
   await page.route(detailPattern, route => route.request().method() === 'DELETE' ? route.abort() : route.continue());
   page.once('dialog', dialog => dialog.accept()); await page.getByRole('button', { name: 'Delete playlist', exact: true }).click();
-  await expect(page.getByRole('alert')).toBeVisible(); await expect(page.locator('.playlist-card')).toHaveCount(1); await expect(page.locator('audio')).toHaveCount(1);
+  await expect(page.getByRole('alert')).toBeVisible(); await expect(page.getByRole('heading', { name: 'Renamed library', exact: true })).toBeVisible(); await expect(page.locator('audio')).toHaveCount(1);
   await page.unroute(detailPattern);
   const deletion = page.waitForResponse(r => r.request().method() === 'DELETE' && r.url().endsWith(`/${empty.id}`) && r.status() === 204);
   page.once('dialog', dialog => dialog.accept()); await page.getByRole('button', { name: 'Delete playlist', exact: true }).click(); await deletion;

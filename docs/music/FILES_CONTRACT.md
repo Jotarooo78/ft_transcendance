@@ -317,3 +317,32 @@ session. `useResource.ts` annule les lectures devenues anciennes. `FilesPage.tsx
 liste les projets personnels par pages, reprend l’éditeur et confirme l’abandon.
 `ProjectArtwork.tsx` réutilise la lecture bornée de `read-files.ts` pour les
 pochettes privées ; les URL locales sont libérées au démontage.
+
+## Images de playlist
+
+`POST /api/media/playlist-images` reçoit sous JWT un seul PNG, JPEG ou WebP
+(25 Mo maximum) et renvoie `{ id }`. Il réutilise la validation complète des
+pixels, la limite de transferts simultanés et le stockage durable Media.
+Le fichier reçoit une expiration de vingt-quatre heures tant qu'il n'est pas
+confirmé comme pochette par Library.
+
+Library réserve l'image via `PUT /internal/playlist-images/:id/reservation`,
+protégé par le token interne commun, avec le propriétaire et la playlist.
+Seule une image prête du même propriétaire, libre et non expirée ou déjà liée
+à cette playlist, est acceptée. Library associe ensuite l'identifiant dans une
+modification versionnée. Une réservation empêche la suppression manuelle de
+l'image pendant l'association. Une course ou une panne ne supprime donc pas
+prématurément les octets ; un fichier abandonné attend son nettoyage.
+
+`GET /api/media/playlists/:id/artwork` vérifie à chaque requête la visibilité
+publique actuelle et la référence de Library, puis sert uniquement cette image.
+La réponse est `no-store`; une playlist privée ou une ancienne référence ne
+permet pas de lire l'image. Le propriétaire utilise la route privée existante
+`/assets/:id/private-content` avec son JWT.
+
+Le nettoyage périodique vérifie les images expirées via
+`GET /internal/playlist-images/:id/reference` chez Library. Une référence active
+repousse l'expiration de vingt-quatre heures ; sinon, une mise à jour conditionnée
+à l'ancienne réservation libère le fichier avant la suppression durable existante.
+Une panne de Library conserve l'image. Le nettoyage des audios provisoires
+ignore les images pour ne pas court-circuiter cette vérification.

@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { useMusicPlayer } from "../contexts/music-player";
 import type { Track } from "../types/music";
 import PlayerIcon from "./PlayerIcon";
+import { usePlaylistActions } from "../contexts/playlist-actions";
 /** Ferme le menu après une action, un clic extérieur ou Échap, sans lancer la ligne. */
 export default function TrackQueueActions({
   track,
@@ -11,6 +12,7 @@ export default function TrackQueueActions({
 }) {
   const player = useMusicPlayer(),
     menu = useRef<HTMLDetailsElement>(null);
+  const addToPlaylist = usePlaylistActions();
   useEffect(() => {
     /** Ferme seulement ce menu lorsqu’un autre élément reçoit le clic. */
     function outside(event: PointerEvent) {
@@ -53,6 +55,19 @@ export default function TrackQueueActions({
         <PlayerIcon name="more" />
       </summary>
       <div className="track-queue-popover">
+        {addToPlaylist && (
+          <button
+            onClick={() => {
+              addToPlaylist([track]);
+              if (menu.current) {
+                menu.current.open = false;
+                menu.current.querySelector("summary")?.focus();
+              }
+            }}
+          >
+            Add to playlist
+          </button>
+        )}
         <button disabled={!track.audioUrl} onClick={() => add(true)}>
           Play next
         </button>
