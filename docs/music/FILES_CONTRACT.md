@@ -283,6 +283,11 @@ les appels parallèles à huit, avant la recherche et la pagination SQL.
 
 L’entrée Upload ouvre FileUploadForm : dépôt ou sélection d’un audio, transfert
 automatique, titre prérempli et description éditables pendant le transfert. Le
+pourcentage ne décrit que l’envoi et reste sous 100 % tant qu’il est incomplet.
+Après transfert, « Preparing audio » et des points animés remplacent la barre ;
+un message apparaît après huit secondes d’attente. Les points restent fixes si
+le système demande moins d’animations. Seule la confirmation Media affiche
+« Audio ready » et permet de publier. Le
 compte connecté fournit l’identité affichée ; seul Users confirme l’identité
 utilisée par Catalogue. Le choix manuel de pochette ou son retrait prévaut sur
 l’extraction intégrée. Une erreur de pochette permet de continuer sans image.

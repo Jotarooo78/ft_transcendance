@@ -72,6 +72,10 @@ reprise d’un résultat SQL incertain. Une vraie vidéo reste refusée.
 `browser.spec.mjs` vérifie le nouveau formulaire avant publication : pochette
 intégrée et annulation, image optionnelle invalide sans perte audio, refus des
 images seules et audios corrompus, puis changement de session pendant l’envoi.
+Un scénario avec événements XHR et réponses simulés contrôle aussi le passage
+de 99 % à la préparation animée, le conseil après huit secondes, les champs
+éditables, les animations réduites et l’annulation. La publication reste bloquée
+jusqu’à une confirmation de fichier prêt ; ce scénario ne teste pas le serveur.
 Le parcours public complet est couvert par `tests/publication/run.sh` : vrais
 comptes, publication, artiste actuel, pochettes, lecture et playlists.
 

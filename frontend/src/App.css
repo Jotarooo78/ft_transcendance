@@ -949,6 +949,20 @@ form > p[id$="-help"],
 .upload-filename { flex: 1 1 200px; overflow-wrap: anywhere; }
 .upload-status progress { accent-color: var(--accent); height: 6px; width: 160px; }
 .upload-ready { color: var(--success); }
+/* Points purement visuels : le texte annoncé reste stable et la largeur ne saute pas. */
+.audio-preparation { flex-basis: 100%; }
+.audio-preparation-title { color: var(--accent); font-weight: 600; }
+.audio-preparation p { color: var(--text); font-size: 12px; margin-top: 4px; }
+.preparation-dots { display: inline-block; width: 3ch; font-family: var(--mono); animation: preparation-dots 1.5s step-end infinite; }
+@keyframes preparation-dots {
+  0%, 100% { clip-path: inset(0 66.666% 0 0); }
+  33.333% { clip-path: inset(0 33.333% 0 0); }
+  66.666% { clip-path: inset(0); }
+}
+/* Respecte le choix système de limiter les animations, en gardant les trois points visibles. */
+@media (prefers-reduced-motion: reduce) {
+  .preparation-dots { animation: none; }
+}
 .publish-layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 34px; padding: 32px; }
 .publish-artwork-preview { position: relative; aspect-ratio: 1; background: var(--surface-soft); overflow: hidden; }
 .publish-artwork-preview > img, .publish-artwork-preview .audio-cover { width: 100%; height: 100%; object-fit: contain; border-radius: 0; background: var(--surface-soft); }

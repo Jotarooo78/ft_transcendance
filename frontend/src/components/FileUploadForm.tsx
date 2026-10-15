@@ -9,6 +9,7 @@ import type { ReadyFile, UploadProgress } from "../types/files";
 import type { AuthenticatedUser } from "../types/auth";
 import type { Track } from "../types/music";
 import AudioCover from "./AudioCover";
+import AudioPreparation from "./AudioPreparation";
 
 /** Identité non éditable et navigation vers le morceau confirmé dans Catalogue. */
 type Props = {
@@ -139,9 +140,9 @@ export default function FileUploadForm({ user, onPublished }: Props) {
     </div> : <>
       <div className="upload-status" aria-live="polite">
         <span className="upload-filename">{file.name}</span>
-        {progress?.phase === "sending" && <><progress aria-label="Upload progress" max={100} {...(progress.percent === null ? {} : { value: progress.percent })} /><span>{progress.percent === null ? "Uploading…" : `${progress.percent}%`}</span></>}
+        {progress?.phase === "sending" && <><progress aria-label="Upload progress" max={100} {...(progress.percent === null ? {} : { value: progress.percent })} /><span>{progress.percent === null ? "Uploading audio…" : `Uploading audio — ${progress.percent}%`}</span></>}
         {checking && <span>Checking audio…</span>}
-        {progress?.phase === "validating" && <span>Processing audio…</span>}
+        {progress?.phase === "validating" && <AudioPreparation />}
         {!uploading && asset && <span className="upload-ready">✓ Audio ready</span>}
       </div>
       <div className="publish-layout">

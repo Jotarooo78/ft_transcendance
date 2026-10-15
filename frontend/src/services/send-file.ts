@@ -41,12 +41,14 @@ export function sendFile(
         abort();
         return;
       }
+      // La fin réelle du transfert ouvre l’attente serveur ; l’arrondi ne doit jamais afficher 100 % avant cela.
+      const transferred = event.lengthComputable && event.total > 0 && event.loaded >= event.total;
       progress({
-        phase: "sending",
+        phase: transferred ? "validating" : "sending",
         loaded: event.loaded,
         total: event.lengthComputable ? event.total : null,
         percent: event.lengthComputable
-          ? Math.min(100, Math.round((100 * event.loaded) / event.total))
+          ? transferred ? 100 : Math.min(99, Math.floor((100 * event.loaded) / event.total))
           : null,
       });
     };
