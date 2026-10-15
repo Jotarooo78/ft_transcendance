@@ -1,3 +1,7 @@
+import {
+  createPlaybackProgress,
+  PlaybackProgressContext,
+} from "../contexts/playback-progress";
 /** Coordonne une seule file et un seul moteur audio pour toutes les pages. */
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
@@ -44,8 +48,7 @@ export default function MusicPlayerProvider({
     [autoPlay, setAutoPlay] = useState(false);
   const [playing, setPlaying] = useState(false),
     [loading, setLoading] = useState(false);
-  const [position, setPosition] = useState(0),
-    [duration, setDuration] = useState(0);
+  const [progress] = useState(createPlaybackProgress);
   const [volume, setVolume] = useState(saved?.volume ?? 0.8),
     [muted, setMuted] = useState(saved?.muted ?? false);
   const [queueOpen, showQueue] = useState(false),
@@ -53,9 +56,9 @@ export default function MusicPlayerProvider({
   const audioRef = useRef<HTMLAudioElement>(null),
     failed = useRef(new Set<string>());
   const current = queue.entries.find((entry) => entry.key === queue.current);
-  const preferences = useRef({ volume, muted, position });
+  const preferences = useRef({ volume, muted });
   useEffect(() => {
-    preferences.current = { volume, muted, position };
+    preferences.current = { volume, muted };
   });
   useEffect(() => {
     if (!saved?.entries.length) return;
@@ -103,7 +106,7 @@ export default function MusicPlayerProvider({
         setQueue(next);
         ready.current = true;
         setInitialPosition(retained ? saved.position : 0);
-        setPosition(retained ? saved.position : 0);
+        progress.update(retained ? saved.position : 0, 0);
         setAutoPlay(false);
         setCycle((value) => value + 1);
         setNotice(
@@ -119,7 +122,7 @@ export default function MusicPlayerProvider({
           );
       });
     return () => controller.abort();
-  }, [saved, restoreAttempt]);
+  }, [saved, restoreAttempt, progress]);
   useEffect(() => {
     /** Enregistre les références et la dernière position réelle, jamais une adresse audio. */
     function save() {
@@ -130,7 +133,7 @@ export default function MusicPlayerProvider({
         queueRef.current,
         audioRef.current && audioRef.current.readyState >= 1
           ? audioRef.current.currentTime
-          : prefs.position,
+          : progress.read().position,
         prefs.volume,
         prefs.muted,
       );
@@ -142,7 +145,7 @@ export default function MusicPlayerProvider({
       window.clearInterval(interval);
       window.removeEventListener("pagehide", save);
     };
-  }, [accountId]);
+  }, [accountId, progress]);
   useEffect(() => {
     if (ready.current)
       writePlayer(
@@ -167,8 +170,7 @@ export default function MusicPlayerProvider({
     setInitialPosition(0);
     audioRef.current?.pause();
     commit(next);
-    setPosition(0);
-    setDuration(0);
+    progress.update(0, 0);
     setPlaying(false);
     setLoading(!!next.current);
     setAutoPlay(autoplay);
@@ -246,7 +248,7 @@ export default function MusicPlayerProvider({
   }
   /** Revient au début ou dans le parcours réellement écouté. */
   function previous() {
-    if ((audioRef.current?.currentTime ?? position) > 3) {
+    if ((audioRef.current?.currentTime ?? progress.read().position) > 3) {
       seek(0);
       return;
     }
@@ -259,7 +261,7 @@ export default function MusicPlayerProvider({
     const audio = audioRef.current;
     if (audio && Number.isFinite(audio.duration)) {
       audio.currentTime = Math.max(0, Math.min(seconds, audio.duration));
-      setPosition(audio.currentTime);
+      progress.update(audio.currentTime);
     }
   }
   /** Distingue panne réseau et fichier illisible ; ne parcourt jamais indéfiniment une file cassée. */
@@ -298,8 +300,6 @@ export default function MusicPlayerProvider({
     queue,
     playing,
     loading,
-    position,
-    duration,
     volume,
     muted,
     notice,
@@ -378,46 +378,45 @@ export default function MusicPlayerProvider({
     },
   };
   return (
-    <MusicPlayerContext.Provider value={value}>
-      {children}
-      {!current && notice && (
-        <div className="player-empty-notice" role="status">
-          <span>{notice}</span>
-          {!ready.current && (
-            <button onClick={() => setRestoreAttempt((value) => value + 1)}>
-              Retry restoration
-            </button>
-          )}
-          <button onClick={value.close}>Dismiss</button>
-        </div>
-      )}
-      {current && (
-        <PlayerBar>
-          <AudioPlayer
-            key={cycle}
-            track={current.track}
-            audioRef={audioRef}
-            autoPlay={autoPlay}
-            initialPosition={initialPosition}
-            volume={volume}
-            muted={muted}
-            onState={(active, waiting) => {
-              setPlaying(active);
-              setLoading(waiting);
-            }}
-            onProgress={(seconds, length) => {
-              setPosition(seconds);
-              setDuration(length);
-            }}
-            onEnded={() => advance(true)}
-            onError={unavailable}
-            onBlocked={() => {
-              setLoading(false);
-              setNotice("Press play to resume audio.");
-            }}
-          />
-        </PlayerBar>
-      )}
-    </MusicPlayerContext.Provider>
+    <PlaybackProgressContext.Provider value={progress}>
+      <MusicPlayerContext.Provider value={value}>
+        {children}
+        {!current && notice && (
+          <div className="player-empty-notice" role="status">
+            <span>{notice}</span>
+            {!ready.current && (
+              <button onClick={() => setRestoreAttempt((value) => value + 1)}>
+                Retry restoration
+              </button>
+            )}
+            <button onClick={value.close}>Dismiss</button>
+          </div>
+        )}
+        {current && (
+          <PlayerBar>
+            <AudioPlayer
+              key={cycle}
+              track={current.track}
+              audioRef={audioRef}
+              autoPlay={autoPlay}
+              initialPosition={initialPosition}
+              volume={volume}
+              muted={muted}
+              onState={(active, waiting) => {
+                setPlaying(active);
+                setLoading(waiting);
+              }}
+              onProgress={progress.update}
+              onEnded={() => advance(true)}
+              onError={unavailable}
+              onBlocked={() => {
+                setLoading(false);
+                setNotice("Press play to resume audio.");
+              }}
+            />
+          </PlayerBar>
+        )}
+      </MusicPlayerContext.Provider>
+    </PlaybackProgressContext.Provider>
   );
 }

@@ -1,3 +1,4 @@
+import { usePlaybackProgress } from "../contexts/playback-progress";
 /** Barre persistante : mêmes commandes pour tous les points d’entrée musicaux. */
 import { useEffect, useRef, type ReactNode } from "react";
 import { useMusicPlayer } from "../contexts/music-player";
@@ -17,6 +18,7 @@ export default function PlayerBar({
 }: {
   /** Moteur audio et éventuelle erreur de suivi. */ children: ReactNode;
 }) {
+  const progress = usePlaybackProgress();
   const player = useMusicPlayer(),
     latest = useRef(player),
     bar = useRef<HTMLElement>(null);
@@ -145,19 +147,19 @@ export default function PlayerBar({
             </button>
           </div>
           <div className="player-timeline">
-            <span>{time(player.position)}</span>
+            <span>{time(progress.position)}</span>
             <input
               aria-label="Playback position"
               type="range"
               min="0"
-              max={player.duration || 0}
+              max={progress.duration || 0}
               step="0.1"
-              value={Math.min(player.position, player.duration || 0)}
-              disabled={!player.duration}
+              value={Math.min(progress.position, progress.duration || 0)}
+              disabled={!progress.duration}
               onChange={(event) => player.seek(Number(event.target.value))}
-              aria-valuetext={`${time(player.position)} of ${time(player.duration)}`}
+              aria-valuetext={`${time(progress.position)} of ${time(progress.duration)}`}
             />
-            <span>{time(player.duration)}</span>
+            <span>{time(progress.duration)}</span>
           </div>
         </div>
         <div className="player-tools">

@@ -23,8 +23,6 @@ export type MusicPlayer = {
     string | null;
   /** État confirmé par l’élément audio. */ playing: boolean;
   /** Audio en chargement ou en attente de données. */ loading: boolean;
-  /** Position et durée en secondes. */ position: number;
-  /** Durée réelle lorsque disponible. */ duration: number;
   /** Volume entre zéro et un. */ volume: number;
   /** Son coupé indépendamment du volume. */ muted: boolean;
   /** État complet de la file. */ queue: MusicQueue;

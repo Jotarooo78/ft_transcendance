@@ -12,8 +12,8 @@ body.has-music-player {
     );
   gap: 8px 28px;
   padding: 14px 28px;
-  background: color-mix(in srgb, var(--bg) 95%, transparent);
-  backdrop-filter: blur(20px);
+  /* Le fond crème évite de recalculer un flou sur toute la largeur à chaque défilement. */
+  background: var(--bg);
   border-top: 1px solid var(--accent-border);
   box-shadow: 0 -8px 32px #54394b0d;
 }

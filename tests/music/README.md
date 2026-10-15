@@ -216,3 +216,15 @@ La cadence de 30 secondes et la visibilité masquée sont testées avec l’horl
 et la propriété de visibilité simulées du navigateur ; elles ne constituent pas
 une mesure au trackpad physique. Les scénarios historiques utilisent désormais
 un retour sur l’onglet au lieu de cliquer sur les boutons Refresh supprimés.
+
+`node tests/projects/measure-scroll.mjs /tmp/scroll.json [répertoire-dist]`
+échantillonne trois secondes de défilement par page, avec et sans lecture.
+Sans répertoire, il utilise Vite ; avec un répertoire, Playwright sert ses fichiers
+compilés et garde les API isolées. Les références nombreuses sont simulées,
+l’audio et le compte sont réels. Les pages login/profil courts servent de témoins.
+Le script rapporte intervalle p95/max entre images, tâches longues et déplacements
+visuels ; il ne garantit aucun seuil sur un autre matériel. L’option diagnostique
+`--without-player-blur` après le répertoire permet d’isoler ce seul filtre CSS.
+`-` comme répertoire conserve Vite ; `--profile-js` ajoute un profil CPU
+Chromium dans `<sortie>.cpuprofile` pour attribuer les tâches longues. Ce mode
+introduit son propre coût : ses timings ne servent pas de mesure de référence.

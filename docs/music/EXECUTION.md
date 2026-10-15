@@ -908,3 +908,42 @@ aucun conflit.
   Lint, compilation et trois fichiers de tests unitaires musicaux passent.
 - [ ] Comparaison finale du rendu, parcours globaux et publication.
 - Compréhension utilisateur et ressenti physique au trackpad : non validés à sa place.
+
+
+Le diagnostic avec lecteur a identifié deux coûts distincts : le filtre de fond
+sur toute la barre, et les mises à jour de progression diffusées aux lignes.
+La désactivation du seul filtre a ramené les p95 compilés des trois pages musicales
+à 16,8 ms. Le profil CPU de développement a ensuite attribué l’essentiel des
+échantillons applicatifs aux créations JSX dans PlayerIcon (3 792 échantillons),
+MusicTrackRow (887) et TrackQueueActions (290). Ces nombres servent à localiser
+le travail, pas à comparer des temps entre machines.
+La correction finale conserve le fond crème, partage les formes fixes des icônes
+et réserve les notifications de progression à la barre.
+
+Après cette correction, lint/build et tests unitaires passent. Le parcours complet
+du lecteur, les scénarios d’interface/actualisation et les cinq tests historiques
+ont été rejoués et passent (52,3 s pour cette dernière suite). La capture desktop
+finale a été inspectée ; l’interface garde sa palette et les pochettes centrées.
+
+
+Mesures finales indicatives, Chromium automatisé 1440 × 800, mêmes 24 titres
+visibles / 48 références / 20 écoutes, trois secondes de défilement par écran.
+Le p95 est l’intervalle sous lequel se trouvent 95 % des images échantillonnées.
+La référence compilée est `198ba60` ; la référence Vite est `b47d6a6`, avant la
+correction du coût de rendu. L’option de profil CPU était désactivée pour ce tableau.
+
+| Mode et page avec audio | p95 avant (ms) | p95 final (ms) | Maximum final (ms) | Tâches longues finales (>50 ms) |
+| --- | ---: | ---: | ---: | ---: |
+| Compilé · catalog | 50.0 | 16.7 | 16.8 | 0 |
+| Compilé · library | 50.0 | 16.8 | 33.2 | 0 |
+| Compilé · history | 50.1 | 16.8 | 49.9 | 0 |
+| Vite · catalog | 300.0 | 16.8 | 16.8 | 0 |
+| Vite · library | 233.3 | 16.8 | 116.8 | 5 |
+| Vite · history | 150.1 | 16.8 | 33.4 | 0 |
+
+Sans audio, le p95 reste autour de 16,7–16,8 ms avant comme après. Aucun déplacement
+visuel n’est enregistré dans les fenêtres finales. Des pics résiduels existent,
+surtout en développement : ce résultat ne prouve pas une disparition complète
+des saccades et ne reproduit pas un trackpad physique. Les régressions de hauteur,
+les listes vidées pendant relecture et les deux coûts identifiés avec lecteur sont
+corrigés ; le ressenti sans audio reste à confronter au navigateur de l’utilisateur.

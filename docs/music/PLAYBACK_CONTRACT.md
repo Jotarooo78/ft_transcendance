@@ -240,3 +240,14 @@ Les lectures de répertoire/amis ne sont périodiques que sur Profil/Users ; les
 collections et playlists ne le sont que sur les écrans musicaux qui les utilisent.
 Les battements de présence restent séparés. Aucun gestionnaire de roue ni
 bibliothèque de défilement artificiel n’est ajouté.
+
+### Coût du défilement pendant l’écoute
+
+La barre utilise un fond crème opaque : le flou de fond recalculé sur toute sa
+largeur était coûteux dans le navigateur de mesure. Les formes des `PlayerIcon`
+sont immuables et créées une seule fois, puis réutilisées dans les boutons.
+`PlaybackProgressContext` porte une instance observable propre à chaque lecteur.
+Seule la barre s’abonne à sa position/durée via `useSyncExternalStore` ; les lignes
+restent abonnées aux changements utiles (titre, lecture/pause, file), sans recevoir
+chaque événement `timeupdate`. La sauvegarde lit cette même position, tandis que
+le suivi d’écoute crédité conserve son horloge séparée et inchangée.
