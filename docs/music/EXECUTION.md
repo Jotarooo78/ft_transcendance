@@ -742,3 +742,13 @@ Formulaire multi-fichiers, reprise des projets sauvegardés, ordre au clavier,
 pochette commune, sauvegarde et publication branchés sur les routes Catalogue.
 Lint et compilation frontend réussis. Le contrôle navigateur avec fichiers réels
 reste à réaliser dans la campagne finale ; il n’est pas déclaré acquis ici.
+
+## Projets musicaux — présentation et lecteur
+
+La page projet utilise des cartes et lignes de titres communes. Le lecteur est
+porté par `MusicPlayerProvider`, conserve l’ordre du projet et reste monté entre
+les pages musicales ; sa clé de compte réinitialise la lecture à la déconnexion.
+Les liens `#/projects/UUID` et `#/artists/UUID` sont suivis par `useMusicRoute`.
+`ProjectPage`, `ArtistPage`, `ProjectCard`, `ArtistCard` et `MusicTrackRow` composent
+ces écrans à partir des lectures validées et des couleurs existantes. Lint et
+compilation frontend réussis ; la preuve visuelle finale reste à obtenir.

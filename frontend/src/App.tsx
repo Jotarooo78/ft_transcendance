@@ -1,3 +1,7 @@
+import MusicPlayerProvider from './components/MusicPlayerProvider';
+import ProjectPage from './pages/ProjectPage';
+import ArtistPage from './pages/ArtistPage';
+import { useMusicRoute } from './hooks/useMusicRoute';
 import { useEffect, useState } from "react";
 
 import LoginPage from "./pages/LoginPage";
@@ -53,6 +57,7 @@ function getErrorMessage(error: unknown, fallbackMessage: string): string {
 
 /** Coordonne la session et les pages ; l’espace My audio regroupe les audios privés et leurs pochettes. */
 function App() {
+  const musicRoute = useMusicRoute();
   const [currentPage, setCurrentPage] = useState<PublicPage>("register");
 
   const [currentUser, setCurrentUser] = useState<AuthenticatedUser | null>(
@@ -62,6 +67,9 @@ function App() {
   const [users, setUsers] = useState<PublicUser[]>([]);
 
   const [privatePage, setPrivatePage] = useState<PrivatePage>("profile");
+
+  /** Revient à un onglet principal sans interrompre le lecteur commun. */
+  function navigate(page: PrivatePage) { window.location.hash = ''; setPrivatePage(page); }
 
   /** Playlists persistantes du compte ; un changement de compte invalide les réponses précédentes. */
   /** Dernière publication pour ouvrir son détail dans le catalogue. */
@@ -81,7 +89,7 @@ function App() {
       setUsers([]);
       setFriends([]);
       setCurrentPage("login");
-      setPrivatePage("profile");
+      navigate("profile");
       setErrorMessage("");
     });
 
@@ -184,7 +192,7 @@ function App() {
   function handleLoginSuccess(user: AuthenticatedUser) {
     setErrorMessage("");
     setCurrentUser(user);
-    setPrivatePage("profile");
+    navigate("profile");
   }
 
   async function handleLogout(): Promise<void> {
@@ -296,7 +304,7 @@ function App() {
 
   if (currentUser !== null) {
     return (
-      <>
+      <MusicPlayerProvider key={currentUser.id}>
         <header className="site-header">
           <strong className="site-title">FT Music</strong>
 
@@ -308,8 +316,8 @@ function App() {
                   ? "navigation-button active"
                   : "navigation-button"
               }
-              aria-pressed={privatePage === "files"}
-              onClick={() => setPrivatePage("files")}
+              aria-pressed={!musicRoute && privatePage === "files"}
+              onClick={() => navigate("files")}
             >
               Upload
             </button>
@@ -320,8 +328,8 @@ function App() {
                   ? "navigation-button active"
                   : "navigation-button"
               }
-              aria-pressed={privatePage === "history"}
-              onClick={() => setPrivatePage("history")}
+              aria-pressed={!musicRoute && privatePage === "history"}
+              onClick={() => navigate("history")}
             >
               History
             </button>
@@ -332,9 +340,9 @@ function App() {
                   ? "navigation-button active"
                   : "navigation-button"
               }
-              aria-pressed={privatePage === "profile"}
+              aria-pressed={!musicRoute && privatePage === "profile"}
               onClick={() => {
-                setPrivatePage("profile");
+                navigate("profile");
               }}
             >
               Profile
@@ -347,9 +355,9 @@ function App() {
                   ? "navigation-button active"
                   : "navigation-button"
               }
-              aria-pressed={privatePage === "catalog"}
+              aria-pressed={!musicRoute && privatePage === "catalog"}
               onClick={() => {
-                setPrivatePage("catalog");
+                navigate("catalog");
               }}
             >
               Catalog
@@ -362,9 +370,9 @@ function App() {
                   ? "navigation-button active"
                   : "navigation-button"
               }
-              aria-pressed={privatePage === "playlists"}
+              aria-pressed={!musicRoute && privatePage === "playlists"}
               onClick={() => {
-                setPrivatePage("playlists");
+                navigate("playlists");
               }}
             >
               Playlists
@@ -377,9 +385,9 @@ function App() {
                   ? "navigation-button active"
                   : "navigation-button"
               }
-              aria-pressed={privatePage === "users"}
+              aria-pressed={!musicRoute && privatePage === "users"}
               onClick={() => {
-                setPrivatePage("users");
+                navigate("users");
               }}
             >
               Users
@@ -397,13 +405,15 @@ function App() {
           </nav>
         </header>
 
+        {musicRoute?.kind === "projects" && <ProjectPage key={musicRoute.id} id={musicRoute.id}/>}
+        {musicRoute?.kind === "artists" && <ArtistPage key={musicRoute.id} id={musicRoute.id}/>}
         {errorMessage && (
           <p className="message error-message" role="alert">
             {errorMessage}
           </p>
         )}
 
-        {privatePage === "profile" && (
+        {!musicRoute && privatePage === "profile" && (
           <ProfilePage
             user={currentUser}
             friends={friends}
@@ -412,7 +422,7 @@ function App() {
           />
         )}
 
-        {privatePage === "catalog" && (
+        {!musicRoute && privatePage === "catalog" && (
           <CatalogPage
             key={currentUser.id}
             playlists={library.playlists}
@@ -421,7 +431,7 @@ function App() {
           />
         )}
 
-        {privatePage === "playlists" && (
+        {!musicRoute && privatePage === "playlists" && (
           <PlaylistsPage
             key={currentUser.id}
             playlists={library.playlists}
@@ -436,10 +446,10 @@ function App() {
         )}
 
         {/* La clé du compte remonte les écrans privés pour libérer les états et aperçus de l’ancien compte. */}
-        {privatePage === "history" && <HistoryPage key={currentUser.id} />}
-        {privatePage === "files" && <FilesPage key={currentUser.id} user={currentUser} onPublished={track => { setPublishedTrack(track); setPrivatePage("catalog"); }} />}
+        {!musicRoute && privatePage === "history" && <HistoryPage key={currentUser.id} />}
+        {!musicRoute && privatePage === "files" && <FilesPage key={currentUser.id} user={currentUser} onPublished={track => { setPublishedTrack(track); navigate("catalog"); }} />}
 
-        {privatePage === "users" && (
+        {!musicRoute && privatePage === "users" && (
           <UsersPage
             users={users}
             friendIds={friendIds}
@@ -447,7 +457,7 @@ function App() {
             onRemoveFriend={handleRemoveFriend}
           />
         )}
-      </>
+      </MusicPlayerProvider>
     );
   }
 

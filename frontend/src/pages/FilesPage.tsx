@@ -1,5 +1,6 @@
 /** Espace de création et de reprise des projets personnels, persistants dans Catalogue. */
 import { useCallback, useState } from 'react';
+import { openMusic } from '../services/music-navigation';
 import ProjectUploadForm from '../components/ProjectUploadForm';
 import { useResource } from '../hooks/useResource';
 import { discardProject, getProjects } from '../services/projects';
@@ -7,7 +8,7 @@ import type { AuthenticatedUser } from '../types/auth';
 import type { Track } from '../types/music';
 import type { MusicProject } from '../types/projects';
 /** Le compte sert de clé au parent pour éliminer les données de l’utilisateur précédent. */
-export default function FilesPage({ user, onPublished }: {
+export default function FilesPage({ user }: {
   /** Compte connecté. */ user: AuthenticatedUser;
   /** Navigation provisoire vers le premier morceau publié. */ onPublished: (track: Track) => void;
 }) {
@@ -30,6 +31,6 @@ export default function FilesPage({ user, onPublished }: {
       {projects.data && projects.data.total>24 && <div className="music-pagination"><button disabled={page===1} onClick={()=>setPage(p=>p-1)}>Previous</button><span>Page {page}</span><button disabled={page*24>=projects.data.total} onClick={()=>setPage(p=>p+1)}>Next</button></div>}
       {error && <p role="alert">{error}</p>}
     </section>
-    <ProjectUploadForm key={editorKey} initial={selected} onSaved={() => projects.reload()} onPublished={project => { if (project.tracks[0]) onPublished(project.tracks[0]); }} />
+    <ProjectUploadForm key={editorKey} initial={selected} onSaved={() => projects.reload()} onPublished={project => { openMusic('projects',project.id); }} />
   </main>;
 }

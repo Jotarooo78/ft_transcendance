@@ -8,6 +8,8 @@ import { getAccessToken } from "../services/session";
 type AudioPlayerProps = {
   track: Track;
   onClose: () => void;
+  /** Passe au morceau suivant après la clôture de la session courante. */
+  onEnded?: () => void;
 };
 
 /**
@@ -15,7 +17,7 @@ type AudioPlayerProps = {
  * événements pause, attente et déplacement interrompent le crédit ; un échec de suivi ne bloque pas
  * l’audio.
  */
-function AudioPlayerContent({ track, onClose }: AudioPlayerProps) {
+function AudioPlayerContent({ track, onClose, onEnded }: AudioPlayerProps) {
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [tracking, setTracking] = useState<TrackingStatus | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -98,7 +100,7 @@ function AudioPlayerContent({ track, onClose }: AudioPlayerProps) {
         onWaiting={() => observe(false)}
         onSeeking={() => observe(false, true)}
         onSeeked={() => observe(!!audioRef.current && !audioRef.current.paused && audioRef.current.readyState >= 3, true)}
-        onEnded={() => observe(false, false, false, true)}
+        onEnded={() => { observe(false, false, false, true); onEnded?.(); }}
       >
         Your browser does not support audio playback.
       </audio>
