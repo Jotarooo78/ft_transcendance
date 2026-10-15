@@ -159,3 +159,9 @@ restante sans perdre le projet déjà enregistré. Un fichier réservé avant un
 Users/Media simulés : ces preuves couvrent le stockage, pas le transport audio.
 Sa variable PROJECT_TEST_DATABASE_URL exige une cible jetable explicite ; la
 campagne HTTP complète reste nécessaire pour vérifier le parcours interservices.
+
+Le tri récent des projets utilise `publishedAt`, instant immuable de première
+publication, distinct de `releaseDate` (date affichée) et `createdAt` (création du
+brouillon). Une édition ne remonte donc pas artificiellement le projet dans les
+ajouts récents. Les anciennes sorties sont reprises avec leur meilleure date
+historique disponible lors de la migration.

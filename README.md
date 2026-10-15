@@ -44,7 +44,8 @@ Les prérequis, les ressources ciblées et le diagnostic sont décrits dans
 Le catalogue vient de PostgreSQL, les fichiers audio de Media et les playlists
 du compte authentifié. Une lecture ouvre une session Playback ; la progression
 ordonnée et les renvois identiques conservent un seul effet. L'onglet History
-relit le temps crédité, la dernière position et l'état ouvert ou clos du compte.
+présente chaque écoute de la plus récente à la plus ancienne, sans fusionner
+les répétitions. Les mesures détaillées restent conservées dans Playback.
 
 `tests/music/run.sh playback` reconstruit la pile isolée sur le port 3443,
 teste les quatre services musicaux et le frontend, puis vérifie HTTPS, SQL,
@@ -58,15 +59,29 @@ dans le morceau ne représente pas une durée écoutée. Une fermeture brutale
 peut perdre les dernières mesures et laisser une session ouverte ; aucune
 qualification R15, statistique commerciale ou reprise automatique n'est activée.
 
+The **Library** tab separates liked tracks, saved projects, followed artists,
+owned playlists, saved public playlists and uploads. Following an artist does
+not create a friendship. Playlists are private by default; visibility can be
+chosen during creation or changed later with confirmation. Public playlists
+have stable links; making one private immediately rejects further public reads.
+The desktop catalogue offers artist, project and track results; recent additions
+lead the project/track hub and artists are listed by name.
+
+`bash tests/projects/run.sh` verifies the complete project/library journey on
+port 5445 with disposable accounts and volumes. It uses the Chromium dependency
+from `tests/files` (`npm ci --prefix tests/files`, then
+`npm run install:browser --prefix tests/files`). Catalogue/Library migrations and
+SQL ownership/grant updates run through the existing Compose migration chain.
+
 ## 📝 Repartition des modules
 
 ### File upload and management system — Minor, 1 point
 
 The **Upload** screen starts audio transfer immediately and lets the signed-in
-user edit a title, description and optional artwork before choosing **Publish
-track**. The artist is always the publishing account. Published tracks appear
-in the catalogue with public playback, artwork and a link to the current artist
-profile, and can be added to private playlists. Embedded artwork is extracted
+user publish a single track, album, mixtape or EP. Projects support ordered
+multi-file imports, a shared cover, persistent drafts and edits after publication.
+The artist is always the publishing account and the first release date is automatic.
+Published projects and tracks appear in the catalogue alongside searchable artists. Embedded artwork is extracted
 automatically; a manual replacement or explicit removal takes precedence.
 
 Audio originals are preserved, up to 500,000,000 bytes, with a separate MP3

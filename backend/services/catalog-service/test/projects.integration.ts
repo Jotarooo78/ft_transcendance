@@ -122,7 +122,10 @@ try {
     response.json().tracks.map((t: { id: string }) => t.id),
     [...audio].reverse()
   )
-  assert.equal((await db.release.findUniqueOrThrow({ where: { id } })).publishedAt?.toISOString(), firstPublication.toISOString())
+  assert.equal(
+    (await db.release.findUniqueOrThrow({ where: { id } })).publishedAt?.toISOString(),
+    firstPublication.toISOString()
+  )
   assert.equal((await projects.list('', 1, 24)).items[0]?.id, id)
   const draft = randomUUID(),
     draftAudio = randomUUID()

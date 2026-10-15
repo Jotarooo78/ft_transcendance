@@ -98,46 +98,46 @@ try {
  for(const [name,path,hasCover] of paths) {
   await page.getByRole('button',{name:'Upload',exact:true}).click();
   let source;try{await access(path);source=path;}catch{source={name,mimeType:hasCover?'audio/mpeg':'audio/wav',buffer:hasCover?mp3:wav};}
-  await page.getByLabel('Audio file',{exact:true}).setInputFiles(source);
-  await page.getByLabel('Title',{exact:false}).fill(`Browser ${name}`);await page.getByLabel('Description',{exact:false}).fill('Published from the real browser form.');
-  await page.getByText('✓ Audio ready',{exact:true}).waitFor({timeout:120000});
+  await page.getByLabel('Audio files',{exact:true}).setInputFiles(source);
+  await page.getByLabel('Project title',{exact:true}).fill(`Browser ${name}`);await page.getByLabel('Description',{exact:false}).fill('Published from the real browser form.');
+  await page.getByText('✓ Ready',{exact:true}).waitFor({timeout:120000});
   if(hasCover)await until(()=>page.locator('.publish-artwork img').evaluateAll(images=>images.some(i=>i.complete&&i.naturalWidth>0)));
-  const response=page.waitForResponse(r=>r.url()===base+'/api/catalog/tracks'&&r.request().method()==='POST');
-  await page.getByRole('button',{name:'Publish track',exact:true}).click();assert.equal((await response).status(),201);
-  await page.getByText('Your track is live',{exact:true}).waitFor();await page.getByRole('button',{name:'View in catalogue',exact:true}).click();
-  await page.getByRole('button',{name:`Listen to Browser ${name}`,exact:true}).click();
+  const response=page.waitForResponse(r=>r.url().includes('/api/catalog/me/projects/')&&r.url().endsWith('/publish')&&r.request().method()==='POST');
+  await page.getByRole('button',{name:'Publish',exact:true}).click();assert.equal((await response).status(),200);
+  await page.getByText('Your project is live. Changes saved.',{exact:true}).waitFor();await page.getByRole('button',{name:'View in catalogue',exact:true}).click();
+  await page.getByRole('button',{name:'Play project',exact:true}).click();
   await until(()=>page.locator('audio').evaluateAll(audios=>audios.some(a=>a.readyState>=2&&a.duration>0)));
-  await page.getByRole('button',{name:'Renamed Artist',exact:true}).first().click();await page.getByRole('dialog',{name:'Artist profile'}).waitFor();await page.getByRole('heading',{name:'Renamed Artist',exact:true}).waitFor();await page.getByRole('button',{name:'Close profile',exact:true}).click();
+  await page.locator('.music-track-row').getByRole('button',{name:'Renamed Artist',exact:true}).first().click();await page.getByRole('dialog',{name:'Artist profile'}).waitFor();await page.getByRole('heading',{name:'Renamed Artist',exact:true}).waitFor();await page.getByRole('button',{name:'Close profile',exact:true}).click();
   console.log(`[PUBLICATION] PASS real browser upload, publication and playback: ${name}`);
  }
  // Un refus certain ne doit pas enfermer le formulaire dans une reprise impossible.
  await page.getByRole('button',{name:'Upload',exact:true}).click();
  const expiringResponse=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/media/assets'&&r.request().method()==='POST');
- await page.getByLabel('Audio file',{exact:true}).setInputFiles({name:'Expired.mp3',mimeType:'audio/mpeg',buffer:mp3});
- const expiring=await(await expiringResponse).json();await page.getByText('✓ Audio ready',{exact:true}).waitFor();
+ await page.getByLabel('Audio files',{exact:true}).setInputFiles({name:'Expired.mp3',mimeType:'audio/mpeg',buffer:mp3});
+ const expiring=await(await expiringResponse).json();await page.getByText('✓ Ready',{exact:true}).waitFor();
  sql(`UPDATE media.assets SET expires_at=now()-interval '1 hour' WHERE id='${uuid(expiring.id)}';`);
- await page.getByRole('button',{name:'Publish track',exact:true}).click();await page.getByText('This audio is no longer available for publication. Cancel this upload and choose it again.',{exact:true}).waitFor();
- assert(await page.getByLabel('Title',{exact:false}).isEnabled());await page.getByRole('button',{name:'Cancel',exact:true}).click();await page.getByRole('button',{name:'Choose a file',exact:true}).waitFor();
+ await page.getByRole('button',{name:'Publish',exact:true}).click();await page.locator('.publish-error').waitFor();
+ assert(await page.getByLabel('Project title',{exact:true}).isEnabled());await page.getByRole('button',{name:'Remove track 1',exact:true}).click();assert.equal(await page.locator('.upload-track-list li').count(),0);
  console.log('[PUBLICATION] PASS editing and cancellation after a definitive publication refusal');
- // Visuel mobile, retrait de la pochette intégrée et reprise après réponse de publication perdue.
- await page.getByRole('button',{name:'Upload',exact:true}).click();await page.setViewportSize({width:390,height:844});
- await page.getByLabel('Audio file',{exact:true}).setInputFiles({name:'Mobile.mp3',mimeType:'audio/mpeg',buffer:mp3});
- await page.getByText('✓ Audio ready',{exact:true}).waitFor();await page.getByRole('button',{name:'Remove artwork',exact:true}).click();
- await page.screenshot({path:'/tmp/publication-mobile.png',fullPage:true});
+ // Le périmètre actuel est ordinateur : retrait de pochette et reprise après réponse perdue.
+ await page.getByRole('button',{name:'Upload',exact:true}).click();await page.setViewportSize({width:1280,height:900});
+ await page.getByLabel('Audio files',{exact:true}).setInputFiles({name:'Mobile.mp3',mimeType:'audio/mpeg',buffer:mp3});
+ await page.getByText('✓ Ready',{exact:true}).waitFor();await page.getByRole('button',{name:'Use default artwork',exact:true}).click();
+ await page.screenshot({path:'/tmp/publication-default-artwork.png',fullPage:true});
  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
  let dropped=false;
- await page.route('**/api/catalog/tracks',async route=>{if(route.request().method()==='POST'&&!dropped){dropped=true;await route.fetch();await route.abort();}else await route.continue();});
- await page.getByRole('button',{name:'Publish track',exact:true}).click();await page.getByRole('button',{name:'Retry publication',exact:true}).waitFor();
- await page.getByRole('button',{name:'Retry publication',exact:true}).click();await page.getByText('Your track is live',{exact:true}).waitFor();
+ await page.route('**/api/catalog/me/projects/*/publish',async route=>{if(route.request().method()==='POST'&&!dropped){dropped=true;await route.fetch();await route.abort();}else await route.continue();});
+ await page.getByRole('button',{name:'Publish',exact:true}).click();await page.locator('.publish-error').waitFor();
+ await page.getByRole('button',{name:'Publish',exact:true}).click();await page.getByText('Your project is live. Changes saved.',{exact:true}).waitFor();
  assert.equal(sql("SELECT count(*) FROM catalog.tracks WHERE title='Mobile';").trim(),'1');
- await page.unroute('**/api/catalog/tracks');
+ await page.unroute('**/api/catalog/me/projects/*/publish');
  await page.getByRole('button',{name:'Upload',exact:true}).click();await page.getByRole('button',{name:'Catalog',exact:true}).click();await page.getByRole('button',{name:'Upload',exact:true}).click();
  await page.setViewportSize({width:1280,height:900});
- await page.getByLabel('Audio file',{exact:true}).setInputFiles({name:'Manual.mp3',mimeType:'audio/mpeg',buffer:mp3});
- await page.getByText('✓ Audio ready',{exact:true}).waitFor();await page.getByLabel('Cover image',{exact:true}).setInputFiles({name:'cover.png',mimeType:'image/png',buffer:png});
+ await page.getByLabel('Audio files',{exact:true}).setInputFiles({name:'Manual.mp3',mimeType:'audio/mpeg',buffer:mp3});
+ await page.getByText('✓ Ready',{exact:true}).waitFor();await page.getByLabel('Cover image',{exact:true}).setInputFiles({name:'cover.png',mimeType:'image/png',buffer:png});
  await page.screenshot({path:'/tmp/publication-desktop.png',fullPage:true});
- await page.getByRole('button',{name:'Publish track',exact:true}).click();await page.getByText('Your track is live',{exact:true}).waitFor();
- console.log('[PUBLICATION] PASS responsive layout, manual/removable artwork and lost-response retry');
+ await page.getByRole('button',{name:'Publish',exact:true}).click();await page.getByText('Your project is live. Changes saved.',{exact:true}).waitFor();
+ console.log('[PUBLICATION] PASS desktop layout, manual/removable artwork and lost-response retry');
  // Refus réels, sans publication incomplète.
  await api('/api/media/assets?temporary=1',{method:'POST',token:a.token,multipart:{file:{name:'image.png',mimeType:'image/png',buffer:png}},status:415});
  await api('/api/media/assets?temporary=1',{method:'POST',token:a.token,multipart:{file:{name:'broken.mp3',mimeType:'audio/mpeg',buffer:Buffer.from('broken audio')}},status:415});

@@ -193,7 +193,12 @@ export function createProjectsRepository(db: Database) {
         })
         return tx.release.update({
           where: { id },
-          data: { status: 'published', releaseDate: now, publishedAt: now, version: { increment: 1 } },
+          data: {
+            status: 'published',
+            releaseDate: now,
+            publishedAt: now,
+            version: { increment: 1 },
+          },
           include: projectInclude,
         })
       })

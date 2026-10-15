@@ -27,9 +27,10 @@ const playbackProgress = r => r.request().method() === 'PUT' && /\/api\/playback
  */
 async function startPlayback(page) {
   await page.getByRole('button', { name:'Catalog', exact:true }).click();
+  await page.getByLabel('Search music',{exact:true}).fill('Aube');
   const opened = page.waitForResponse(r => r.url().endsWith('/api/playback/sessions') && r.request().method() === 'POST' && r.status() === 201);
   const media = page.waitForResponse(r => r.url().endsWith('/api/media/assets/30000000-0000-4000-8000-000000000001/audio') && [200,206].includes(r.status()));
-  await page.locator('.catalog-track').filter({ has:page.getByRole('heading',{name:'Aube — demo',exact:true}) }).getByRole('button',{name:'Play',exact:true}).click();
+  await page.getByRole('button',{name:'Play Aube — demo',exact:true}).click();
   await media;
   const audio=page.locator('audio');
   await expect.poll(()=>audio.evaluate(a=>a.duration)).toBeCloseTo(6,1);
@@ -76,33 +77,32 @@ test('playback: real listening, pause, seek, SQL, history and account isolation'
   expect(sql.qualified).toBe(false); expect(sql.endedAt).not.toBeNull();
   await page.getByRole('button',{name:'History',exact:true}).click();
   const row=page.locator(`[data-session-id="${session.id}"]`);
-  await expect(row).toContainText('Closed');
-  await expect(row.locator('[data-field="listened"]')).toHaveAttribute('data-ms',String(closed.listenedMs));
-  await expect(row.locator('[data-field="position"]')).toHaveAttribute('data-ms','6000');
+  await expect(row).toContainText('Aube — demo');
+  await expect(row.locator('time')).toHaveAttribute('datetime',closed.startedAt);
   await page.reload(); await login(page,user);
   await page.getByRole('button',{name:'History',exact:true}).click();
-  await expect(row.locator('[data-field="listened"]')).toHaveAttribute('data-ms',String(closed.listenedMs));
+  expect((await readHistory()).items.find(item=>item.id===session.id).listenedMs).toBe(closed.listenedMs);
   // Catalogue failure must preserve the stored facts and disable replay.
   const tracks='**/api/catalog/tracks/20000000-0000-4000-8000-000000000001';
   await page.route(tracks,route=>route.fulfill({status:404,body:'{}'}));
   await page.getByRole('button',{name:'Catalog',exact:true}).click();
   await page.getByRole('button',{name:'History',exact:true}).click();
   await expect(row).toContainText('Track unavailable');
-  await expect(row.getByRole('button',{name:'Play track',exact:true})).toBeDisabled();
-  await expect(row.locator('[data-field="listened"]')).toHaveAttribute('data-ms',String(closed.listenedMs));
+  await expect(row.getByRole('button',{name:'Play Aube — demo',exact:true})).toHaveCount(0);
+  expect((await readHistory()).items.find(item=>item.id===session.id).listenedMs).toBe(closed.listenedMs);
   await page.unroute(tracks);
   const lists='**/api/playback/sessions?*';
   await page.route(lists,route=>route.abort());
   await page.getByRole('button',{name:'Refresh history',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Retry history',exact:true})).toBeVisible();
+  await expect(page.getByRole('alert')).toBeVisible();
   await expect(page.getByText('No listening sessions on this page.',{exact:true})).toHaveCount(0);
-  await page.unroute(lists); await page.getByRole('button',{name:'Retry history',exact:true}).click();
+  await page.unroute(lists); await page.getByRole('button',{name:'Refresh history',exact:true}).click();
   await expect(row).toBeVisible();
   // Real open sessions exercise the 20-row boundary and honest Open state.
   for(let n=0;n<20;n++)expect((await page.request.post('/api/playback/sessions',{headers,data:{trackId:session.trackId}})).status()).toBe(201);
   await page.getByRole('button',{name:'Refresh history',exact:true}).click();
   await expect(page.locator('[data-session-id]')).toHaveCount(20);
-  await expect(page.locator('[data-session-id]').first()).toContainText('Open');
+  await expect(page.locator('[data-session-id]').first().locator('time')).toBeVisible();
   await page.getByRole('button',{name:'Next',exact:true}).click();
   await expect(page.locator('[data-session-id]')).toHaveCount(1); await expect(row).toBeVisible();
   let release,arrived,finished;
@@ -185,10 +185,10 @@ test('library: confirmed gestures, failures, persistence and account isolation',
   const empty = await (await creation).json(); expect(empty.items).toEqual([]); expect(empty.version).toBe(1);
   await expect(page.getByRole('heading', { name: 'Tracks in Browser library', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Catalog', exact: true }).click();
-  const add = page.getByRole('button', { name: 'Add Aube — demo to playlist', exact: true });
+  const add = page.getByRole('combobox', { name: 'Add Aube — demo to playlist', exact: true });
   for (let n = 0; n < 2; n++) {
     const response = page.waitForResponse(r => r.url().endsWith(`/${empty.id}/items`) && r.request().method() === 'POST' && r.status() === 200);
-    await add.click(); await response; await expect(add).toBeEnabled();
+    await add.selectOption(empty.id); await response; await expect(add).toBeEnabled();
   }
   await page.getByRole('button', { name: 'Playlists', exact: true }).click();
   const rows = page.locator('[data-item-id]'); await expect(rows).toHaveCount(2);
@@ -259,7 +259,7 @@ test('library: confirmed gestures, failures, persistence and account isolation',
   await page.route(trackPattern, route => route.fulfill({ status: 404, body: '{}' }));
   await page.getByRole('button', { name: 'Catalog', exact: true }).click();
   await page.getByRole('button', { name: 'Playlists', exact: true }).click();
-  await expect(rows.first()).toContainText('This track is no longer available.');
+  await expect(rows.first()).toContainText('Track unavailable');
   await expect(rows.first().getByRole('button', { name: 'Remove track', exact: true })).toBeEnabled();
   await page.unroute(trackPattern); await page.getByRole('button', { name: 'Retry track details', exact: true }).click();
   await page.getByRole('button', { name: 'Play Aube — demo', exact: true }).click(); await expect(page.locator('audio')).toHaveCount(1);
@@ -271,7 +271,8 @@ test('library: confirmed gestures, failures, persistence and account isolation',
   await page.unroute(detailPattern);
   const deletion = page.waitForResponse(r => r.request().method() === 'DELETE' && r.url().endsWith(`/${empty.id}`) && r.status() === 204);
   page.once('dialog', dialog => dialog.accept()); await page.getByRole('button', { name: 'Delete playlist', exact: true }).click(); await deletion;
-  await expect(page.locator('.playlist-card')).toHaveCount(0); await expect(page.locator('audio')).toHaveCount(0);
+  await expect(page.locator('.playlist-card')).toHaveCount(0); await expect(page.locator('audio')).toHaveCount(1);
+  await page.getByRole('button',{name:'Close audio player',exact:true}).click();
   const relogin = await page.request.post('/api/auth/login', { data: { email: userA.email, password: userA.password } });
   const latestToken = (await relogin.json()).token;
   expect((await page.request.get(`/api/library/playlists/${empty.id}`, { headers: { Authorization: `Bearer ${latestToken}` } })).status()).toBe(404);
@@ -307,10 +308,10 @@ export async function login(page,user) {
 test('media: real decode, playback, seek and recovery', async ({page}) => {
   await createAccount(page,'media');
   await page.getByRole('button',{name:'Catalog',exact:true}).click();
-  const first=page.locator('.catalog-track').filter({has:page.getByRole('heading',{name:'Aube — demo',exact:true})});
-  const second=page.locator('.catalog-track').filter({has:page.getByRole('heading',{name:'Brise — demo',exact:true})});
+  const first=page.locator('.music-track-row').filter({has:page.getByText('Aube — demo',{exact:true})});
+  const second=page.locator('.music-track-row').filter({has:page.getByText('Brise — demo',{exact:true})});
   const received=page.waitForResponse(r=>r.url().endsWith('/api/media/assets/30000000-0000-4000-8000-000000000001/audio') && [200,206].includes(r.status()));
-  await first.getByRole('button',{name:'Play',exact:true}).click();
+  await first.getByRole('button',{name:'Play Aube — demo',exact:true}).click();
   await received;
   const audio=page.locator('audio');
   await expect.poll(()=>audio.evaluate(a=>a.duration)).toBeCloseTo(6,1);
@@ -324,63 +325,32 @@ test('media: real decode, playback, seek and recovery', async ({page}) => {
   await page.getByRole('button',{name:'Close audio player',exact:true}).click();
   const pattern='**/api/media/assets/30000000-0000-4000-8000-000000000001/audio';
   await page.route(pattern,route=>route.fulfill({status:404,body:'unavailable'}));
-  await first.getByRole('button',{name:'Play',exact:true}).click();
+  await first.getByRole('button',{name:'Play Aube — demo',exact:true}).click();
   await expect(page.getByRole('alert')).toHaveText('Audio is unavailable. Close the player and try again.');
-  await second.getByRole('button',{name:'Play',exact:true}).click();
+  await second.getByRole('button',{name:'Play Brise — demo',exact:true}).click();
   await expect.poll(()=>audio.evaluate(a=>a.duration)).toBeCloseTo(6,1);
   await expect(page.getByRole('alert')).toHaveCount(0);
   await page.unroute(pattern);
   await page.getByRole('button',{name:'Close audio player',exact:true}).click();
-  await first.getByRole('button',{name:'Play',exact:true}).click();
+  await first.getByRole('button',{name:'Play Aube — demo',exact:true}).click();
   await expect.poll(()=>audio.evaluate(a=>a.duration)).toBeCloseTo(6,1);
 });
 
-test('catalog: real lists, filters, detail, cancellation and controlled failures',async({page})=>{
+test('catalog: three categories, search cancellation and controlled failures',async({page})=>{
   await createAccount(page,'catalog');
-  const firstResponse=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/catalog/tracks' && r.status()===200);
   await page.getByRole('button',{name:'Catalog',exact:true}).click();
-  const initial=await (await firstResponse).json();
-  expect(initial.total).toBe(3);
-  const cards=page.locator('.catalog-track');
-  await expect(cards).toHaveCount(2);
-  for (const track of initial.items) await expect(cards.getByRole('heading',{name:track.title,exact:true})).toBeVisible();
-  await page.getByRole('button',{name:'Next',exact:true}).click();
-  await expect(cards.getByRole('heading',{name:'Clair — demo',exact:true})).toBeVisible();
-  for (const sort of ['artist','duration','title']) {
-    const response=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/catalog/tracks' && new URL(r.url()).searchParams.get('sort')===sort && r.status()===200);
-    await page.getByRole('combobox',{name:'Sort by',exact:true}).selectOption(sort);
-    const data=await (await response).json(); expect(data.page).toBe(1);
-    await expect(cards.getByRole('heading',{name:data.items[0].title,exact:true})).toBeVisible();
-  }
-  await page.getByRole('combobox',{name:'Genre',exact:true}).selectOption('Demo');
-  await expect(page.getByText('3 track(s) found',{exact:true})).toBeVisible();
-  const search=page.getByLabel('Search by title, artist, album or genre');
+  for(const name of ['Artists','Projects','Tracks']) await expect(page.getByRole('heading',{name,exact:true})).toBeVisible();
+  const rows=page.locator('.music-track-row');
+  await expect(rows).toHaveCount(3);
+  const search=page.getByLabel('Search music',{exact:true});
   await search.fill('introuvable');
-  await expect(page.getByText('No tracks match your search.',{exact:true})).toBeVisible();
+  await expect(page.getByText('No tracks found.',{exact:true})).toBeVisible();
   await search.fill('aUbE');
-  await expect(cards).toHaveCount(1);
-  const detailButton=page.getByRole('button',{name:'Details for Aube — demo',exact:true});
-  await detailButton.focus();
-  const detailResponse=page.waitForResponse(r=>r.url().endsWith('/api/catalog/tracks/20000000-0000-4000-8000-000000000001')&&r.status()===200);
-  await page.keyboard.press('Enter');
-  expect((await (await detailResponse).json()).durationMs).toBe(6000);
-  const panel=page.getByRole('region',{name:'Track details',exact:true});
-  await expect(panel.getByText('6 seconds',{exact:true})).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(panel).not.toBeVisible(); await expect(detailButton).toBeFocused();
-
-  // Only failure responses are simulated. Recovery always reaches the real server.
-  const detailPattern='**/api/catalog/tracks/20000000-0000-4000-8000-000000000001';
-  await page.route(detailPattern,route=>route.fulfill({status:404,contentType:'application/json',body:'{"error":"track_not_found"}'}));
-  await detailButton.click();
-  await expect(panel.getByText('This track is no longer available.',{exact:true})).toBeVisible();
-  await expect(cards).toHaveCount(1); await expect(search).toHaveValue('aUbE');
-  await page.unroute(detailPattern);
-  await panel.getByRole('button',{name:'Retry detail',exact:true}).click();
-  await expect(panel.getByText('6 seconds',{exact:true})).toBeVisible();
-  await panel.getByRole('button',{name:'Close details',exact:true}).click();
-
-  // Hold a real old response while a newer search completes.
+  await expect(rows).toHaveCount(1);
+  await expect(rows.getByText('Aube — demo',{exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Tracks',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Artists',exact:true})).toHaveCount(0);
+  // Une réponse retardée ne doit jamais remplacer une recherche plus récente.
   let release, started, finished;
   const gate=new Promise(resolve=>{release=resolve;});
   const arrived=new Promise(resolve=>{started=resolve;});
@@ -389,20 +359,20 @@ test('catalog: real lists, filters, detail, cancellation and controlled failures
   await page.route(lists,async route=>{
     if(new URL(route.request().url()).searchParams.get('q')!=='Aube'){await route.continue();return;}
     const response=await route.fetch(); started(); await gate;
-    try {await route.fulfill({response});} catch { /* superseded request was aborted */ }
+    try {await route.fulfill({response});} catch { /* ancienne requête annulée */ }
     finally {finished();}
   });
   await search.fill('Aube'); await arrived;
   await search.fill('Brise');
-  await expect(cards.getByRole('heading',{name:'Brise — demo',exact:true})).toBeVisible();
+  await expect(rows.getByText('Brise — demo',{exact:true})).toBeVisible();
   release(); await completed;
-  await expect(cards).toHaveCount(1);
-  await expect(cards.getByRole('heading',{name:'Brise — demo',exact:true})).toBeVisible();
+  await expect(rows).toHaveCount(1);
+  await expect(rows.getByText('Brise — demo',{exact:true})).toBeVisible();
   await page.unroute(lists);
   await page.route(lists,route=>route.abort());
   await search.fill('Clair');
-  await expect(page.getByRole('button',{name:'Retry catalogue',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Retry',exact:true})).toBeVisible();
   await page.unroute(lists);
-  await page.getByRole('button',{name:'Retry catalogue',exact:true}).click();
-  await expect(cards.getByRole('heading',{name:'Clair — demo',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Retry',exact:true}).click();
+  await expect(rows.getByText('Clair — demo',{exact:true})).toBeVisible();
 });

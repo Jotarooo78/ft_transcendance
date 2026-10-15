@@ -176,3 +176,14 @@ Le suivi ne prouve pas l'attention humaine et n'active pas R15. Une fermeture
 brutale reste au mieux, sans garantie de clôture ni de sauvegarde des dernières
 secondes. Aucune reprise automatique, royalties ou statistique qualifiée.
 `docs/music/EXECUTION.md` conserve les résultats et les révisions observées.
+
+
+## Évolution des projets et de la bibliothèque
+
+Les scénarios navigateur utilisent désormais les trois catégories du catalogue,
+les lignes chronologiques d’historique et le lecteur commun. Les mesures d’écoute
+restent vérifiées par API et SQL, même si l’écran n’affiche plus leurs compteurs.
+Les playlists publiques restent modifiables par leur propriétaire ; `unlisted`
+est refusé par le contrat actuel. Le parcours complémentaire
+`bash tests/projects/run.sh` couvre les projets multi-pistes et les collections
+sur sa propre pile 5445. Les résultats observés figurent dans EXECUTION.md.

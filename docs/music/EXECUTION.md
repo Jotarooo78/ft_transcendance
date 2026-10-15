@@ -764,3 +764,72 @@ listes. Les schémas d’URL réutilisent la conversion stricte de pagination de
 service-kit. Les pages artistes affichent projets et titres du compte.
 Typechecks Users/Catalogue, huit fichiers de tests backend, lint/build frontend
 et scénario PostgreSQL des projets (pagination comprise) réussis.
+
+
+## Bibliothèque, partage et historique
+
+Migration SavedItem ajoutée au schéma Library, favoris existants réutilisés.
+Les routes de collection valident les cibles publiques et isolent chaque compte.
+Les lectures et mutations propriétaires restent disponibles pour les playlists
+publiques. Un lien privé renvoie 404, et les réponses de partage sont no-store.
+Le formulaire propose privé par défaut et confirme tout changement ultérieur de
+visibilité avant l’envoi ; le message de réussite attend la réponse serveur.
+Les écrans partagent CollectionButton, MusicTrackRow, useTrackDetails et le lecteur.
+Les tests de routes Library (collections, playlists et occurrences), le typecheck
+Library ainsi que le lint et la compilation frontend passent. La campagne
+Chromium complète a réussi dans `transcendence_projects`, port 5445, avec
+comptes et volumes jetables, sans accès aux données de développement.
+
+Le premier parcours réel a révélé l'absence de droits runtime sur SavedItem.
+Les listes explicites de `database/permissions/assign-owners.sql` et
+`apply-grants.sql` sont étendues à cette table, pour Library seulement.
+Le tri récent des projets dispose désormais d'un instant de première publication
+immuable ; la date de création du brouillon ne détermine plus ce classement.
+
+
+## Vérifications de clôture — 15 octobre 2026
+
+Les preuves ont été exécutées dans des piles jetables ; aucune migration ni
+modification de données n’a été appliquée à la pile de développement.
+
+- Library : 11 tests réussis, dont partage révoqué, droits du propriétaire,
+  isolation des collections, validations et conflits de versions.
+- PostgreSQL réel : sauvegarde répétée, concurrence, publication atomique,
+  date immuable, tri récent, édition ordonnée et abandon avec nettoyage repris.
+- Rôles SQL : propriétaires des six schémas, absence d’accès croisés et opérations
+  de SavedItem avec le rôle library_runtime contrôlés ; données d’essai annulées.
+- `tests/projects/verify-projects.mjs` : import de trois audios dans Chromium,
+  pochette commune, ordre, brouillon privé, reconnexion après redémarrage,
+  publication/édition, likes/sauvegardes/suivis indépendants, deux comptes,
+  playlists privées par défaut, partage et révocation du lien invité, historique
+  répété, lecture enchaînée, single/EP/mixtape et nettoyage d’abandon.
+- `tests/music/browser.spec.mjs` : les cinq parcours adaptés passent, incluant
+  pause, déplacement, mesures SQL, panne et reprise, isolation après déconnexion,
+  occurrences répétées, conflits, lecture Media et recherche annulée.
+- `tests/publication/verify-publication.mjs` : compatibilité de la publication
+  historique, audio expiré, pochette extraite/remplacée/retirée, réponse perdue,
+  refus de fichiers corrompus et persistance après redémarrage vérifiés.
+- Frontend : lint, compilation et tests de l’horloge d’écoute réussis. Captures
+  desktop inspectées ; contraste des cartes et onglet actif corrigés.
+
+Reproduction du nouveau parcours : `bash tests/projects/run.sh`, après les
+prérequis Chromium de `tests/files`. Le runner refuse toute pile homonyme déjà
+présente et nettoie ses seuls volumes à la sortie. Dans cette session, le moteur
+local sans BuildKit a nécessité des images de test construites à partir de copies
+temporaires des instructions Docker, sans modifier les Dockerfile de production.
+La campagne de publication a utilisé la pile 5445 déjà créée et des audios
+synthétiques décodés par FFmpeg ; ses assertions sont celles du script versionné.
+
+Le périmètre visuel validé est ordinateur. La reconnexion après rechargement
+reste celle de l’application existante : jeton en mémoire, aucune persistance de
+connexion ajoutée. Les brouillons sauvegardés persistent côté serveur. Une
+référence enregistrée devenue indisponible reste retirable. Les listes se relisent
+à l’ouverture ou par actualisation ; le partage public se vérifie aussi au retour
+sur l’onglet et toutes les trente secondes. Les droits serveur sont appliqués à
+chaque requête. Les copies Notion restent non synchronisées faute de connecteur.
+
+Nettoyage final vérifié : aucun conteneur ni volume ne subsiste pour
+`transcendence_projects` et `transcendence_music`. La base temporaire de
+concurrence `tr_music_projects_schema` a également été arrêtée et supprimée.
+Les fichiers de plan préexistants et le dossier local `services/` n’ont pas été
+inclus dans les commits de cette évolution.

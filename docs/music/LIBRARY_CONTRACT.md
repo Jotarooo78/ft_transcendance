@@ -1,14 +1,15 @@
-# Contrat des playlists privées — LIB-1
+# Contrat des playlists et de la bibliothèque
 
 Une playlist appartient au sujet `sub` du JWT Auth vérifié par Library.
-Le navigateur ne choisit ni propriétaire ni visibilité : cette API crée et
-modifie exclusivement des playlists privées du compte authentifié. Les routes
+Le navigateur ne choisit jamais le propriétaire. Il propose une visibilité
+private/public ; private est la valeur par défaut. Seul le propriétaire modifie
+sa playlist, y compris lorsqu’elle est publique. Les routes
 techniques health/ready/metrics restent séparées de cette authentification.
 Library ne lit que son schéma ; les références Catalogue passent par HTTP.
 
 ## Identités et représentation
 
-Playlist : `{ id, name, description, version, items }`. Description absente
+Playlist : `{ id, name, description, visibility, version, items }`. Description absente
 en SQL est normalisée en chaîne vide. Version est un entier JSON sûr positif,
 issu du BigInt SQL après contrôle ; une valeur non représentable donne 503.
 Chaque item est `{ id, trackId, position }`, ordonné par position croissante.
@@ -18,7 +19,8 @@ Playlist vide autorisée. Les UUID sont canoniques, insensibles à la casse.
 La position est un entier SQL strictement positif. L’ajout utilise max+1 sous
 verrou de playlist ; les suppressions laissent des trous sans réordonner.
 Au-delà de la borne int32, l’ajout est refusé en 409 sans mutation.
-Le contrat ne propose pas encore de réorganisation, partage ou favoris.
+La réorganisation manuelle des occurrences de playlist reste hors périmètre.
+Le partage par lien et les références personnelles sont décrits ci-dessous.
 
 ## Routes HTTPS et corps
 
@@ -28,15 +30,15 @@ Préfixe public `/api/library`, routes internes sans ce préfixe.
 | --- | --- | --- |
 | GET /playlists | page défaut 1, pageSize défaut 20, maximum 100 | 200 `{items: Playlist[], total, page, pageSize}` |
 | GET /playlists/:id | aucun | 200 Playlist |
-| POST /playlists | name, description facultative | 201 Playlist, version 1, items vides |
-| PATCH /playlists/:id | expectedVersion, name et/ou description | 200 Playlist confirmée |
+| POST /playlists | name, description et visibility facultatives | 201 Playlist, version 1, items vides |
+| PATCH /playlists/:id | expectedVersion, name, description et/ou visibility | 200 Playlist confirmée |
 | DELETE /playlists/:id | expectedVersion | 204, aucun corps |
 | POST /playlists/:id/items | trackId, expectedVersion | 200 Playlist confirmée |
 | DELETE /playlists/:id/items/:itemId | expectedVersion | 200 Playlist confirmée |
 
 DELETE utilise un corps JSON explicite comme les autres mutations. Noms
 trimés de 1 à 100 caractères Unicode ; descriptions trimées jusqu’à 2000.
-Corps objet uniquement, champs inattendus refusés : ownerUserId, visibility,
+Corps objet uniquement, champs inattendus refusés : ownerUserId,
 id ou version ne sont jamais acceptés du client. PATCH exige au moins un
 champ modifiable. expectedVersion est un entier positif sûr. Pagination :
 entiers décimaux positifs sûrs, doublons et paramètres inconnus refusés.
@@ -96,8 +98,8 @@ Catalogue ; une piste retirée reste une ligne indisponible que l’on peut reti
 
 Relu contre Playlist, PlaylistItem et les contraintes SQL : nom 100, description
 2000, version BigInt, position positive unique par playlist, doublons trackId
-autorisés et cascade locale. Ce contrat ne prouve pas encore les routes Library.
-# Bibliothèque personnelle — contrat de l’évolution
+autorisés et cascade locale. Les preuves d’exécution figurent dans EXECUTION.md.
+## Bibliothèque personnelle
 
 La bibliothèque regroupe titres aimés, projets enregistrés, artistes suivis,
 playlists et uploads du propriétaire. Aimer un titre, enregistrer un projet et
@@ -118,5 +120,32 @@ d’ajout répétées convergent sans doublon. Une référence devenue indisponi
 bloque pas la liste et ne révèle pas de données privées. L’historique conserve
 ses sessions distinctes, du plus récent au plus ancien.
 
-Ces règles sont la cible de la branche `feat/music-projects-library` ; la
-validation fonctionnelle sera consignée après exécution réelle des contrôles.
+Ces règles sont implémentées dans la branche `feat/music-projects-library`.
+Les preuves et leurs limites sont consignées dans EXECUTION.md.
+
+
+## Routes de partage et de collection
+
+| Route | Accès et comportement |
+| --- | --- |
+| GET /public/playlists/:id | Sans connexion, uniquement visibility=public, sinon 404 ; no-store |
+| GET /collections/:kind | JWT ; page/pageSize, maximum 100, références récentes en premier |
+| PUT /collections/:kind/:id | JWT ; vérifie la cible publique, ajout idempotent, 204 |
+| DELETE /collections/:kind/:id | JWT ; retrait idempotent même si la cible a disparu, 204 |
+
+`kind` appartient à track/project/artist/playlist. Les likes réutilisent
+TrackFavorite ; SavedItem stocke les autres références par compte, type et UUID.
+La réponse paginée contient `{ id, createdAt }`, jamais une copie du contenu.
+Catalogue et Users valident leurs propres cibles via HTTP. Pour une playlist,
+Library vérifie sa visibilité actuelle. La consultation du lien relit la
+visibilité au retour sur l’onglet et toutes les trente secondes ; les requêtes
+suivantes sont refusées immédiatement après le passage en privé.
+
+## Organisation de l’interface
+
+CollectionsProvider partage les références entre les écrans ; CollectionButton
+porte les états confirmés, erreurs et reprises. LibraryPage sépare titres aimés,
+projets enregistrés, artistes suivis, playlists créées, playlists enregistrées et
+uploads. useTrackDetails déduplique les lectures de titres tout en conservant
+les occurrences dans PlaylistTracks et HistoryPage. Le lecteur commun poursuit
+la file entre les pages. Aucun second lecteur local n’est créé par ces écrans.
