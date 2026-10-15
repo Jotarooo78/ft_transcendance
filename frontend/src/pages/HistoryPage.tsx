@@ -43,7 +43,11 @@ export default function HistoryPage() {
               return (
                 <li key={session.id} data-session-id={session.id}>
                   {track ? (
-                    <MusicTrackRow track={track} extra={date} />
+                    <MusicTrackRow
+                      track={track}
+                      source="History"
+                      extra={date}
+                    />
                   ) : (
                     <div className="music-unavailable">
                       <span>

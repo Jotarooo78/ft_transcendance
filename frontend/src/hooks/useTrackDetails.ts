@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { useResource } from "./useResource";
-import { getTrack } from "../services/catalog";
+import { readTrackDetails } from "../services/track-details";
 /** Charge chaque titre distinct une fois, tout en laissant l'écran conserver les occurrences répétées. */
 export function useTrackDetails(trackIds: string[]) {
   const ids = JSON.stringify([...new Set(trackIds)].sort());
@@ -8,16 +8,7 @@ export function useTrackDetails(trackIds: string[]) {
     useCallback(
       async (signal) => {
         const unique: string[] = JSON.parse(ids);
-        const entries = await Promise.all(
-          unique.map(async (id) => {
-            try {
-              return [id, await getTrack(id, signal)] as const;
-            } catch {
-              return [id, null] as const;
-            }
-          }),
-        );
-        return Object.fromEntries(entries);
+        return readTrackDetails(unique, signal);
       },
       [ids],
     ),

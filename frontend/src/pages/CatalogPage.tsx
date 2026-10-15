@@ -178,7 +178,12 @@ export default function CatalogPage({
                   <MusicTrackRow
                     key={track.id}
                     track={track}
-                    queue={data.tracks!.items}
+                    queue={
+                      query.trim()
+                        ? undefined
+                        : data.tracks!.items.slice(0, limit)
+                    }
+                    source={query.trim() ? "Search" : "Catalogue"}
                     extra={
                       playlists.length > 0 ? (
                         <select

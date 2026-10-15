@@ -68,6 +68,7 @@ export default function ArtistPage({
                 key={track.id}
                 track={track}
                 queue={data.tracks.items}
+                source={data.artist.displayName}
               />
             ))}
           </div>

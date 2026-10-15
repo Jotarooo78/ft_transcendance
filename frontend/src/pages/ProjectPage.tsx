@@ -54,10 +54,28 @@ export default function ProjectPage({
           disabled={!project.tracks.length}
           onClick={() => {
             if (project.tracks[0])
-              player.play(project.tracks[0], project.tracks);
+              player.play(project.tracks[0], project.tracks, {
+                source: project.title,
+                restart: true,
+              });
           }}
         >
           Play project
+        </button>
+        <button
+          disabled={!project.tracks.length}
+          onClick={() => {
+            const index = Math.floor(Math.random() * project.tracks.length);
+            if (project.tracks[index])
+              player.play(project.tracks[index], project.tracks, {
+                index,
+                source: project.title,
+                shuffle: true,
+                restart: true,
+              });
+          }}
+        >
+          Shuffle play
         </button>
         <CollectionButton kind="project" id={id} />
       </div>
@@ -67,6 +85,8 @@ export default function ProjectPage({
             key={track.id}
             track={track}
             queue={project.tracks}
+            queueIndex={index}
+            source={project.title}
             number={index + 1}
           />
         ))}

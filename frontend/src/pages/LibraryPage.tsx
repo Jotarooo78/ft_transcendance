@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { useCollections } from "../contexts/collections";
 import { useResource } from "../hooks/useResource";
 import type { useLibrary } from "../hooks/useLibrary";
+import { readTrackDetails } from "../services/track-details";
 import { getTrack } from "../services/catalog";
 import { getProject, getProjects } from "../services/projects";
 import { getPublicPlaylist } from "../services/library";
@@ -33,12 +34,23 @@ function SavedSection({ kind }: { kind: CollectionKind }) {
     [page, setPage] = useState(1);
   const all = collection.data?.[kind] ?? [];
   const ids = JSON.stringify(
-    all.slice((page - 1) * 24, page * 24).map((item) => item.id),
+    (kind === "track" ? all : all.slice((page - 1) * 24, page * 24)).map(
+      (item) => item.id,
+    ),
   );
   const resource = useResource(
     useCallback(
       async (signal) => {
         const selected: string[] = JSON.parse(ids);
+        if (kind === "track") {
+          const tracks = await readTrackDetails(selected, signal);
+          return selected.map((id) => ({
+            id,
+            data: tracks[id]
+              ? { kind: "track" as const, value: tracks[id]! }
+              : null,
+          }));
+        }
         return Promise.all(
           selected.map(async (id) => {
             try {
@@ -74,7 +86,10 @@ function SavedSection({ kind }: { kind: CollectionKind }) {
             </p>
           )}
           <div className={kind === "track" ? "music-track-list" : "music-grid"}>
-            {resource.data?.map(({ id, data }) => {
+            {(kind === "track"
+              ? resource.data?.slice((page - 1) * 24, page * 24)
+              : resource.data
+            )?.map(({ id, data }) => {
               if (!data)
                 return (
                   <div className="music-unavailable" key={id}>
@@ -83,7 +98,16 @@ function SavedSection({ kind }: { kind: CollectionKind }) {
                   </div>
                 );
               if (data.kind === "track")
-                return <MusicTrackRow key={id} track={data.value} />;
+                return (
+                  <MusicTrackRow
+                    key={id}
+                    track={data.value}
+                    queue={resource.data?.flatMap((item) =>
+                      item.data?.kind === "track" ? [item.data.value] : [],
+                    )}
+                    source="Liked tracks"
+                  />
+                );
               return (
                 <div key={id}>
                   {data.kind === "project" ? (

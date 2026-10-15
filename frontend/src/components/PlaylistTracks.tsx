@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useTrackDetails } from "../hooks/useTrackDetails";
-import type { MusicPlaylist, Track } from "../types/music";
+import type { MusicPlaylist } from "../types/music";
 import MusicTrackRow from "./MusicTrackRow";
+import { useMusicPlayer } from "../contexts/music-player";
 /** Conserve les occurrences et leur ordre ; le retrait n'est disponible qu'au propriétaire. */
 export default function PlaylistTracks({
   playlist,
@@ -13,12 +14,16 @@ export default function PlaylistTracks({
     itemId: string,
   ) => Promise<MusicPlaylist>;
 }) {
+  const player = useMusicPlayer();
   const details = useTrackDetails(playlist.items.map((item) => item.trackId));
   const [removing, setRemoving] = useState(false),
     [error, setError] = useState("");
-  const queue = playlist.items
-    .map((item) => details.data?.[item.trackId])
-    .filter((track): track is Track => !!track);
+  const available = playlist.items.flatMap((item) => {
+    const track = details.data?.[item.trackId];
+    return track ? [{ item, track }] : [];
+  });
+  const queue = available.map(({ track }) => track),
+    ids = available.map(({ item }) => item.id);
   /** Retire l'occurrence seulement après confirmation ; une panne reste visible. */
   async function remove(itemId: string) {
     if (removing || !onRemove) return;
@@ -40,6 +45,36 @@ export default function PlaylistTracks({
       {!playlist.items.length && (
         <p>This playlist does not contain any tracks yet.</p>
       )}
+      {!!queue.length && (
+        <div className="music-section-heading">
+          <button
+            onClick={() =>
+              player.play(queue[0], queue, {
+                ids,
+                index: 0,
+                source: playlist.name,
+                restart: true,
+              })
+            }
+          >
+            Play playlist
+          </button>
+          <button
+            onClick={() => {
+              const index = Math.floor(Math.random() * queue.length);
+              player.play(queue[index], queue, {
+                ids,
+                index,
+                source: playlist.name,
+                shuffle: true,
+                restart: true,
+              });
+            }}
+          >
+            Shuffle play
+          </button>
+        </div>
+      )}
       <ol className="music-occurrences">
         {playlist.items.map((item, index) => {
           const track = details.data?.[item.trackId];
@@ -53,10 +88,10 @@ export default function PlaylistTracks({
               {track ? (
                 <MusicTrackRow
                   track={track}
-                  queue={playlist.items
-                    .slice(index)
-                    .map((next) => details.data?.[next.trackId])
-                    .filter((value): value is Track => !!value)}
+                  queue={queue}
+                  queueIds={ids}
+                  queueIndex={ids.indexOf(item.id)}
+                  source={playlist.name}
                   number={index + 1}
                   extra={action}
                 />
