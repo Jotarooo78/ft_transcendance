@@ -80,7 +80,7 @@ export function createTracksRepository(prisma: Database): TracksRepository {
         async (tx) => {
           const rows = await tx.$queryRaw<TrackRow[]>(Prisma.sql`${filtered}
             SELECT * FROM filtered
-            ORDER BY ${sortColumn(query.sort)} ASC NULLS LAST, id ASC
+            ORDER BY ${sortColumn(query.sort)} ${query.sort === 'recent' ? Prisma.sql`DESC` : Prisma.sql`ASC`} NULLS LAST, id ASC
             LIMIT ${query.pageSize} OFFSET ${offset}`)
           const counts = await tx.$queryRaw<{ total: bigint }[]>(
             Prisma.sql`${filtered} SELECT count(*) AS total FROM filtered`

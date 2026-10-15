@@ -196,14 +196,13 @@ test('the public profile hides the bio and validates the identifier', async (t) 
 
 test('public artist profile includes bio but never credentials, while the main route keeps its contract', async (t) => {
   const userId = newUserId()
-  const stores = memoryStores([
-    {
-      ...profileOf(userId, 'artist'),
-      bio: 'Public bio',
-      email: 'private@example.invalid',
-      passwordHash: 'private',
-    },
-  ])
+  const stored = {
+    ...profileOf(userId, 'artist'),
+    bio: 'Public bio',
+    email: 'private@example.invalid',
+    passwordHash: 'private',
+  }
+  const stores = memoryStores([stored])
   const { app } = await buildTestApp({ profiles: stores.profilesRepository })
   t.after(() => app.close())
   const artist = await app.inject(`/profiles/${userId}`)
@@ -214,4 +213,20 @@ test('public artist profile includes bio but never credentials, while the main r
   assert.equal((await app.inject(`/profile/${userId}`)).json().bio, undefined)
   assert.equal((await app.inject('/profiles/not-a-uuid')).statusCode, 400)
   assert.equal((await app.inject(`/profiles/${newUserId()}`)).statusCode, 404)
+})
+
+/** La recherche reste publique, bornée et filtrée par son schéma de réponse. */
+test('artist search separates public profiles, supports pagination and rejects invalid queries', async (t) => {
+  const a = profileOf(newUserId(), 'alice'),
+    b = profileOf(newUserId(), 'bob')
+  const stores = memoryStores([{ ...a }, b])
+  const { app } = await buildTestApp({ profiles: stores.profilesRepository })
+  t.after(() => app.close())
+  const result = await app.inject('/artists?q=ali&page=1&pageSize=1')
+  assert.equal(result.statusCode, 200)
+  assert.equal(result.json().total, 1)
+  assert.equal(result.json().items[0].userId, a.userId)
+  assert.equal(result.json().items[0].bio, undefined)
+  assert.equal((await app.inject('/artists?pageSize=51')).statusCode, 400)
+  assert.equal((await app.inject('/artists?page=0')).statusCode, 400)
 })

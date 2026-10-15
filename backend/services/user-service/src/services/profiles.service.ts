@@ -33,6 +33,10 @@ export type ProfilesService = ReturnType<typeof createProfilesService>
  */
 export function createProfilesService(profiles: ProfilesRepository, social: SocialRepository) {
   return {
+    /** Les artistes sont les comptes ; aucune identité artistique parallèle n’est créée. */
+    searchArtists(q: string, page: number, pageSize: number) {
+      return profiles.searchArtists(q.trim(), page, pageSize)
+    },
     /**
      * @brief Renvoie le profil complet de l'utilisateur connecté.
      * @param userId Identifiant du compte, lu dans son jeton de connexion.

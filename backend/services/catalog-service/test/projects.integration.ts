@@ -58,6 +58,9 @@ try {
   })
   assert.equal(response.statusCode, 200, response.body)
   assert.equal(response.json().version, 1)
+  const listed = await app.inject({ url: '/me/projects?page=1&pageSize=24', headers })
+  assert.equal(listed.statusCode, 200, listed.body)
+  assert(listed.json().items.some((item: { id: string }) => item.id === id))
   assert.equal((await app.inject({ method: 'GET', url: `/projects/${id}` })).statusCode, 404)
   assert.equal(
     (

@@ -12,7 +12,9 @@ export type CatalogQuery = {
   /** Genre affiché ou filtre exact du Catalogue ; une chaîne vide n’impose pas de filtre. */
   genre: string;
   /** Critère de tri global appliqué avant la pagination. */
-  sort: "title" | "artist" | "duration";
+  sort: "title" | "artist" | "duration" | "recent";
+  /** Compte artiste facultatif pour sa page publique. */
+  owner?: string;
 };
 /** Page validée de morceaux avec total filtré et genres disponibles. */
 export type CatalogList = {
@@ -69,6 +71,7 @@ export async function getTracks(
     genre: query.genre,
     sort: query.sort,
   });
+  if (query.owner) params.set('owner',query.owner);
   const response = await fetch(`/api/catalog/tracks?${params}`, { signal });
   if (!response.ok)
     throw new Error(

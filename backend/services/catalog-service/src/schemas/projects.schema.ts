@@ -34,8 +34,8 @@ export const ProjectCommand = Type.Object(
 export const ProjectQuery = Type.Object(
   {
     q: Type.Optional(Type.String({ maxLength: 200 })),
-    page: Type.Optional(Type.Integer({ minimum: 1, maximum: 100000 })),
-    pageSize: Type.Optional(Type.Integer({ minimum: 1, maximum: 50 })),
+    page: Type.Optional(Type.String({ pattern: '^[1-9][0-9]*$' })),
+    pageSize: Type.Optional(Type.String({ pattern: '^[1-9][0-9]*$' })),
     owner: Type.Optional(UuidSchema),
   },
   { additionalProperties: false }

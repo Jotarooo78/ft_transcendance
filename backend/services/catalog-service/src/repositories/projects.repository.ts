@@ -54,14 +54,16 @@ export function createProjectsRepository(db: Database) {
       const where: Prisma.ReleaseWhereInput = {
         status: privateList ? { not: 'withdrawn' } : 'published',
         ...(owner ? { ownerUserId: owner } : {}),
-        title: { contains: q, mode: 'insensitive' },
+        title: { contains: q.replace(/[\\%_]/g, '\\$&'), mode: 'insensitive' },
       }
       const [items, total] = await db.$transaction(
         [
           db.release.findMany({
             where,
             include: projectInclude,
-            orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+            orderBy: privateList
+              ? [{ updatedAt: 'desc' }, { id: 'asc' }]
+              : [{ releaseDate: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
             skip: (page - 1) * pageSize,
             take: pageSize,
           }),

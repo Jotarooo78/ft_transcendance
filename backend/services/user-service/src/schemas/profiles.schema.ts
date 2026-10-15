@@ -42,3 +42,20 @@ export const UserIdParamsSchema = Type.Object({ userId: Type.String() })
 export const FriendIdParamsSchema = Type.Object({ friendId: Type.String() })
 /** @brief Partie variable `:fileName` de l'URL d'un avatar. */
 export const FileNameParamsSchema = Type.Object({ fileName: Type.String() })
+
+/** Pagination et texte littéral de la recherche des comptes artistes. */
+export const ArtistQuerySchema = Type.Object(
+  {
+    q: Type.Optional(Type.String({ maxLength: 200 })),
+    page: Type.Optional(Type.String({ pattern: '^[1-9][0-9]*$' })),
+    pageSize: Type.Optional(Type.String({ pattern: '^[1-9][0-9]*$' })),
+  },
+  { additionalProperties: false }
+)
+/** Réponse publique limitée au profil affichable. */
+export const ArtistPageSchema = Type.Object({
+  items: Type.Array(PublicProfileSchema),
+  total: Type.Integer(),
+  page: Type.Integer(),
+  pageSize: Type.Integer(),
+})

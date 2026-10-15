@@ -1,4 +1,6 @@
 export type Track = {
+  /** Projet publié auquel appartient ce titre. */
+  projectId?: string | null;
   id: string;
   title: string;
   artistName: string;

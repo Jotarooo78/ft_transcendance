@@ -1,347 +1,43 @@
-import { useEffect, useRef, useState } from "react";
-
-import AudioPlayer from "../components/AudioPlayer";
-import TrackCard from "../components/TrackCard";
-import TrackDetails from "../components/TrackDetails";
-import { getTracks, type CatalogList } from "../services/catalog";
-import type { PrivatePlaylist as Playlist, Track } from "../types/music";
-
-type CatalogPageProps = {
-  /** Morceau venant d’être publié, ouvert et recherché immédiatement. */
-  initialTrack?: Track | null;
-  playlists: Playlist[];
-  /** Ajoute une nouvelle occurrence de morceau à la playlist sélectionnée. */
-  onAddItem: (playlist: Playlist, trackId: string) => Promise<Playlist>;
-};
-
-const TRACKS_PER_PAGE = 2;
-
-/**
- * Charge une page réelle du Catalogue avec recherche, genre et tri ; une clé de requête empêche
- * d’afficher une réponse périmée. Gère les ajouts confirmés aux playlists privées.
- */
-function CatalogPage({ playlists, onAddItem, initialTrack }: CatalogPageProps) {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [detailId, setDetailId] = useState<string | null>(initialTrack?.id ?? null);
-  const detailTrigger = useRef<HTMLButtonElement | null>(null);
-
-  const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
-
-  const [selectedPlaylistId, setSelectedPlaylistId] = useState(
-    playlists[0]?.id ?? "",
-  );
-
-  const [searchQuery, setSearchQuery] = useState(initialTrack?.title ?? "");
-
-  const [selectedGenre, setSelectedGenre] = useState("all");
-
-  type SortOption = "title" | "artist" | "duration";
-
-  const [sortOption, setSortOption] = useState<SortOption>("title");
-
-  const [message, setMessage] = useState("");
-  const [adding, setAdding] = useState(false);
-  const [addError, setAddError] = useState("");
-  const destination =
-    playlists.find((playlist) => playlist.id === selectedPlaylistId) ??
-    playlists[0];
-
-  /**
-   * Ajoute le morceau à la playlist sélectionnée et affiche le nom confirmé par le serveur ; bloque les
-   * doubles soumissions et conserve un refus visible.
-   */
-  async function handleAdd(track: Track) {
-    if (!destination || adding) return;
-    setAdding(true);
-    setMessage("");
-    setAddError("");
-    try {
-      const confirmed = await onAddItem(destination, track.id);
-      setMessage(`${track.title} added to ${confirmed.name}.`);
-    } catch (error) {
-      setAddError(
-        error instanceof Error
-          ? error.message
-          : "Unable to add track. Refresh before trying again.",
-      );
-    } finally {
-      setAdding(false);
-    }
-  }
-
-  const [retry, setRetry] = useState(0);
-  const requestKey = JSON.stringify([
-    currentPage,
-    searchQuery,
-    selectedGenre,
-    sortOption,
-    retry,
-  ]);
-  const [result, setResult] = useState<{
-    /** Identité de la requête ou de l’état ; empêche d’afficher une réponse devenue périmée. */
-    key: string;
-    /** Résultat validé ou champs de la commande regroupés par ce contrat. */
-    data?: CatalogList;
-    /** Erreur à rendre visible pour ce résultat ; son absence représente un résultat sans erreur enregistrée. */
-    error?: string;
-  }>({ key: "" });
-  const loading = result.key !== requestKey;
-  const data = loading ? undefined : result.data;
-  const genres = result.data?.genres ?? [];
-  const totalPages = Math.ceil((data?.total ?? 0) / TRACKS_PER_PAGE);
-  const paginatedTracks = data?.items ?? [];
-
-  useEffect(() => {
-    const controller = new AbortController();
-    void getTracks(
-      {
-        page: currentPage,
-        pageSize: TRACKS_PER_PAGE,
-        q: searchQuery,
-        genre: selectedGenre === "all" ? "" : selectedGenre,
-        sort: sortOption,
-      },
-      controller.signal,
-    )
-      .then((data) => {
-        if (!controller.signal.aborted) setResult({ key: requestKey, data });
-      })
-      .catch((error) => {
-        if (!controller.signal.aborted)
-          setResult({
-            key: requestKey,
-            error:
-              error instanceof Error
-                ? error.message
-                : "Unable to load catalogue.",
-          });
-      });
-    return () => controller.abort();
-  }, [currentPage, searchQuery, selectedGenre, sortOption, retry, requestKey]);
-
-  function handlePlay(track: Track) {
-    setSelectedTrack(track);
-  }
-
-  function handleClosePlayer() {
-    setSelectedTrack(null);
-  }
-
-  return (
-    <>
-      <main className="catalog-page">
-        <header>
-          <p className="page-label">Discover</p>
-
-          <h1>Music catalog</h1>
-
-          <p>Explore independent tracks published by our community.</p>
-        </header>
-
-        <section
-          className="catalog-search"
-          aria-labelledby="catalog-search-title"
-        >
-          <h2 id="catalog-search-title">Search</h2>
-
-          <label htmlFor="track-search">
-            Search by title, artist, album or genre
-            <input
-              id="track-search"
-              type="search"
-              maxLength={200}
-              value={searchQuery}
-              onChange={(event) => {
-                setSearchQuery(event.target.value);
-                setCurrentPage(1);
-              }}
-              placeholder="Example: Aya"
-            />
-          </label>
-
-          <div className="catalog-filters">
-            <label htmlFor="genre-filter">
-              Genre
-              <select
-                id="genre-filter"
-                value={selectedGenre}
-                onChange={(event) => {
-                  setSelectedGenre(event.target.value);
-                  setCurrentPage(1);
-                }}
-              >
-                <option value="all">All genres</option>
-
-                {genres.map((genre) => (
-                  <option key={genre} value={genre}>
-                    {genre}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label htmlFor="sort-option">
-              Sort by
-              <select
-                id="sort-option"
-                value={sortOption}
-                onChange={(event) => {
-                  setSortOption(event.target.value as SortOption);
-                  setCurrentPage(1);
-                }}
-              >
-                <option value="title">Title</option>
-                <option value="artist">Artist</option>
-                <option value="duration">Duration</option>
-              </select>
-            </label>
-          </div>
-        </section>
-
-        {detailId && (
-          <TrackDetails
-            key={detailId}
-            id={detailId}
-            onClose={() => {
-              setDetailId(null);
-              detailTrigger.current?.focus();
-            }}
-          />
-        )}
-
-        <section className="catalog-section" aria-labelledby="catalog-title">
-          <h2 id="catalog-title">Available tracks</h2>
-
-          <div className="playlist-destination">
-            <label htmlFor="playlist-destination">
-              Add tracks to
-              <select
-                id="playlist-destination"
-                value={destination?.id ?? ""}
-                onChange={(event) => {
-                  setSelectedPlaylistId(event.target.value);
-                  setMessage("");
-                }}
-                disabled={playlists.length === 0}
-              >
-                {playlists.length === 0 ? (
-                  <option value="">No playlist available</option>
-                ) : (
-                  playlists.map((playlist) => (
-                    <option key={playlist.id} value={playlist.id}>
-                      {playlist.name}
-                    </option>
-                  ))
-                )}
-              </select>
-            </label>
-
-            {message && (
-              <p className="catalog-message" role="status">
-                {message}
-              </p>
-            )}
-          </div>
-
-          {adding && <p role="status">Adding track…</p>}
-          {addError && <p role="alert">{addError}</p>}
-
-          <p className="search-result-count" aria-live="polite">
-            {loading
-              ? "Loading catalogue…"
-              : `${data?.total ?? 0} track(s) found`}
-          </p>
-
-          {loading ? (
-            <p role="status">Loading tracks…</p>
-          ) : result.error ? (
-            <div role="alert">
-              <p>{result.error}</p>
-              <button type="button" onClick={() => setRetry((n) => n + 1)}>
-                Retry catalogue
-              </button>
-            </div>
-          ) : paginatedTracks.length === 0 ? (
-            <p className="empty-search-message">No tracks match your search.</p>
-          ) : (
-            <>
-              <div className="track-list">
-                {paginatedTracks.map((track) => (
-                  <div className="catalog-track" key={track.id}>
-                    <TrackCard
-                      track={track}
-                      isSelected={selectedTrack?.id === track.id}
-                      onPlay={handlePlay}
-                    />
-
-                    <button
-                      type="button"
-                      aria-label={`Details for ${track.title}`}
-                      onClick={(event) => {
-                        detailTrigger.current = event.currentTarget;
-                        setDetailId(track.id);
-                      }}
-                    >
-                      Details
-                    </button>
-
-                    <button
-                      type="button"
-                      className="track-action-button add-track-button"
-                      disabled={!destination || adding}
-                      onClick={() => {
-                        void handleAdd(track);
-                      }}
-                      aria-label={`Add ${track.title} to playlist`}
-                      title="Add to playlist"
-                    >
-                      +
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              {totalPages > 1 && (
-                <nav className="pagination" aria-label="Catalog pagination">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCurrentPage((page) => page - 1);
-                    }}
-                    disabled={currentPage === 1}
-                  >
-                    Previous
-                  </button>
-
-                  <span aria-live="polite">
-                    Page {currentPage} of {totalPages}
-                  </span>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCurrentPage((page) => page + 1);
-                    }}
-                    disabled={currentPage === totalPages}
-                  >
-                    Next
-                  </button>
-                </nav>
-              )}
-            </>
-          )}
-        </section>
-      </main>
-
-      {selectedTrack && (
-        <AudioPlayer
-          key={selectedTrack.id}
-          track={selectedTrack}
-          onClose={handleClosePlayer}
-        />
-      )}
-    </>
-  );
+/** Hub musical : une recherche et trois familles de résultats indépendantes. */
+import { useCallback, useState } from 'react';
+import { useResource } from '../hooks/useResource';
+import { getArtists } from '../services/artists';
+import { getProjects } from '../services/projects';
+import { getTracks } from '../services/catalog';
+import ArtistCard from '../components/ArtistCard';
+import ProjectCard from '../components/ProjectCard';
+import MusicTrackRow from '../components/MusicTrackRow';
+import type { PrivatePlaylist, Track } from '../types/music';
+/** Catégorie affichée ; All conserve les trois sections du hub. */
+type Category='all'|'artists'|'projects'|'tracks';
+/** Affiche les résultats du serveur et refuse de remplacer une recherche récente par une réponse ancienne. */
+export default function CatalogPage({playlists,onAddItem}: {
+  /** Playlists du propriétaire disponibles pour ajouter un morceau. */ playlists:PrivatePlaylist[];
+  /** Ajout confirmé côté Library. */ onAddItem:(playlist:PrivatePlaylist,trackId:string)=>Promise<PrivatePlaylist>;
+  /** Ancien point d’entrée conservé durant la transition de navigation. */ initialTrack?:Track|null;
+}) {
+  const [query,setQuery]=useState(''),[category,setCategory]=useState<Category>('all'),[page,setPage]=useState(1);
+  const [message,setMessage]=useState(''),[adding,setAdding]=useState(false);
+  const resource=useResource(useCallback(async signal=>{
+    const [artists,projects,tracks]=await Promise.all([
+      category==='all'||category==='artists'?getArtists(query,page,signal):null,
+      category==='all'||category==='projects'?getProjects(false,page,query,signal):null,
+      category==='all'||category==='tracks'?getTracks({q:query,page,pageSize:24,genre:'',sort:query?'title':'recent'},signal):null,
+    ]);return{artists,projects,tracks};
+  },[query,category,page]));
+  /** Change de catégorie en repartant de sa première page. */
+  function select(next:Category){setCategory(next);setPage(1);}
+  /** Ajoute un titre et n’affiche un succès qu’après confirmation serveur. */
+  async function add(track:Track,id:string){const playlist=playlists.find(p=>p.id===id);if(!playlist||adding)return;setAdding(true);setMessage('');try{await onAddItem(playlist,track.id);setMessage(`Added to ${playlist.name}.`);}catch(error){setMessage(error instanceof Error?error.message:'Unable to add track.');}finally{setAdding(false);}}
+  const data=resource.data,limit=category==='all'?6:24,total=category==='artists'?data?.artists?.total:category==='projects'?data?.projects?.total:data?.tracks?.total;
+  return <main className="music-page catalog-hub"><header><p className="page-label">DISCOVER</p><h1>Find your next sound.</h1></header>
+    <input className="music-search" aria-label="Search music" type="search" placeholder="Artists, projects, tracks" value={query} maxLength={200} onChange={event=>{setQuery(event.target.value);setPage(1);}}/>
+    {(query||category!=='all')&&<div className="music-tabs" role="group" aria-label="Search category">{(['all','artists','projects','tracks'] as Category[]).map(item=><button key={item} aria-pressed={category===item} onClick={()=>select(item)}>{item[0].toUpperCase()+item.slice(1)}</button>)}</div>}
+    {resource.loading?<p role="status">Searching your music…</p>:resource.error?<div role="alert">{resource.error}<button onClick={resource.reload}>Retry</button></div>:<>
+      {data?.artists&&<section><div className="music-section-heading"><h2>Artists</h2>{category==='all'&&<button onClick={()=>select('artists')}>See all artists</button>}</div><div className="music-grid">{data.artists.items.slice(0,limit).map(artist=><ArtistCard key={artist.userId} artist={artist}/>)}</div>{!data.artists.total&&<p>No artists found.</p>}</section>}
+      {data?.projects&&<section><div className="music-section-heading"><h2>Projects</h2>{category==='all'&&<button onClick={()=>select('projects')}>See all projects</button>}</div><div className="music-grid">{data.projects.items.slice(0,limit).map(project=><ProjectCard key={project.id} project={project}/>)}</div>{!data.projects.total&&<p>No projects found.</p>}</section>}
+      {data?.tracks&&<section><div className="music-section-heading"><h2>Tracks</h2>{category==='all'&&<button onClick={()=>select('tracks')}>See all tracks</button>}</div><div className="music-track-list">{data.tracks.items.slice(0,limit).map(track=><MusicTrackRow key={track.id} track={track} queue={data.tracks!.items} extra={playlists.length>0?<select aria-label={`Add ${track.title} to playlist`} value="" disabled={adding} onChange={event=>void add(track,event.target.value)}><option value="">Add to playlist</option>{playlists.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>:undefined}/>)}</div>{!data.tracks.total&&<p>No tracks found.</p>}</section>}
+      {category!=='all'&&!!total&&<div className="music-pagination"><button disabled={page===1} onClick={()=>setPage(p=>p-1)}>Previous</button><span>Page {page} of {Math.ceil(total/24)}</span><button disabled={page*24>=total} onClick={()=>setPage(p=>p+1)}>Next</button></div>}
+    </>}{message&&<p role="status">{message}</p>}
+  </main>;
 }
-
-export default CatalogPage;

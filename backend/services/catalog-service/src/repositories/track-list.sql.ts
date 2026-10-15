@@ -28,12 +28,14 @@ import type { TrackListQuery, TrackSort } from '../domain/track-list.js'
  *   point de départ à la lecture d'un morceau comme à la liste.
  */
 export const publishedTracks = (profiles: ArtistProfile[] = []) => Prisma.sql`
-  SELECT t.id, t.title, t.description, t.created_by_user_id AS "artistUserId", t.audio_asset_id AS "audioAssetId", t.duration_ms AS "durationMs",
+  SELECT t.published_at AS "publishedAt", t.id, t.title, t.description, t.created_by_user_id AS "artistUserId", t.audio_asset_id AS "audioAssetId", t.duration_ms AS "durationMs",
     COALESCE((SELECT p."displayName" FROM jsonb_to_recordset(${JSON.stringify(profiles)}::jsonb) AS p("userId" text, "displayName" text) WHERE p."userId"=t.created_by_user_id::text), (
       SELECT string_agg(a.name, ', ' ORDER BY CASE c.role WHEN 'primary' THEN 0 ELSE 1 END, c.credit_order, a.id)
       FROM catalog.track_artists c JOIN catalog.artists a ON a.id = c.artist_id
       WHERE c.track_id = t.id AND c.role IN ('primary', 'featured')
     ), '') AS "artistName",
+    (SELECT r.id FROM catalog.release_tracks rt JOIN catalog.releases r ON r.id=rt.release_id WHERE rt.track_id=t.id AND r.status='published' ORDER BY r.release_date NULLS LAST,r.id LIMIT 1) AS "projectId",
+    (SELECT r.cover_asset_id FROM catalog.release_tracks rt JOIN catalog.releases r ON r.id=rt.release_id WHERE rt.track_id=t.id AND r.status='published' ORDER BY r.release_date NULLS LAST,r.id LIMIT 1) AS "coverAssetId",
     COALESCE((
       SELECT r.title
       FROM catalog.release_tracks rt JOIN catalog.releases r ON r.id = rt.release_id
@@ -77,7 +79,8 @@ export function filteredTracks(query: TrackListQuery, profiles: ArtistProfile[] 
   return Prisma.sql`
     WITH visible AS (${publishedTracks(profiles)}), filtered AS (
       SELECT v.* FROM visible v
-      WHERE (${query.genre} = '' OR EXISTS (
+      WHERE (${query.owner ?? ''} = '' OR v."artistUserId"::text = ${query.owner ?? ''})
+        AND (${query.genre} = '' OR EXISTS (
           SELECT 1 FROM catalog.track_genres tg JOIN catalog.genres g ON g.id = tg.genre_id
           WHERE tg.track_id = v.id AND g.name = ${query.genre}))
         AND (${query.q} = '' OR v.title ILIKE ${pattern} OR v."artistName" ILIKE ${pattern}
@@ -95,6 +98,7 @@ export function filteredTracks(query: TrackListQuery, profiles: ArtistProfile[] 
  *   configurée sur le serveur de base de données : le tri donne ainsi le même résultat partout.
  */
 const sortColumns: Record<TrackSort, Prisma.Sql> = {
+  recent: Prisma.sql`"publishedAt"`,
   title: Prisma.sql`title COLLATE "C"`,
   artist: Prisma.sql`"artistName" COLLATE "C"`,
   duration: Prisma.sql`"durationMs"`,

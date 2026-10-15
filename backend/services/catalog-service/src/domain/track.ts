@@ -23,6 +23,10 @@ import { DomainError } from '@ft/service-kit'
  *   genre, calculés à partir d'autres tables.
  */
 export type TrackRow = {
+  /** Projet publié et pochette commune ; absents pour un titre historique autonome. */
+  projectId?: string | null
+  /** Audio portant la pochette du projet, null pour son visuel par défaut. */
+  coverAssetId?: string | null
   /** Compte auteur ; absent pour les morceaux de démonstration historiques. */
   artistUserId?: string | null
   /** Présentation publique facultative. */
@@ -50,6 +54,8 @@ export type TrackRow = {
  *   schemas/tracks.schema.ts.
  */
 export type Track = {
+  /** Projet dont le titre et la pochette sont affichés. */
+  projectId?: string | null
   /** Compte actuellement crédité. */
   artistUserId?: string
   /** Description publique facultative. */
@@ -129,6 +135,10 @@ export function toTrack(row: TrackRow): Track {
           description: row.description ?? null,
           coverUrl: row.audioAssetId ? `/api/media/assets/${row.audioAssetId}/artwork` : null,
         }
+      : {}),
+    ...(row.projectId ? { projectId: row.projectId } : {}),
+    ...(row.projectId
+      ? { coverUrl: row.coverAssetId ? `/api/media/assets/${row.coverAssetId}/artwork` : null }
       : {}),
     id: row.id,
     title: row.title,

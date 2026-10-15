@@ -752,3 +752,15 @@ Les liens `#/projects/UUID` et `#/artists/UUID` sont suivis par `useMusicRoute`.
 `ProjectPage`, `ArtistPage`, `ProjectCard`, `ArtistCard` et `MusicTrackRow` composent
 ces écrans à partir des lectures validées et des couleurs existantes. Lint et
 compilation frontend réussis ; la preuve visuelle finale reste à obtenir.
+
+## Recherche et hub
+
+Le hub comporte une recherche et trois sections : comptes artistes, projets et
+titres. Chaque catégorie dispose de sa pagination. Choix utilisateur : projets
+et titres récents, artistes par nom avant recherche. Les artistes sont recherchés
+par Users avec projection publique ; Catalogue ajoute le tri recent et le
+filtre owner aux titres. La pochette du projet accompagne les titres dans les
+listes. Les schémas d’URL réutilisent la conversion stricte de pagination de
+service-kit. Les pages artistes affichent projets et titres du compte.
+Typechecks Users/Catalogue, huit fichiers de tests backend, lint/build frontend
+et scénario PostgreSQL des projets (pagination comprise) réussis.
