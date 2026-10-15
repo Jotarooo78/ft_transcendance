@@ -110,6 +110,15 @@ try {
   await page.getByRole('button',{name:'Renamed Artist',exact:true}).first().click();await page.getByRole('dialog',{name:'Artist profile'}).waitFor();await page.getByRole('heading',{name:'Renamed Artist',exact:true}).waitFor();await page.getByRole('button',{name:'Close profile',exact:true}).click();
   console.log(`[PUBLICATION] PASS real browser upload, publication and playback: ${name}`);
  }
+ // Un refus certain ne doit pas enfermer le formulaire dans une reprise impossible.
+ await page.getByRole('button',{name:'Upload',exact:true}).click();
+ const expiringResponse=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/media/assets'&&r.request().method()==='POST');
+ await page.getByLabel('Audio file',{exact:true}).setInputFiles({name:'Expired.mp3',mimeType:'audio/mpeg',buffer:mp3});
+ const expiring=await(await expiringResponse).json();await page.getByText('✓ Audio ready',{exact:true}).waitFor();
+ sql(`UPDATE media.assets SET expires_at=now()-interval '1 hour' WHERE id='${uuid(expiring.id)}';`);
+ await page.getByRole('button',{name:'Publish track',exact:true}).click();await page.getByText('This audio is no longer available for publication. Cancel this upload and choose it again.',{exact:true}).waitFor();
+ assert(await page.getByLabel('Title',{exact:false}).isEnabled());await page.getByRole('button',{name:'Cancel',exact:true}).click();await page.getByRole('button',{name:'Choose a file',exact:true}).waitFor();
+ console.log('[PUBLICATION] PASS editing and cancellation after a definitive publication refusal');
  // Visuel mobile, retrait de la pochette intégrée et reprise après réponse de publication perdue.
  await page.getByRole('button',{name:'Upload',exact:true}).click();await page.setViewportSize({width:390,height:844});
  await page.getByLabel('Audio file',{exact:true}).setInputFiles({name:'Mobile.mp3',mimeType:'audio/mpeg',buffer:mp3});

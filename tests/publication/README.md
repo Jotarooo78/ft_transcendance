@@ -12,7 +12,8 @@ identité fournie par le client, pochettes publiques uniquement après publicati
 nom actuel de l’artiste, playlist d’un second compte, expiration des uploads et
 publication concurrente avec une suppression. Chromium utilise ensuite les vrais
 formulaires pour publier, écouter et consulter le profil artiste. Le retrait et
-le remplacement de pochette, le mobile, une réponse perdue après publication,
+le remplacement de pochette, le mobile, la correction après un refus explicite,
+une réponse perdue après publication,
 les fichiers corrompus et la persistance après redémarrage sont aussi vérifiés.
 
 Les deux MP3 signalés par l’utilisateur sont lus depuis leurs chemins Windows

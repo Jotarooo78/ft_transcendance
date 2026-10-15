@@ -287,7 +287,9 @@ compte connecté fournit l’identité affichée ; seul Users confirme l’ident
 utilisée par Catalogue. Le choix manuel de pochette ou son retrait prévaut sur
 l’extraction intégrée. Une erreur de pochette permet de continuer sans image.
 Après une tentative de publication incertaine, les textes restent figés pour
-que Retry publication corresponde exactement à l’opération initiale. Le bouton
+que Retry publication corresponde exactement à l’opération initiale. Un refus
+explicite avant publication (400 ou 409) permet de modifier les textes ou
+d’annuler l’envoi, notamment pour remplacer un audio expiré. Le bouton
 View in catalogue ouvre le détail confirmé et recherche son titre. TrackArtwork
 et ArtistLink affichent le visuel public et le profil actuel ; PlaylistTracks
 réutilise les mêmes crédits. Les interfaces restent en anglais.

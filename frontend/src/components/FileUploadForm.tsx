@@ -4,7 +4,7 @@ import { validateFile } from "../services/validate-file";
 import { sendFile } from "../services/send-file";
 import { replaceAudioCover, removeAudioCover } from "../services/update-audio-cover";
 import { deleteFile } from "../services/delete-file";
-import { publishTrack } from "../services/publish-track";
+import { publishTrack, PublicationRejected } from "../services/publish-track";
 import type { ReadyFile, UploadProgress } from "../types/files";
 import type { AuthenticatedUser } from "../types/auth";
 import type { Track } from "../types/music";
@@ -113,7 +113,12 @@ export default function FileUploadForm({ user, onPublished }: Props) {
       setPublicationAttempted(true);
       const track = await publishTrack(asset.id, title, description, controller.signal);
       if (!controller.signal.aborted) setPublished(track);
-    } catch (failure) { if (!controller.signal.aborted) setError(failure instanceof Error ? failure.message : "Unable to confirm publication. Please retry."); }
+    } catch (failure) {
+      if (!controller.signal.aborted) {
+        if (failure instanceof PublicationRejected) setPublicationAttempted(false);
+        setError(failure instanceof Error ? failure.message : "Unable to confirm publication. Please retry.");
+      }
+    }
     finally { if (current.current === controller) { current.current = null; setPublishing(false); } }
   }
 
