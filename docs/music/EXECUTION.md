@@ -906,7 +906,7 @@ aucun conflit.
   Les parcours `verify-projects`, `verify-player`, `verify-interface` passent ;
   les cinq scénarios Chromium historiques de `tests/music` passent aussi (1,7 min).
   Lint, compilation et trois fichiers de tests unitaires musicaux passent.
-- [ ] Comparaison finale du rendu, parcours globaux et publication.
+- [x] Comparaison finale du rendu, parcours globaux et publication des corrections.
 - Compréhension utilisateur et ressenti physique au trackpad : non validés à sa place.
 
 
@@ -947,3 +947,13 @@ surtout en développement : ce résultat ne prouve pas une disparition complète
 des saccades et ne reproduit pas un trackpad physique. Les régressions de hauteur,
 les listes vidées pendant relecture et les deux coûts identifiés avec lecteur sont
 corrigés ; le ressenti sans audio reste à confronter au navigateur de l’utilisateur.
+
+
+Clôture de cette campagne : corrections publiées sur
+`origin/feat/music-projects-library` (`5ec4205`, `28c78bf`, `b47d6a6`, `85a2eb2`).
+Aucun nouveau commit distant intégré et aucun conflit pendant les synchronisations.
+Les deux piles de test ont été supprimées et l’absence de leurs conteneurs,
+volumes et réseaux a été vérifiée. Les fichiers préexistants de `docs/music-plan`
+et `services/` sont préservés. Le frontend de développement n’a pas été redéployé ;
+pour utiliser les changements : `docker compose up -d --build --no-deps frontend`.
+La validation au trackpad physique et la compréhension utilisateur restent ouvertes.
