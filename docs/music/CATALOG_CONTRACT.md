@@ -107,3 +107,31 @@ ce stade. Les preuves réelles sont prévues dans CAT-9 à CAT-11.
 
 Ce fichier est la référence du format des requêtes/réponses pour le service,
 le client et leurs tests ; il n'exécute aucune migration ni installation.
+# Projets musicaux — contrat de l’évolution
+
+Le parcours ordinateur conserve l’ajout d’un titre seul et ajoute album, mixtape
+et EP. Un projet appartient au compte connecté ; les noms d’artistes viennent de
+Users. Aucun crédit éditable, genre obligatoire ou programmation n’est ajouté.
+Les titres sont préremplis, la pochette est facultative et la date de sortie est
+fixée à la première publication, puis conservée lors des modifications.
+
+Les projets réutilisent `Release` et `ReleaseTrack`. Les modifications privées
+portent une version attendue pour refuser l’écrasement d’un autre onglet. Le
+brouillon garde ses fichiers prêts après reconnexion ; un transfert interrompu
+peut nécessiter une nouvelle sélection. La publication est une transition
+atomique du catalogue : les morceaux doivent tous être prêts et appartenir au
+compte. Réessayer une publication ne crée pas de nouvelle identité.
+
+Routes prévues, relatives à `/api/catalog` : `GET /projects` (public),
+`GET /projects/:id` (public), `GET /me/projects` (privé),
+`PUT /me/projects/:id` (création ou sauvegarde versionnée),
+`POST /me/projects/:id/publish` et `DELETE /me/projects/:id` (abandon d’un brouillon).
+Le client choisit un UUID stable avant la création pour retrouver un résultat
+incertain. Les détails publiés contiennent les morceaux dans leur ordre.
+Les brouillons ne paraissent ni dans la recherche ni dans les lectures publiques.
+
+La recherche distingue comptes artistes, projets et titres. Les modifications
+de titre, description, pochette et ordre conservent les identifiants des objets.
+Le remplacement des octets d’un audio publié n’est pas inclus dans cette étape.
+Ces paragraphes définissent la cible ; ils ne constituent pas une preuve
+d’implémentation ou de tests réussis.

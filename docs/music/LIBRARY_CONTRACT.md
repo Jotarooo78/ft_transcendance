@@ -97,3 +97,26 @@ Catalogue ; une piste retirée reste une ligne indisponible que l’on peut reti
 Relu contre Playlist, PlaylistItem et les contraintes SQL : nom 100, description
 2000, version BigInt, position positive unique par playlist, doublons trackId
 autorisés et cascade locale. Ce contrat ne prouve pas encore les routes Library.
+# Bibliothèque personnelle — contrat de l’évolution
+
+La bibliothèque regroupe titres aimés, projets enregistrés, artistes suivis,
+playlists et uploads du propriétaire. Aimer un titre, enregistrer un projet et
+suivre un artiste sont trois actions indépendantes. Le suivi d’un artiste est
+unilatéral et ne modifie pas les relations d’amitié de Users.
+
+La création d’une playlist propose privé/public avec privé sélectionné. Une
+modification ultérieure de visibilité demande une confirmation ; l’annulation
+ne déclenche aucune écriture. Le succès est affiché après confirmation serveur.
+Le propriétaire retrouve et édite ses playlists quelle que soit leur visibilité.
+Une lecture publique expose uniquement une playlist actuellement publique ;
+repasser en privé interdit les lectures suivantes sans promettre d’effacer une
+copie déjà reçue par un visiteur. Une adresse stable permet de consulter la
+playlist. Les mutations restent réservées au propriétaire et versionnées.
+
+Les favoris et références enregistrées persistent côté serveur. Les opérations
+d’ajout répétées convergent sans doublon. Une référence devenue indisponible ne
+bloque pas la liste et ne révèle pas de données privées. L’historique conserve
+ses sessions distinctes, du plus récent au plus ancien.
+
+Ces règles sont la cible de la branche `feat/music-projects-library` ; la
+validation fonctionnelle sera consignée après exécution réelle des contrôles.
