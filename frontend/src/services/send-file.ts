@@ -19,12 +19,13 @@ export function sendFile(
   file: File,
   progress: (value: UploadProgress) => void,
   signal: AbortSignal,
+  temporary = false,
 ): Promise<ReadyFile> {
   const token = getAccessToken();
   if (!token) return Promise.reject(new Error("Sign in to upload a file."));
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/api/media/assets");
+    xhr.open("POST", temporary ? "/api/media/assets?temporary=1" : "/api/media/assets");
     xhr.setRequestHeader("Authorization", `Bearer ${token}`);
     xhr.timeout = 900_000;
     /** Interrompt la requête XHR active lors d’une annulation ou d’une perte de session. */

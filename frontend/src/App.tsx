@@ -9,6 +9,7 @@ import UsersPage from "./pages/UsersPage";
 import HistoryPage from "./pages/HistoryPage";
 import FilesPage from "./pages/FilesPage";
 
+import type { Track } from "./types/music";
 import type { AuthenticatedUser, PublicUser } from "./types/auth";
 import { useLibrary } from "./hooks/useLibrary";
 
@@ -61,6 +62,8 @@ function App() {
   const [privatePage, setPrivatePage] = useState<PrivatePage>("profile");
 
   /** Playlists persistantes du compte ; un changement de compte invalide les réponses précédentes. */
+  /** Dernière publication pour ouvrir son détail dans le catalogue. */
+  const [publishedTrack, setPublishedTrack] = useState<Track | null>(null);
   const library = useLibrary(currentUser?.id ?? null);
 
   const [friends, setFriends] = useState<PublicUser[]>([]);
@@ -72,6 +75,7 @@ function App() {
   useEffect(() => {
     const unsubscribe = onSessionCleared(() => {
       setCurrentUser(null);
+      setPublishedTrack(null);
       setUsers([]);
       setFriends([]);
       setCurrentPage("login");
@@ -283,7 +287,7 @@ function App() {
               aria-pressed={privatePage === "files"}
               onClick={() => setPrivatePage("files")}
             >
-              My audio
+              Upload
             </button>
             <button
               type="button"
@@ -389,6 +393,7 @@ function App() {
             key={currentUser.id}
             playlists={library.playlists}
             onAddItem={library.addItem}
+            initialTrack={publishedTrack}
           />
         )}
 
@@ -408,7 +413,7 @@ function App() {
 
         {/* La clé du compte remonte les écrans privés pour libérer les états et aperçus de l’ancien compte. */}
         {privatePage === "history" && <HistoryPage key={currentUser.id} />}
-        {privatePage === "files" && <FilesPage key={currentUser.id} />}
+        {privatePage === "files" && <FilesPage key={currentUser.id} user={currentUser} onPublished={track => { setPublishedTrack(track); setPrivatePage("catalog"); }} />}
 
         {privatePage === "users" && (
           <UsersPage

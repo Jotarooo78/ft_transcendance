@@ -1,5 +1,8 @@
 /** Panneau de détail chargé indépendamment de la liste Catalogue, avec annulation et nouvelle tentative locale. */
 import { useEffect, useRef, useState } from "react";
+import ArtistLink from "./ArtistLink";
+import TrackArtwork from "./TrackArtwork";
+import AudioPlayer from "./AudioPlayer";
 import { getTrack } from "../services/catalog";
 import type { Track } from "../types/music";
 
@@ -13,6 +16,7 @@ export default function TrackDetails({ id, onClose }: {
   /** Demande la fermeture de l’écran ou du composant concerné. */
   onClose: () => void }) {
   const panel = useRef<HTMLElement>(null);
+  const [playing, setPlaying] = useState(false);
   const [retry, setRetry] = useState(0);
   const key = `${id}:${retry}`;
   const [result, setResult] = useState<{
@@ -38,13 +42,16 @@ export default function TrackDetails({ id, onClose }: {
     <h2>Track details</h2>
     {result.key !== key ? <p role="status">Loading track…</p> : result.error ?
       <div role="alert"><p>{result.error}</p><button type="button" onClick={() => setRetry(n => n + 1)}>Retry detail</button></div> : null}
-    {track && <dl>
+    {track && <>
+      <TrackArtwork track={track} /><dl>
       <dt>Title</dt><dd>{track.title}</dd>
-      <dt>Artists</dt><dd>{track.artistName || "Unknown"}</dd>
+      <dt>Artists</dt><dd><ArtistLink track={track} /></dd>
       <dt>Album</dt><dd>{track.albumTitle || "No album"}</dd>
       <dt>Genre</dt><dd>{track.genre || "Unknown"}</dd>
       <dt>Duration</dt><dd>{track.durationSeconds === null ? "Unknown" : `${track.durationSeconds} seconds`}</dd>
-    </dl>}
+    </dl><p className="track-description">{track.description}</p>
+    <button type="button" onClick={() => setPlaying(true)}>Listen to {track.title}</button>
+    {playing && <AudioPlayer track={track} onClose={() => setPlaying(false)} />}</>}
     <button type="button" onClick={onClose}>Close details</button>
   </section>;
 }

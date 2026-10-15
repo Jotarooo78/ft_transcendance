@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { getTrack } from "../services/catalog";
 import type { PrivatePlaylist, Track } from "../types/music";
+import ArtistLink from "./ArtistLink";
 import AudioPlayer from "./AudioPlayer";
 
 /** Playlist confirmée et opération de retrait d’une occurrence renvoyant la nouvelle version. */
@@ -59,7 +60,7 @@ export default function PlaylistTracks({ playlist, onRemove }: Props) {
       {playlist.items.map(item => {
         const track = ready ? result.tracks[item.trackId] : undefined;
         return <li key={item.id} data-item-id={item.id}>
-          {track ? <><strong>{track.title}</strong><span> — {track.artistName}</span>
+          {track ? <><strong>{track.title}</strong><span> — <ArtistLink track={track} /></span>
             <button type="button" disabled={!track.audioUrl} onClick={() => setPlayingItem(item.id)}>Play {track.title}</button></> :
             <span>{ready ? result.errors[item.trackId] ?? "Track unavailable." : "Loading track…"}</span>}
           <button type="button" disabled={removing} onClick={() => { void remove(item.id); }}>Remove track</button>

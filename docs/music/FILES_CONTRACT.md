@@ -284,3 +284,16 @@ navigateur aux routes Media internes. Le service Users doit être disponible pou
 résoudre les artistes liés aux comptes ; les lectures n’inventent pas de nom en
 cas de panne. La résolution actuelle regroupe les auteurs distincts et limite
 les appels parallèles à huit, avant la recherche et la pagination SQL.
+
+### Formulaire et catalogue
+
+L’entrée Upload ouvre FileUploadForm : dépôt ou sélection d’un audio, transfert
+automatique, titre prérempli et description éditables pendant le transfert. Le
+compte connecté fournit l’identité affichée ; seul Users confirme l’identité
+utilisée par Catalogue. Le choix manuel de pochette ou son retrait prévaut sur
+l’extraction intégrée. Une erreur de pochette permet de continuer sans image.
+Après une tentative de publication incertaine, les textes restent figés pour
+que Retry publication corresponde exactement à l’opération initiale. Le bouton
+View in catalogue ouvre le détail confirmé et recherche son titre. TrackArtwork
+et ArtistLink affichent le visuel public et le profil actuel ; PlaylistTracks
+réutilise les mêmes crédits. Les interfaces restent en anglais.
