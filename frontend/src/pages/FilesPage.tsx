@@ -1,3 +1,10 @@
+import {
+  translate as t,
+  translateError,
+  translateState,
+  formatNumber,
+} from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
 import RefreshNotice from "../components/RefreshNotice";
 /** Espace de création et de reprise des projets personnels, persistants dans Catalogue. */
 import { useCallback, useState } from "react";
@@ -13,6 +20,7 @@ export default function FilesPage({
 }: {
   /** Compte connecté. */ user: AuthenticatedUser;
 }) {
+  useLanguage();
   const [page, setPage] = useState(1),
     [editorKey, setEditorKey] = useState("new");
   const [selected, setSelected] = useState<MusicProject | null>(null),
@@ -27,7 +35,9 @@ export default function FilesPage({
   async function remove(project: MusicProject) {
     if (
       removing ||
-      !window.confirm(`Discard draft "${project.title}" and its files?`)
+      !window.confirm(
+        t('Discard draft "{0}" and its files?', { "0": project.title }),
+      )
     )
       return;
     setRemoving(true);
@@ -50,30 +60,33 @@ export default function FilesPage({
   return (
     <main className="publish-page">
       <header>
-        <p className="publish-eyebrow">CREATE & SHARE</p>
-        <h1>Upload your music</h1>
+        <p className="publish-eyebrow">{t("CREATE & SHARE")}</p>
+        <h1>{t("Upload your music")}</h1>
         <p>
-          A track, an EP, a mixtape, an album. Your sound, {user.displayName}.
+          {" "}
+          {t("A track, an EP, a mixtape, an album. Your sound,")}{" "}
+          {user.displayName}.
         </p>
       </header>
       <section className="project-drafts">
         <div className="music-section-heading">
-          <h2>My uploads</h2>
+          <h2>{t("My uploads")}</h2>
           <button
             onClick={() => {
               setSelected(null);
               setEditorKey(crypto.randomUUID());
             }}
           >
-            New upload
+            {" "}
+            {t("New upload")}{" "}
           </button>
         </div>
         {projects.loading ? (
-          <p role="status">Loading your projects…</p>
+          <p role="status">{t("Loading your projects…")}</p>
         ) : projects.error ? (
           <p role="alert">
-            {projects.error}
-            <button onClick={projects.reload}>Retry</button>
+            {translateError(projects.error)}
+            <button onClick={projects.reload}>{t("Retry")}</button>
           </p>
         ) : (
           <div className="draft-list">
@@ -87,16 +100,18 @@ export default function FilesPage({
                 >
                   <strong>{project.title}</strong>
                   <span>
-                    {project.releaseType} · {project.status}
+                    {translateState(project.releaseType)} ·{" "}
+                    {translateState(project.status)}
                   </span>
                 </button>
                 {project.status === "draft" && (
                   <button
                     disabled={removing}
                     onClick={() => void remove(project)}
-                    aria-label={`Discard ${project.title}`}
+                    aria-label={t("Discard {0}", { "0": project.title })}
                   >
-                    Discard
+                    {" "}
+                    {t("Discard")}{" "}
                   </button>
                 )}
               </div>
@@ -106,18 +121,20 @@ export default function FilesPage({
         {projects.data && projects.data.total > 24 && (
           <div className="music-pagination">
             <button disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
-              Previous
+              {" "}
+              {t("Previous")}{" "}
             </button>
-            <span>Page {page}</span>
+            <span>{t("Page {page}", { page: formatNumber(page) })}</span>
             <button
               disabled={page * 24 >= projects.data.total}
               onClick={() => setPage((p) => p + 1)}
             >
-              Next
+              {" "}
+              {t("Next")}{" "}
             </button>
           </div>
         )}
-        {error && <p role="alert">{error}</p>}
+        {error && <p role="alert">{translateError(error)}</p>}
       </section>
       <ProjectUploadForm
         key={editorKey}

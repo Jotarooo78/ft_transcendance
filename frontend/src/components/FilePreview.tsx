@@ -1,3 +1,5 @@
+import { translate as t, translateError } from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
 /** Aperçu privé chargé à la demande avec un Blob authentifié et une URL locale temporaire. */
 import { useEffect, useState } from "react";
 import { getAccessToken } from "../services/session";
@@ -14,6 +16,7 @@ export default function FilePreview({
   /** Métadonnées du fichier privé prêt à être affiché. */
   file: ReadyFile;
 }) {
+  useLanguage();
   const [result, setResult] = useState<{
     /** Identité de la requête ou de l’état ; empêche d’afficher une réponse devenue périmée. */
     key: string;
@@ -47,14 +50,14 @@ export default function FilePreview({
       if (url) URL.revokeObjectURL(url);
     };
   }, [id, key, token]);
-  if (result.key !== key) return <p role="status">Loading preview…</p>;
-  if (result.error) return <p role="alert">{result.error}</p>;
+  if (result.key !== key) return <p role="status">{t("Loading preview…")}</p>;
+  if (result.error) return <p role="alert">{translateError(result.error)}</p>;
   return (
     <audio
       controls
       preload="metadata"
       src={result.url}
-      aria-label="Private audio preview"
+      aria-label={t("Private audio preview")}
     />
   );
 }

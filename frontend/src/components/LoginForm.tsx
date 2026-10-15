@@ -1,3 +1,5 @@
+import { translate as t, translateError } from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
 import { useState, type SubmitEvent } from "react";
 
 import { loginUser } from "../services/auth";
@@ -17,7 +19,9 @@ const initialForm: LoginFormValues = {
   password: "",
 };
 
+/** Affiche LoginForm dans la langue choisie en conservant son état. */
 function LoginForm({ onLoginSuccess }: LoginFormProps) {
+  useLanguage();
   const [form, setForm] = useState<LoginFormValues>(initialForm);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,7 +57,8 @@ function LoginForm({ onLoginSuccess }: LoginFormProps) {
     <>
       <form onSubmit={handleSubmit}>
         <label>
-          Email
+          {" "}
+          {t("Email")}{" "}
           <input
             type="email"
             required
@@ -69,7 +74,8 @@ function LoginForm({ onLoginSuccess }: LoginFormProps) {
         </label>
 
         <label>
-          Password
+          {" "}
+          {t("Password")}{" "}
           <input
             type="password"
             required
@@ -85,13 +91,13 @@ function LoginForm({ onLoginSuccess }: LoginFormProps) {
         </label>
 
         <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Logging in..." : "Log in"}
+          {isSubmitting ? t("Logging in...") : t("Log in")}
         </button>
       </form>
 
       {errorMessage && (
         <p className="message error-message" role="alert">
-          {errorMessage}
+          {translateError(errorMessage)}
         </p>
       )}
     </>

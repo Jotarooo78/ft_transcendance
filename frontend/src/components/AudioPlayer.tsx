@@ -1,3 +1,5 @@
+import { translate as t, translateError } from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import type { Track } from "../types/music";
 import { ListeningClock } from "../services/listening-clock";
@@ -50,6 +52,7 @@ export default function AudioPlayer({
   onError,
   onBlocked,
 }: AudioPlayerProps) {
+  useLanguage();
   const [tracking, setTracking] = useState<TrackingStatus | null>(null);
   useEffect(() => {
     const audio = audioRef.current;
@@ -241,10 +244,11 @@ export default function AudioPlayer({
       />
       {tracking?.state === "error" && (
         <div className="listening-status" role="status">
-          <span>{tracking.message}</span>
+          <span>{translateError(tracking.message)}</span>
           {tracking.canRetry && (
             <button type="button" onClick={() => active.current?.queue.retry()}>
-              Retry saving
+              {" "}
+              {t("Retry saving")}{" "}
             </button>
           )}
         </div>

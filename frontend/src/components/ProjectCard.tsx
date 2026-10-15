@@ -1,3 +1,9 @@
+import {
+  translate as t,
+  translateState,
+  translateCount,
+} from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
 /** Carte de projet utilisée par le hub et les collections personnelles. */
 import type { MusicProject } from "../types/projects";
 import { openMusic } from "../services/music-navigation";
@@ -8,6 +14,7 @@ export default function ProjectCard({
 }: {
   /** Projet confirmé. */ project: MusicProject;
 }) {
+  useLanguage();
   return (
     <button
       data-scroll-anchor={project.id}
@@ -16,9 +23,10 @@ export default function ProjectCard({
     >
       <ProjectArtwork url={project.coverUrl} />
       <strong>{project.title}</strong>
-      <span>{project.artist?.displayName ?? "Various artists"}</span>
+      <span>{project.artist?.displayName ?? t("Various artists")}</span>
       <small>
-        {project.releaseType.toUpperCase()} · {project.tracks.length} tracks
+        {translateState(project.releaseType).toUpperCase()} ·{" "}
+        {translateCount(project.tracks.length, "track")}
       </small>
     </button>
   );

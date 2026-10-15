@@ -1,3 +1,9 @@
+import {
+  translate as t,
+  translateError,
+  formatNumber,
+} from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
 import RefreshNotice from "../components/RefreshNotice";
 import CollectionButton from "../components/CollectionButton";
 /** Profil musical d’un compte et ses projets publiés. */
@@ -14,6 +20,7 @@ export default function ArtistPage({
 }: {
   /** Compte artiste. */ id: string;
 }) {
+  useLanguage();
   const [page, setPage] = useState(1);
   const resource = useResource(
     useCallback(
@@ -36,9 +43,9 @@ export default function ArtistPage({
     <main className="music-page">
       {!data ? (
         <p role={resource.error ? "alert" : "status"}>
-          {resource.error ?? "Loading artist…"}
+          {translateError(resource.error) || t("Loading artist…")}
           {resource.error && (
-            <button onClick={resource.reload}>Retry artist</button>
+            <button onClick={resource.reload}>{t("Retry artist")}</button>
           )}
         </p>
       ) : (
@@ -48,21 +55,23 @@ export default function ArtistPage({
               <img src={data.artist.avatarUrl} alt="" />
             )}
             <div>
-              <p className="page-label">ARTIST</p>
+              <p className="page-label">{t("ARTIST")}</p>
               <h1>{data.artist.displayName}</h1>
               <p>@{data.artist.username}</p>
               <p>{data.artist.bio}</p>
             </div>
           </header>
           <CollectionButton kind="artist" id={id} />
-          <h2>Projects</h2>
+          <h2>{t("Projects")}</h2>
           <div className="music-grid">
             {data.projects.items.map((project) => (
               <ProjectCard key={project.id} project={project} />
             ))}
           </div>
-          {!data.projects.items.length && <p>No published projects yet.</p>}
-          <h2>Tracks</h2>
+          {!data.projects.items.length && (
+            <p>{t("No published projects yet.")}</p>
+          )}
+          <h2>{t("Tracks")}</h2>
           <div className="music-track-list">
             {data.tracks.items.map((track) => (
               <MusicTrackRow
@@ -75,16 +84,18 @@ export default function ArtistPage({
           </div>
           <div className="music-pagination">
             <button disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
-              Previous
+              {" "}
+              {t("Previous")}{" "}
             </button>
-            <span>Page {page}</span>
+            <span>{t("Page {page}", { page: formatNumber(page) })}</span>
             <button
               disabled={
                 page * 24 >= Math.max(data.projects.total, data.tracks.total)
               }
               onClick={() => setPage((p) => p + 1)}
             >
-              Next
+              {" "}
+              {t("Next")}{" "}
             </button>
           </div>
         </>

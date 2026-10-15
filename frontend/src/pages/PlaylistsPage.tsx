@@ -1,3 +1,10 @@
+import {
+  translate as t,
+  translateError,
+  translateState,
+  translateCount,
+} from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
 import { LibraryMutationError } from "../services/library";
 import RefreshNotice from "../components/RefreshNotice";
 import { openMusic } from "../services/music-navigation";
@@ -61,6 +68,7 @@ function PlaylistEditor({
   /** Demande la fermeture de l’écran ou du composant concerné. */
   onClose: () => void;
 }) {
+  useLanguage();
   const [base, setBase] = useState(playlist);
   const [visibility, setVisibility] = useState(playlist.visibility);
   const [name, setName] = useState(playlist.name);
@@ -84,7 +92,14 @@ function PlaylistEditor({
     if (
       visibility !== base.visibility &&
       !window.confirm(
-        `Make this playlist ${visibility}? ${visibility === "public" ? "Anyone with its link can view it." : "Its public link will no longer show its contents."}`,
+        t("Make this playlist {0}? {1}", {
+          "0": translateState(visibility),
+          "1": t(
+            visibility === "public"
+              ? "Anyone with its link can view it."
+              : "Its public link will no longer show its contents.",
+          ),
+        }),
       )
     )
       return;
@@ -107,10 +122,11 @@ function PlaylistEditor({
     <form
       className="playlist-edit-form"
       onSubmit={submit}
-      aria-label="Edit playlist"
+      aria-label={t("Edit playlist")}
     >
       <label>
-        Name
+        {" "}
+        {t("Name")}{" "}
         <input
           value={name}
           onChange={(event) => setName(event.target.value)}
@@ -119,7 +135,8 @@ function PlaylistEditor({
         />
       </label>
       <label>
-        Description
+        {" "}
+        {t("Description")}{" "}
         <input
           value={description}
           onChange={(event) => setDescription(event.target.value)}
@@ -127,26 +144,28 @@ function PlaylistEditor({
         />
       </label>
       <label>
-        Visibility
+        {" "}
+        {t("Visibility")}{" "}
         <select
-          aria-label="Visibility"
+          aria-label={t("Visibility")}
           value={visibility}
           onChange={(event) =>
             setVisibility(event.target.value as MusicPlaylist["visibility"])
           }
           disabled={saving}
         >
-          <option value="private">Private</option>
-          <option value="public">Public</option>
+          <option value="private">{t("Private")}</option>
+          <option value="public">{t("Public")}</option>
         </select>
       </label>
       <button type="submit" disabled={saving || name.trim() === ""}>
-        {saving ? "Saving…" : "Save changes"}
+        {saving ? t("Saving…") : t("Save changes")}
       </button>
       <button type="button" disabled={saving} onClick={onClose}>
-        Cancel edit
+        {" "}
+        {t("Cancel edit")}{" "}
       </button>
-      {error && <p role="alert">{error}</p>}
+      {error && <p role="alert">{translateError(error)}</p>}
     </form>
   );
 }
@@ -166,6 +185,7 @@ export default function PlaylistsPage({
   onUpdate,
   onDelete,
 }: Props) {
+  useLanguage();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState<MusicPlaylist | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -189,7 +209,10 @@ export default function PlaylistsPage({
    * sélections et le formulaire associés.
    */
   async function handleDelete(playlist: MusicPlaylist) {
-    if (deleting || !window.confirm(`Delete playlist "${playlist.name}"?`))
+    if (
+      deleting ||
+      !window.confirm(t('Delete playlist "{0}"?', { "0": playlist.name }))
+    )
       return;
     setDeleting(true);
     setDeleteError(null);
@@ -238,19 +261,20 @@ export default function PlaylistsPage({
   return (
     <main className="playlists-page">
       <header>
-        <p className="page-label">Your library</p>
-        <h1>Playlists</h1>
-        <p>Create your own collections and choose who can see them.</p>
+        <p className="page-label">{t("Your library")}</p>
+        <h1>{t("Playlists")}</h1>
+        <p>{t("Create your own collections and choose who can see them.")}</p>
       </header>
-      {notice && <p role="status">{notice}</p>}
+      {notice && <p role="status">{translateError(notice)}</p>}
       <section
         className="playlist-section"
         aria-labelledby="create-playlist-title"
       >
-        <h2 id="create-playlist-title">Create a playlist</h2>
+        <h2 id="create-playlist-title">{t("Create a playlist")}</h2>
         <form className="playlist-form" onSubmit={handleSubmit}>
           <label>
-            Name
+            {" "}
+            {t("Name")}{" "}
             <input
               type="text"
               value={name}
@@ -260,7 +284,8 @@ export default function PlaylistsPage({
             />
           </label>
           <label>
-            Description
+            {" "}
+            {t("Description")}{" "}
             <input
               type="text"
               value={description}
@@ -269,45 +294,47 @@ export default function PlaylistsPage({
             />
           </label>
           <label>
-            Visibility
+            {" "}
+            {t("Visibility")}{" "}
             <select
-              aria-label="Visibility"
+              aria-label={t("Visibility")}
               value={visibility}
               onChange={(event) =>
                 setVisibility(event.target.value as MusicPlaylist["visibility"])
               }
               disabled={creating}
             >
-              <option value="private">Private</option>
-              <option value="public">Public</option>
+              <option value="private">{t("Private")}</option>
+              <option value="public">{t("Public")}</option>
             </select>
           </label>
           <button
             type="submit"
             disabled={creating || loading || !!error || name.trim() === ""}
           >
-            {creating ? "Creating…" : "Create playlist"}
+            {creating ? t("Creating…") : t("Create playlist")}
           </button>
-          {createError && <p role="alert">{createError}</p>}
+          {createError && <p role="alert">{translateError(createError)}</p>}
         </form>
       </section>
       <section
         className="playlist-section"
         aria-labelledby="my-playlists-title"
       >
-        <h2 id="my-playlists-title">My playlists</h2>
+        <h2 id="my-playlists-title">{t("My playlists")}</h2>
         {loading ? (
-          <p role="status">Loading playlists…</p>
+          <p role="status">{t("Loading playlists…")}</p>
         ) : error ? (
           <div role="alert">
-            <p>{error}</p>
+            <p>{translateError(error)}</p>
             <button type="button" onClick={onRetry}>
-              Retry playlists
+              {" "}
+              {t("Retry playlists")}{" "}
             </button>
           </div>
         ) : (
           <>
-            {playlists.length === 0 && <p>No playlists yet.</p>}
+            {playlists.length === 0 && <p>{t("No playlists yet.")}</p>}
             <div className="playlist-list">
               {playlists.map((playlist) => (
                 <button
@@ -324,9 +351,10 @@ export default function PlaylistsPage({
                   }}
                 >
                   <strong>{playlist.name}</strong>
-                  <span>{playlist.description || "No description"}</span>
+                  <span>{playlist.description || t("No description")}</span>
                   <span>
-                    {playlist.visibility} · {playlist.items.length} track(s)
+                    {translateState(playlist.visibility)} ·{" "}
+                    {translateCount(playlist.items.length, "track")}
                   </span>
                 </button>
               ))}
@@ -340,11 +368,14 @@ export default function PlaylistsPage({
           aria-labelledby="playlist-tracks-title"
         >
           <div className="playlist-heading">
-            <h2 id="playlist-tracks-title">Tracks in {selected.name}</h2>
+            <h2 id="playlist-tracks-title">
+              {t("Tracks in")} {selected.name}
+            </h2>
             <div className="playlist-heading-actions">
               {selected.visibility === "public" && (
                 <button onClick={() => openMusic("playlists", selected.id)}>
-                  Open public link
+                  {" "}
+                  {t("Open public link")}{" "}
                 </button>
               )}
               <button
@@ -352,7 +383,8 @@ export default function PlaylistsPage({
                 onClick={() => setEditing(selected)}
                 disabled={editing?.id === selected.id || deleting}
               >
-                Edit playlist
+                {" "}
+                {t("Edit playlist")}{" "}
               </button>
               <button
                 type="button"
@@ -361,12 +393,12 @@ export default function PlaylistsPage({
                   void handleDelete(selected);
                 }}
               >
-                {deleting ? "Deleting…" : "Delete playlist"}
+                {deleting ? t("Deleting…") : t("Delete playlist")}
               </button>
             </div>
           </div>
           {deleteError?.id === selected.id && (
-            <p role="alert">{deleteError.message}</p>
+            <p role="alert">{translateError(deleteError.message)}</p>
           )}
           <PlaylistTracks
             key={`tracks:${selected.id}`}

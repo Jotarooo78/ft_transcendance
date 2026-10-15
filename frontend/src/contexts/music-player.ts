@@ -7,6 +7,7 @@ export type PlayOptions = {
   /** Index dans la liste complète. */ index?: number;
   /** Identités des occurrences parallèles aux morceaux. */ ids?: string[];
   /** Origine affichée dans la file. */ source?: string;
+  /** Distingue les libellés de l'application des titres de playlists et projets. */ sourceLocalized?: boolean;
   /** Force le mélange pour le bouton de lecture aléatoire. */ shuffle?: boolean;
   /** Relance la sélection même lorsque son premier titre est courant. */ restart?: boolean;
 };

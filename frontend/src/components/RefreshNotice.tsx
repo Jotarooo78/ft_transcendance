@@ -1,3 +1,5 @@
+import { translate as t, translateError } from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
 /** Signale une relecture échouée sans retirer les dernières données confirmées. */
 /** Le bouton de reprise n’apparaît que lorsqu’une erreur exige une action possible. */
 export default function RefreshNotice({
@@ -9,13 +11,15 @@ export default function RefreshNotice({
   /** Indique si une confirmation précédente reste affichée. */ retained?: boolean;
   /** Relance explicitement la lecture. */ retry: () => void;
 }) {
+  useLanguage();
   if (!error) return null;
   return (
     <p role="status" className="refresh-notice">
       {retained
-        ? "The update failed; the last loaded content is still shown. "
+        ? t("The update failed; the last loaded content is still shown. ")
         : ""}
-      {error} <button onClick={retry}>Retry update</button>
+      {translateError(error)}{" "}
+      <button onClick={retry}>{t("Retry update")}</button>
     </p>
   );
 }

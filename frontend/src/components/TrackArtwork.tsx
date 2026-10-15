@@ -1,3 +1,5 @@
+import { translate as t } from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
 import EmptyArtwork from "./EmptyArtwork";
 /** Pochette publique d’un morceau ; une absence d’image affiche un visuel par défaut. */
 import { useState } from "react";
@@ -9,12 +11,13 @@ export default function TrackArtwork({
 }: {
   /** Morceau et route publique de sa pochette. */ track: Track;
 }) {
+  useLanguage();
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   return track.coverUrl && failedUrl !== track.coverUrl ? (
     <img
       className="track-artwork"
       src={track.coverUrl}
-      alt={`Artwork for ${track.title}`}
+      alt={t("Artwork for {0}", { "0": track.title })}
       onError={() => setFailedUrl(track.coverUrl!)}
     />
   ) : (

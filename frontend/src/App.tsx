@@ -1,3 +1,5 @@
+import { translate as t, translateError } from "./services/translate";
+import { useLanguage } from "./hooks/useLanguage";
 import { useResource } from "./hooks/useResource";
 import LanguageSelector from "./components/LanguageSelector";
 import RefreshNotice from "./components/RefreshNotice";
@@ -63,6 +65,7 @@ function getErrorMessage(error: unknown, fallbackMessage: string): string {
 
 /** Assemble les pages et limite les relectures aux données utilisées par l’écran courant. */
 function App() {
+  useLanguage();
   const musicRoute = useMusicRoute();
   const [currentPage, setCurrentPage] = useState<PublicPage>("register");
 
@@ -273,7 +276,7 @@ function App() {
             <strong className="site-title">FT Music</strong>
             <LanguageSelector />
 
-            <nav className="main-navigation" aria-label="User navigation">
+            <nav className="main-navigation" aria-label={t("User navigation")}>
               <button
                 className={
                   !musicRoute && privatePage === "library"
@@ -283,7 +286,8 @@ function App() {
                 aria-pressed={!musicRoute && privatePage === "library"}
                 onClick={() => navigate("library")}
               >
-                Library
+                {" "}
+                {t("Library")}{" "}
               </button>
               <button
                 type="button"
@@ -295,7 +299,8 @@ function App() {
                 aria-pressed={!musicRoute && privatePage === "files"}
                 onClick={() => navigate("files")}
               >
-                Upload
+                {" "}
+                {t("Upload")}{" "}
               </button>
               <button
                 type="button"
@@ -307,7 +312,8 @@ function App() {
                 aria-pressed={!musicRoute && privatePage === "history"}
                 onClick={() => navigate("history")}
               >
-                History
+                {" "}
+                {t("History")}{" "}
               </button>
               <button
                 type="button"
@@ -321,7 +327,8 @@ function App() {
                   navigate("profile");
                 }}
               >
-                Profile
+                {" "}
+                {t("Profile")}{" "}
               </button>
 
               <button
@@ -336,7 +343,8 @@ function App() {
                   navigate("catalog");
                 }}
               >
-                Catalog
+                {" "}
+                {t("Catalog")}{" "}
               </button>
 
               <button
@@ -351,7 +359,8 @@ function App() {
                   navigate("playlists");
                 }}
               >
-                Playlists
+                {" "}
+                {t("Playlists")}{" "}
               </button>
 
               <button
@@ -366,7 +375,8 @@ function App() {
                   navigate("users");
                 }}
               >
-                Users
+                {" "}
+                {t("Users")}{" "}
               </button>
 
               <button
@@ -376,7 +386,8 @@ function App() {
                   void handleLogout();
                 }}
               >
-                Log out
+                {" "}
+                {t("Log out")}{" "}
               </button>
             </nav>
           </header>
@@ -405,7 +416,7 @@ function App() {
           )}
           {errorMessage && (
             <p className="message error-message" role="alert">
-              {errorMessage}
+              {translateError(errorMessage)}
             </p>
           )}
 
@@ -474,7 +485,8 @@ function App() {
               setCurrentPage("login");
             }}
           >
-            Sign in
+            {" "}
+            {t("Sign in")}{" "}
           </button>
         </header>
         {musicRoute.kind === "playlists" ? (
@@ -493,7 +505,7 @@ function App() {
         <strong className="site-title">FT Music</strong>
         <LanguageSelector />
 
-        <nav className="main-navigation" aria-label="Authentication">
+        <nav className="main-navigation" aria-label={t("Authentication")}>
           <button
             type="button"
             className={
@@ -506,7 +518,8 @@ function App() {
               setCurrentPage("register");
             }}
           >
-            Register
+            {" "}
+            {t("Register")}{" "}
           </button>
 
           <button
@@ -521,7 +534,8 @@ function App() {
               setCurrentPage("login");
             }}
           >
-            Login
+            {" "}
+            {t("Login")}{" "}
           </button>
         </nav>
       </header>

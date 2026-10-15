@@ -19,6 +19,7 @@ export type MusicQueue = {
   /** Mélange activé. */ shuffle: boolean;
   /** Mode de répétition. */ repeat: RepeatMode;
   /** Libellé de la sélection qui a lancé la file. */ source: string;
+  /** Vrai pour un libellé applicatif traduisible ; faux pour un titre saisi par l'utilisateur. */ sourceLocalized?: boolean;
 };
 /** Produit un état neuf, sans partager de tableau mutable. */
 export function emptyQueue(): MusicQueue {
@@ -31,6 +32,7 @@ export function emptyQueue(): MusicQueue {
     shuffle: false,
     repeat: "off",
     source: "Your queue",
+    sourceLocalized: true,
   };
 }
 /** Mélange Fisher–Yates ; l’aléa injectable rend les preuves reproductibles. */
@@ -57,6 +59,7 @@ export function selectQueue(
     ...previous,
     entries,
     source,
+    sourceLocalized: false,
     current,
     shuffle,
     history: [],

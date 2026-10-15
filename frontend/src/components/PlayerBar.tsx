@@ -1,3 +1,5 @@
+import { translate as t, translateError } from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
 import { usePlaybackProgress } from "../contexts/playback-progress";
 /** Barre persistante : mêmes commandes pour tous les points d’entrée musicaux. */
 import { useEffect, useRef, type ReactNode } from "react";
@@ -18,6 +20,7 @@ export default function PlayerBar({
 }: {
   /** Moteur audio et éventuelle erreur de suivi. */ children: ReactNode;
 }) {
+  useLanguage();
   const progress = usePlaybackProgress();
   const player = useMusicPlayer(),
     latest = useRef(player),
@@ -77,7 +80,7 @@ export default function PlayerBar({
       <aside
         ref={bar}
         className="audio-player music-player-bar"
-        aria-label="Audio player"
+        aria-label={t("Audio player")}
       >
         <div className="player-now">
           <TrackArtwork track={player.current.track} />
@@ -94,17 +97,17 @@ export default function PlayerBar({
           <div className="player-controls">
             <button
               className="player-icon-button player-mode"
-              aria-label="Shuffle"
+              aria-label={t("Shuffle")}
               aria-pressed={player.queue.shuffle}
-              title={player.queue.shuffle ? "Shuffle on" : "Shuffle off"}
+              title={player.queue.shuffle ? t("Shuffle on") : t("Shuffle off")}
               onClick={player.shuffle}
             >
               <PlayerIcon name="shuffle" />
             </button>
             <button
               className="player-icon-button"
-              aria-label="Previous track"
-              title="Previous track"
+              aria-label={t("Previous track")}
+              title={t("Previous track")}
               onClick={player.previous}
             >
               <PlayerIcon name="previous" />
@@ -112,8 +115,8 @@ export default function PlayerBar({
             <button
               className={`player-icon-button player-main-toggle${player.loading ? " is-loading" : ""}`}
               aria-busy={player.loading}
-              aria-label={player.playing ? "Pause" : "Play"}
-              title={player.playing ? "Pause" : "Play"}
+              aria-label={player.playing ? t("Pause") : t("Play")}
+              title={player.playing ? t("Pause") : t("Play")}
               onClick={player.toggle}
             >
               <PlayerIcon name={player.playing ? "pause" : "play"} />
@@ -127,17 +130,17 @@ export default function PlayerBar({
             </button>
             <button
               className="player-icon-button"
-              aria-label="Next track"
-              title="Next track"
+              aria-label={t("Next track")}
+              title={t("Next track")}
               onClick={player.next}
             >
               <PlayerIcon name="next" />
             </button>
             <button
               className="player-icon-button player-mode"
-              aria-label={repeatLabel}
+              aria-label={t(repeatLabel)}
               aria-pressed={player.queue.repeat !== "off"}
-              title={repeatLabel}
+              title={t(repeatLabel)}
               onClick={player.repeat}
             >
               <PlayerIcon name="repeat" />
@@ -149,7 +152,7 @@ export default function PlayerBar({
           <div className="player-timeline">
             <span>{time(progress.position)}</span>
             <input
-              aria-label="Playback position"
+              aria-label={t("Playback position")}
               type="range"
               min="0"
               max={progress.duration || 0}
@@ -157,7 +160,10 @@ export default function PlayerBar({
               value={Math.min(progress.position, progress.duration || 0)}
               disabled={!progress.duration}
               onChange={(event) => player.seek(Number(event.target.value))}
-              aria-valuetext={`${time(progress.position)} of ${time(progress.duration)}`}
+              aria-valuetext={t("{0} of {1}", {
+                "0": time(progress.position),
+                "1": time(progress.duration),
+              })}
             />
             <span>{time(progress.duration)}</span>
           </div>
@@ -165,8 +171,8 @@ export default function PlayerBar({
         <div className="player-tools">
           <button
             className="player-icon-button"
-            aria-label={player.muted ? "Unmute" : "Mute"}
-            title={player.muted ? "Unmute" : "Mute"}
+            aria-label={player.muted ? t("Unmute") : t("Mute")}
+            title={player.muted ? t("Unmute") : t("Mute")}
             onClick={player.toggleMute}
           >
             <PlayerIcon
@@ -174,7 +180,7 @@ export default function PlayerBar({
             />
           </button>
           <input
-            aria-label="Volume"
+            aria-label={t("Volume")}
             type="range"
             min="0"
             max="1"
@@ -185,8 +191,8 @@ export default function PlayerBar({
           />
           <button
             className="player-icon-button"
-            aria-label="Queue"
-            title="Queue"
+            aria-label={t("Queue")}
+            title={t("Queue")}
             aria-expanded={player.queueOpen}
             aria-controls="music-queue"
             onClick={() => player.showQueue(!player.queueOpen)}
@@ -195,8 +201,8 @@ export default function PlayerBar({
           </button>
           <button
             className="player-icon-button player-close"
-            aria-label="Close audio player"
-            title="Stop and clear queue"
+            aria-label={t("Close audio player")}
+            title={t("Stop and clear queue")}
             onClick={player.close}
           >
             <PlayerIcon name="close" />
@@ -204,14 +210,14 @@ export default function PlayerBar({
         </div>
         <div className="player-engine">{children}</div>
         <span className="visually-hidden" role="status">
-          {player.loading ? "Loading audio…" : ""}
+          {player.loading ? t("Loading audio…") : ""}
         </span>
         {player.notice && (
           <div className="player-notice" role="status">
-            <span>{player.notice}</span>
+            <span>{translateError(player.notice)}</span>
             {!player.loading &&
               /retry|resume|playable/i.test(player.notice) && (
-                <button onClick={player.retry}>Retry playback</button>
+                <button onClick={player.retry}>{t("Retry playback")}</button>
               )}
           </div>
         )}

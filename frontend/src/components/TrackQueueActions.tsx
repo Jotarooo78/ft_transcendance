@@ -1,3 +1,5 @@
+import { translate as t } from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
 /** Actions de file communes ; le menu natif reste utilisable au clavier. */
 import { useEffect, useRef } from "react";
 import { useMusicPlayer } from "../contexts/music-player";
@@ -9,6 +11,7 @@ export default function TrackQueueActions({
 }: {
   /** Morceau à ajouter comme nouvelle occurrence. */ track: Track;
 }) {
+  useLanguage();
   const player = useMusicPlayer(),
     menu = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
@@ -47,17 +50,19 @@ export default function TrackQueueActions({
       }}
     >
       <summary
-        aria-label={`Queue actions for ${track.title}`}
-        title="Queue actions"
+        aria-label={t("Queue actions for {0}", { "0": track.title })}
+        title={t("Queue actions")}
       >
         <PlayerIcon name="more" />
       </summary>
       <div className="track-queue-popover">
         <button disabled={!track.audioUrl} onClick={() => add(true)}>
-          Play next
+          {" "}
+          {t("Play next")}{" "}
         </button>
         <button disabled={!track.audioUrl} onClick={() => add(false)}>
-          Add to queue
+          {" "}
+          {t("Add to queue")}{" "}
         </button>
       </div>
     </details>

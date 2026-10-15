@@ -1,3 +1,5 @@
+import { translate as t } from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
 /** Vue non modale de la file ; les modifications ne touchent jamais la playlist source. */
 import { useEffect, useRef } from "react";
 import { useMusicPlayer } from "../contexts/music-player";
@@ -6,6 +8,7 @@ import TrackArtwork from "./TrackArtwork";
 import PlayerIcon from "./PlayerIcon";
 /** Place le focus à l’ouverture puis le rend au contrôle d’origine à la fermeture. */
 export default function QueuePanel() {
+  useLanguage();
   const player = useMusicPlayer(),
     panel = useRef<HTMLElement>(null);
   const showQueue = player.showQueue;
@@ -27,7 +30,7 @@ export default function QueuePanel() {
     <aside
       id="music-queue"
       className="queue-panel"
-      aria-label="Playback queue"
+      aria-label={t("Playback queue")}
       tabIndex={-1}
       ref={panel}
       onKeyDown={(event) => {
@@ -39,22 +42,26 @@ export default function QueuePanel() {
     >
       <header>
         <div>
-          <p className="page-label">UP NEXT</p>
-          <h2>Your queue</h2>
+          <p className="page-label">{t("UP NEXT")}</p>
+          <h2>{t("Your queue")}</h2>
         </div>
         <button
           className="player-icon-button"
-          aria-label="Close queue"
-          title="Close queue"
+          aria-label={t("Close queue")}
+          title={t("Close queue")}
           onClick={() => player.showQueue(false)}
         >
           <PlayerIcon name="close" />
         </button>
       </header>
-      <p className="queue-source">{player.queue.source}</p>
+      <p className="queue-source">
+        {player.queue.sourceLocalized
+          ? t(player.queue.source)
+          : player.queue.source}
+      </p>
       {player.current && (
         <>
-          <h3>Now playing</h3>
+          <h3>{t("Now playing")}</h3>
           <div className="queue-current">
             <TrackArtwork track={player.current.track} />
             <div>
@@ -62,21 +69,22 @@ export default function QueuePanel() {
               <span>{player.current.track.artistName}</span>
             </div>
             <span className="queue-current-state">
-              {player.playing ? "Playing" : "Paused"}
+              {player.playing ? t("Playing") : t("Paused")}
             </span>
           </div>
         </>
       )}
       <h3>
-        Next up <span>{next.length}</span>
+        {" "}
+        {t("Next up")} <span>{next.length}</span>
       </h3>
       {!next.length && (
         <p className="queue-empty">
           {player.queue.repeat === "all"
-            ? "The queue will start again."
+            ? t("The queue will start again.")
             : player.queue.repeat === "one"
-              ? "This track will repeat."
-              : "You’re at the end of the queue."}
+              ? t("This track will repeat.")
+              : t("You’re at the end of the queue.")}
         </p>
       )}
       <ol>
@@ -85,7 +93,7 @@ export default function QueuePanel() {
             <button
               className="queue-track"
               onClick={() => player.jump(entry.key)}
-              aria-label={`Play queued ${entry.track.title}`}
+              aria-label={t("Play queued {0}", { "0": entry.track.title })}
             >
               <TrackArtwork track={entry.track} />
               <span>
@@ -96,8 +104,8 @@ export default function QueuePanel() {
             <button
               className="player-icon-button"
               onClick={() => player.remove(entry.key)}
-              aria-label={`Remove queued ${entry.track.title}`}
-              title="Remove from queue"
+              aria-label={t("Remove queued {0}", { "0": entry.track.title })}
+              title={t("Remove from queue")}
             >
               <PlayerIcon name="close" />
             </button>

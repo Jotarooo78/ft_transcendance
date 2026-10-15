@@ -1,3 +1,5 @@
+import { translate as t } from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
 import EmptyArtwork from "./EmptyArtwork";
 /** Pochette commune : URL publique ou lecture privée bornée, avec remplacement visuel en cas d’absence. */
 import { useEffect, useState } from "react";
@@ -13,6 +15,7 @@ export default function ProjectArtwork({
   /** Image déjà publique. */ url?: string | null;
   /** Active la lecture authentifiée. */ personal?: boolean;
 }) {
+  useLanguage();
   const token = getAccessToken(),
     key = `${personal}:${assetId}:${token}`;
   const [result, setResult] = useState<{ key: string; url: string }>({
@@ -43,13 +46,13 @@ export default function ProjectArtwork({
     <img
       className="project-artwork"
       src={image}
-      alt="Project artwork"
+      alt={t("Project artwork")}
       onError={() => setFailed(image)}
     />
   ) : (
     <EmptyArtwork
       className="project-artwork artwork-placeholder"
-      label="Default artwork"
+      label={t("Default artwork")}
     />
   );
 }

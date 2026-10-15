@@ -1,3 +1,5 @@
+import { translate as t, translateCount } from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
 import { getAvatarSource } from "../avatar";
 import { useState } from "react";
 import type { AuthenticatedUser, PublicUser } from "../types/auth";
@@ -18,15 +20,16 @@ type ProfilePageProps = {
   ) => Promise<void>;
 
   onRemoveFriend: (userId: string) => void;
-
 };
 
+/** Affiche ProfilePage dans la langue choisie en conservant son état. */
 function ProfilePage({
   user,
   friends,
   onUpdateProfile,
   onRemoveFriend,
 }: ProfilePageProps) {
+  useLanguage();
   const avatarSource = getAvatarSource(user.avatarUrl);
   const profileBio = user.bio?.trim();
 
@@ -60,8 +63,8 @@ function ProfilePage({
           <button
             className="edit-profile-button"
             type="button"
-            aria-label="Edit profile"
-            title="Edit profile"
+            aria-label={t("Edit profile")}
+            title={t("Edit profile")}
             onClick={() => {
               setIsEditing(true);
             }}
@@ -76,7 +79,7 @@ function ProfilePage({
           <img
             className="profile-avatar"
             src={avatarSource}
-            alt={`${user.displayName}'s avatar`}
+            alt={t("{0}'s avatar", { "0": user.displayName })}
           />
 
           <div className="profile-identity">
@@ -89,10 +92,9 @@ function ProfilePage({
           <>
             {profileBio && <p className="profile-bio">{profileBio}</p>}
 
-            <div className="profile-stats" aria-label="Profile statistics">
+            <div className="profile-stats" aria-label={t("Profile statistics")}>
               <span>
-                <strong>{friends.length}</strong>
-                {friends.length === 1 ? " friend" : " friends"}
+                <strong>{translateCount(friends.length, "friend")}</strong>
               </span>
             </div>
           </>
@@ -111,13 +113,15 @@ function ProfilePage({
 
       <section className="friends-section" aria-labelledby="friends-title">
         <div className="friends-heading">
-          <h2 id="friends-title">Friends</h2>
+          <h2 id="friends-title">{t("Friends")}</h2>
 
-          <span>{friends.length} friend(s)</span>
+          <span>{translateCount(friends.length, "friend")}</span>
         </div>
 
         {friends.length === 0 ? (
-          <p className="empty-friends-message">You have no friends yet.</p>
+          <p className="empty-friends-message">
+            {t("You have no friends yet.")}
+          </p>
         ) : (
           <div className="friend-list">
             {friends.map((friend) => {
@@ -128,7 +132,7 @@ function ProfilePage({
                   <img
                     className="friend-avatar"
                     src={friendAvatarSource}
-                    alt={`${friend.username}'s avatar`}
+                    alt={t("{0}'s avatar", { "0": friend.username })}
                   />
 
                   <div className="friend-information">
@@ -143,7 +147,7 @@ function ProfilePage({
                     >
                       <span className="status-indicator" aria-hidden="true" />
 
-                      {friend.isOnline ? "Online" : "Offline"}
+                      {friend.isOnline ? t("Online") : t("Offline")}
                     </span>
                   </div>
 
@@ -153,9 +157,12 @@ function ProfilePage({
                     onClick={() => {
                       onRemoveFriend(friend.id);
                     }}
-                    aria-label={`Remove ${friend.username} from friends`}
+                    aria-label={t("Remove {0} from friends", {
+                      "0": friend.username,
+                    })}
                   >
-                    Remove
+                    {" "}
+                    {t("Remove")}{" "}
                   </button>
                 </article>
               );

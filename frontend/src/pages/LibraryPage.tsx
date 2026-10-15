@@ -1,3 +1,10 @@
+import {
+  translate as t,
+  translateError,
+  translateCount,
+  formatNumber,
+} from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
 import { RequestError } from "../services/request-json";
 import RefreshNotice from "../components/RefreshNotice";
 import EmptyArtwork from "../components/EmptyArtwork";
@@ -33,6 +40,7 @@ async function loadReference(
 }
 /** Liste une section avec ses indisponibilités et son retrait toujours possible. */
 function SavedSection({ kind }: { kind: CollectionKind }) {
+  useLanguage();
   const collection = useCollections()!,
     [page, setPage] = useState(1);
   const all = collection.data?.[kind] ?? [];
@@ -95,24 +103,26 @@ function SavedSection({ kind }: { kind: CollectionKind }) {
     <>
       {collection.error && (
         <p role="alert">
-          {collection.error}
-          <button onClick={collection.reload}>Retry library</button>
+          {translateError(collection.error)}
+          <button onClick={collection.reload}>{t("Retry library")}</button>
         </p>
       )}
       {resource.error && (
         <p role="alert">
-          {resource.error}
-          <button onClick={resource.reload}>Retry details</button>
+          {translateError(resource.error)}
+          <button onClick={resource.reload}>{t("Retry details")}</button>
         </p>
       )}
       {collection.loading || resource.loading ? (
-        <p role="status">Loading library…</p>
+        <p role="status">{t("Loading library…")}</p>
       ) : (
         <>
           {!all.length && (
             <p>
-              Nothing saved here yet. Explore the catalogue to add something you
-              love.
+              {" "}
+              {t(
+                "Nothing saved here yet. Explore the catalogue to add something you love.",
+              )}{" "}
             </p>
           )}
           <div className={kind === "track" ? "music-track-list" : "music-grid"}>
@@ -123,9 +133,13 @@ function SavedSection({ kind }: { kind: CollectionKind }) {
               if (!data)
                 return (
                   <div className="music-unavailable" key={id}>
-                    <span>{error ?? "Item unavailable"}</span>
+                    <span>
+                      {translateError(error) || t("Item unavailable")}
+                    </span>
                     {error && (
-                      <button onClick={resource.reload}>Retry details</button>
+                      <button onClick={resource.reload}>
+                        {t("Retry details")}
+                      </button>
                     )}
                     <CollectionButton kind={kind} id={id} />
                   </div>
@@ -139,6 +153,7 @@ function SavedSection({ kind }: { kind: CollectionKind }) {
                       item.data?.kind === "track" ? [item.data.value] : [],
                     )}
                     source="Liked tracks"
+                    sourceLocalized
                   />
                 );
               return (
@@ -155,7 +170,8 @@ function SavedSection({ kind }: { kind: CollectionKind }) {
                       <EmptyArtwork className="playlist-artwork" />
                       <strong>{data.value.name}</strong>
                       <span>
-                        {data.value.items.length} tracks · Public playlist
+                        {translateCount(data.value.items.length, "track")} ·{" "}
+                        {t("Public playlist")}{" "}
                       </span>
                     </button>
                   )}
@@ -167,16 +183,18 @@ function SavedSection({ kind }: { kind: CollectionKind }) {
         </>
       )}
       <RefreshNotice error={resource.refreshError} retry={resource.reload} />
-      <nav className="music-pagination" aria-label="Library pagination">
+      <nav className="music-pagination" aria-label={t("Library pagination")}>
         <button disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
-          Previous
+          {" "}
+          {t("Previous")}{" "}
         </button>
-        <span>Page {page}</span>
+        <span>{t("Page {page}", { page: formatNumber(page) })}</span>
         <button
           disabled={page * 24 >= all.length}
           onClick={() => setPage((p) => p + 1)}
         >
-          Next
+          {" "}
+          {t("Next")}{" "}
         </button>
       </nav>
     </>
@@ -184,20 +202,21 @@ function SavedSection({ kind }: { kind: CollectionKind }) {
 }
 /** Retrouve les publications et brouillons du compte dans leur section dédiée. */
 function UploadsSection({ onUploads }: { onUploads: () => void }) {
+  useLanguage();
   const [page, setPage] = useState(1);
   const resource = useResource(
     useCallback((signal) => getProjects(true, page, "", signal), [page]),
   );
   return (
     <>
-      <button onClick={onUploads}>Upload or edit a project</button>
+      <button onClick={onUploads}>{t("Upload or edit a project")}</button>
       {resource.error && (
         <p role="alert">
-          {resource.error}
-          <button onClick={resource.reload}>Retry</button>
+          {translateError(resource.error)}
+          <button onClick={resource.reload}>{t("Retry")}</button>
         </p>
       )}
-      {resource.loading && <p role="status">Loading your uploads…</p>}
+      {resource.loading && <p role="status">{t("Loading your uploads…")}</p>}
       <div className="music-grid">
         {resource.data?.items.map((project) =>
           project.status === "published" ? (
@@ -205,22 +224,26 @@ function UploadsSection({ onUploads }: { onUploads: () => void }) {
           ) : (
             <button key={project.id} className="music-card" onClick={onUploads}>
               <strong>{project.title}</strong>
-              <span>Draft · {project.tracks.length} tracks</span>
+              <span>
+                {t("Draft ·")} {translateCount(project.tracks.length, "track")}
+              </span>
             </button>
           ),
         )}
       </div>
-      {resource.data?.items.length === 0 && <p>No uploads yet.</p>}
+      {resource.data?.items.length === 0 && <p>{t("No uploads yet.")}</p>}
       <nav className="music-pagination">
         <button disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
-          Previous
+          {" "}
+          {t("Previous")}{" "}
         </button>
-        <span>Page {page}</span>
+        <span>{t("Page {page}", { page: formatNumber(page) })}</span>
         <button
           disabled={page * 24 >= (resource.data?.total ?? 0)}
           onClick={() => setPage((p) => p + 1)}
         >
-          Next
+          {" "}
+          {t("Next")}{" "}
         </button>
       </nav>
     </>
@@ -234,6 +257,7 @@ export default function LibraryPage({
   library: ReturnType<typeof useLibrary>;
   onUploads: () => void;
 }) {
+  useLanguage();
   const [section, setSection] = useState<CollectionKind | "owned" | "uploads">(
     "track",
   );
@@ -248,17 +272,17 @@ export default function LibraryPage({
   return (
     <main className="music-page">
       <header>
-        <p className="page-label">YOUR MUSIC</p>
-        <h1>Library</h1>
+        <p className="page-label">{t("YOUR MUSIC")}</p>
+        <h1>{t("Library")}</h1>
       </header>
-      <nav className="music-tabs" aria-label="Library sections">
+      <nav className="music-tabs" aria-label={t("Library sections")}>
         {sections.map(([key, label]) => (
           <button
             key={key}
             aria-pressed={section === key}
             onClick={() => setSection(key)}
           >
-            {label}
+            {t(label)}
           </button>
         ))}
       </nav>

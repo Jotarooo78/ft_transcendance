@@ -1,3 +1,9 @@
+import {
+  translate as t,
+  translateCount,
+  translateError,
+} from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
 import { useState, type SubmitEvent } from "react";
 
 import { registerUser } from "../services/auth";
@@ -24,7 +30,9 @@ const initialForm: RegisterFormValues = {
   passwordConfirmation: "",
 };
 
+/** Affiche RegisterForm dans la langue choisie en conservant son état. */
 function RegisterForm() {
+  useLanguage();
   const [form, setForm] = useState<RegisterFormValues>(initialForm);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -32,7 +40,7 @@ function RegisterForm() {
   const [errorMessage, setErrorMessage] = useState("");
 
   const [registration, setRegistration] = useState<RegisterResponse | null>(
-    null
+    null,
   );
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
@@ -92,7 +100,8 @@ function RegisterForm() {
     <>
       <form onSubmit={handleSubmit}>
         <label>
-          Username
+          {" "}
+          {t("Username")}{" "}
           <input
             type="text"
             required
@@ -111,11 +120,13 @@ function RegisterForm() {
         </label>
 
         <p id="register-username-help">
-          Use 3 to 24 letters (a-z), numbers or underscores.
+          {" "}
+          {t("Use 3 to 24 letters (a-z), numbers or underscores.")}{" "}
         </p>
 
         <label>
-          Display name
+          {" "}
+          {t("Display name")}{" "}
           <input
             type="text"
             required
@@ -131,11 +142,15 @@ function RegisterForm() {
         </label>
 
         <p id="register-display-name-help">
-          The name displayed on your profile. Spaces and accents are welcome.
+          {" "}
+          {t(
+            "The name displayed on your profile. Spaces and accents are welcome.",
+          )}{" "}
         </p>
 
         <label>
-          Email
+          {" "}
+          {t("Email")}{" "}
           <input
             type="email"
             required
@@ -152,7 +167,8 @@ function RegisterForm() {
         </label>
 
         <label>
-          Password
+          {" "}
+          {t("Password")}{" "}
           <input
             type="password"
             required
@@ -170,7 +186,8 @@ function RegisterForm() {
         </label>
 
         <label>
-          Confirm password
+          {" "}
+          {t("Confirm password")}{" "}
           <input
             type="password"
             required
@@ -188,29 +205,31 @@ function RegisterForm() {
         </label>
 
         <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Creating account..." : "Create account"}
+          {isSubmitting ? t("Creating account...") : t("Create account")}
         </button>
       </form>
 
       {errorMessage && (
         <p className="message error-message" role="alert">
-          {errorMessage}
+          {translateError(errorMessage)}
         </p>
       )}
 
       {registration?.status === "registered" && (
         <section className="message success-message" aria-live="polite">
-          <h2>Account created</h2>
-          <p>Your account has been created. You can now log in.</p>
+          <h2>{t("Account created")}</h2>
+          <p>{t("Your account has been created. You can now log in.")}</p>
         </section>
       )}
 
       {registration?.status === "pending" && (
         <section className="message" aria-live="polite">
-          <h2>Registration in progress</h2>
+          <h2>{t("Registration in progress")}</h2>
           <p>
-            Your profile is being created. Try logging in after{" "}
-            {registration.retryAfterSeconds} seconds.
+            {" "}
+            {t("Your profile is being created. Try logging in after {delay}.", {
+              delay: translateCount(registration.retryAfterSeconds, "second"),
+            })}
           </p>
         </section>
       )}

@@ -1,3 +1,5 @@
+import { translate as t } from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
 import ArtistLink from "./ArtistLink";
 import TrackArtwork from "./TrackArtwork";
 import type { Track } from "../types/music";
@@ -13,7 +15,7 @@ type TrackCardProps = {
  * lorsque la durée manque.
  */
 function formatDuration(durationSeconds: number | null): string {
-  if (durationSeconds === null) return "Unknown";
+  if (durationSeconds === null) return t("Unknown");
   const minutes = Math.floor(durationSeconds / 60);
 
   const seconds = Math.floor(durationSeconds % 60);
@@ -23,6 +25,7 @@ function formatDuration(durationSeconds: number | null): string {
 
 /** Présente le morceau publié, son visuel et le compte artiste consultable. */
 function TrackCard({ track, isSelected, onPlay }: TrackCardProps) {
+  useLanguage();
   return (
     <article className="track-card" data-track-id={track.id}>
       <TrackArtwork track={track} />
@@ -34,17 +37,19 @@ function TrackCard({ track, isSelected, onPlay }: TrackCardProps) {
 
       <dl className="track-information">
         <div>
-          <dt>Artist</dt>
-          <dd><ArtistLink track={track} /></dd>
+          <dt>{t("Artist")}</dt>
+          <dd>
+            <ArtistLink track={track} />
+          </dd>
         </div>
 
         <div>
-          <dt>Album</dt>
+          <dt>{t("Album")}</dt>
           <dd>{track.albumTitle}</dd>
         </div>
 
         <div>
-          <dt>Duration</dt>
+          <dt>{t("Duration")}</dt>
           <dd>{formatDuration(track.durationSeconds)}</dd>
         </div>
       </dl>
@@ -57,7 +62,7 @@ function TrackCard({ track, isSelected, onPlay }: TrackCardProps) {
           onPlay(track);
         }}
       >
-        {isSelected ? "Selected" : "Play"}
+        {isSelected ? t("Selected") : t("Play")}
       </button>
     </article>
   );

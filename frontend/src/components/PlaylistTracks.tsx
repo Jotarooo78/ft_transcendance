@@ -1,3 +1,5 @@
+import { translate as t, translateError } from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
 import RefreshNotice from "./RefreshNotice";
 import { useState } from "react";
 import { useTrackDetails } from "../hooks/useTrackDetails";
@@ -15,6 +17,7 @@ export default function PlaylistTracks({
     itemId: string,
   ) => Promise<MusicPlaylist>;
 }) {
+  useLanguage();
   const player = useMusicPlayer();
   const details = useTrackDetails(playlist.items.map((item) => item.trackId));
   const [removing, setRemoving] = useState(false),
@@ -47,9 +50,9 @@ export default function PlaylistTracks({
         error={details.error ?? details.refreshError}
         retry={details.reload}
       />
-      {error && <p role="alert">{error}</p>}
+      {error && <p role="alert">{translateError(error)}</p>}
       {!playlist.items.length && (
-        <p>This playlist does not contain any tracks yet.</p>
+        <p>{t("This playlist does not contain any tracks yet.")}</p>
       )}
       {!!queue.length && (
         <div className="music-section-heading">
@@ -63,7 +66,8 @@ export default function PlaylistTracks({
               })
             }
           >
-            Play playlist
+            {" "}
+            {t("Play playlist")}{" "}
           </button>
           <button
             onClick={() => {
@@ -77,7 +81,8 @@ export default function PlaylistTracks({
               });
             }}
           >
-            Shuffle play
+            {" "}
+            {t("Shuffle play")}{" "}
           </button>
         </div>
       )}
@@ -86,7 +91,8 @@ export default function PlaylistTracks({
           const track = details.data?.[item.trackId];
           const action = onRemove && (
             <button disabled={removing} onClick={() => void remove(item.id)}>
-              Remove track
+              {" "}
+              {t("Remove track")}{" "}
             </button>
           );
           return (
@@ -103,7 +109,9 @@ export default function PlaylistTracks({
                 />
               ) : (
                 <div className="music-unavailable">
-                  {details.loading ? "Loading track…" : "Track unavailable"}
+                  {details.loading
+                    ? t("Loading track…")
+                    : t("Track unavailable")}
                   {action}
                 </div>
               )}
@@ -112,7 +120,7 @@ export default function PlaylistTracks({
         })}
       </ol>
       {!details.loading && queue.length < playlist.items.length && (
-        <button onClick={details.reload}>Retry track details</button>
+        <button onClick={details.reload}>{t("Retry track details")}</button>
       )}
     </>
   );

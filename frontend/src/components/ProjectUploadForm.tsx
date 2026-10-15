@@ -1,3 +1,5 @@
+import { translate as t, translateError } from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
 import EmptyArtwork from "./EmptyArtwork";
 /** Formulaire de projet ; les transferts et sauvegardes appartiennent à useProjectUpload. */
 import { useEffect, useRef, useState } from "react";
@@ -17,6 +19,7 @@ export default function ProjectUploadForm({
   ) => void;
   /** Ouvre la publication confirmée. */ onPublished: (p: MusicProject) => void;
 }) {
+  useLanguage();
   const editor = useProjectUpload(initial, onSaved);
   const [preview, setPreview] = useState("");
   const previewUrl = useRef("");
@@ -48,7 +51,7 @@ export default function ProjectUploadForm({
       <div
         className="project-type-picker"
         role="group"
-        aria-label="Release type"
+        aria-label={t("Release type")}
       >
         {(["single", "album", "mixtape", "ep"] as ProjectType[]).map((type) => (
           <button
@@ -59,10 +62,10 @@ export default function ProjectUploadForm({
             onClick={() => editor.setType(type)}
           >
             {type === "single"
-              ? "Single track"
+              ? t("Single track")
               : type === "ep"
-                ? "EP"
-                : type[0].toUpperCase() + type.slice(1)}
+                ? t("EP")
+                : t(type[0].toUpperCase() + type.slice(1))}
           </button>
         ))}
       </div>
@@ -77,11 +80,12 @@ export default function ProjectUploadForm({
         <span className="upload-symbol" aria-hidden="true">
           ↑
         </span>
-        <h2>Drop your music here</h2>
+        <h2>{t("Drop your music here")}</h2>
         <label className="upload-file-label">
-          Choose audio files
+          {" "}
+          {t("Choose audio files")}{" "}
           <input
-            aria-label="Audio files"
+            aria-label={t("Audio files")}
             type="file"
             accept="audio/*,.mp3,.wav,.flac,.m4a,.ogg,.opus"
             multiple={editor.type !== "single"}
@@ -93,16 +97,19 @@ export default function ProjectUploadForm({
           />
         </label>
         <p>
-          Up to 500 MB per track · Your work stays in a draft until you publish.
+          {" "}
+          {t(
+            "Up to 500 MB per track · Your work stays in a draft until you publish.",
+          )}{" "}
         </p>
       </div>
       <div className="publish-layout">
         <div className="publish-artwork">
           <div className="publish-artwork-preview">
             {editor.cover ? (
-              <img src={preview} alt="Selected artwork" />
+              <img src={preview} alt={t("Selected artwork")} />
             ) : editor.saved?.coverUrl && editor.coverId ? (
-              <img src={editor.saved.coverUrl} alt="Project artwork" />
+              <img src={editor.saved.coverUrl} alt={t("Project artwork")} />
             ) : editor.coverId && !editor.defaultCover ? (
               <ProjectArtwork assetId={editor.coverId} personal />
             ) : artwork && !editor.defaultCover ? (
@@ -112,9 +119,10 @@ export default function ProjectUploadForm({
             )}
           </div>
           <label>
-            Artwork
+            {" "}
+            {t("Artwork")}{" "}
             <input
-              aria-label="Cover image"
+              aria-label={t("Cover image")}
               type="file"
               accept="image/png,image/jpeg,image/webp"
               disabled={disabled}
@@ -129,28 +137,34 @@ export default function ProjectUploadForm({
               editor.removeCover();
             }}
           >
-            Use default artwork
+            {" "}
+            {t("Use default artwork")}{" "}
           </button>
           <p className="publish-help">
-            Optional · JPG, PNG or WebP · Up to 25 MB
+            {" "}
+            {t("Optional · JPG, PNG or WebP · Up to 25 MB")}{" "}
           </p>
         </div>
         <div className="publish-fields">
           <label>
-            Title
+            {" "}
+            {t("Title")}{" "}
             <input
-              aria-label="Project title"
+              aria-label={t("Project title")}
               value={editor.title}
               maxLength={200}
               placeholder={
-                editor.type === "single" ? "Untitled track" : "Untitled project"
+                editor.type === "single"
+                  ? t("Untitled track")
+                  : t("Untitled project")
               }
               disabled={disabled}
               onChange={(event) => editor.setTitle(event.target.value)}
             />
           </label>
           <label>
-            Description
+            {" "}
+            {t("Description")}{" "}
             <textarea
               rows={4}
               value={editor.description}
@@ -165,7 +179,7 @@ export default function ProjectUploadForm({
                 <span className="track-number">{index + 1}</span>
                 <div>
                   <input
-                    aria-label={`Track ${index + 1} title`}
+                    aria-label={t("Track {0} title", { "0": index + 1 })}
                     value={row.title}
                     maxLength={200}
                     disabled={disabled}
@@ -175,27 +189,29 @@ export default function ProjectUploadForm({
                   />
                   <small>
                     {row.state === "ready"
-                      ? "✓ Ready"
+                      ? t("✓ Ready")
                       : row.state === "waiting"
-                        ? "Waiting"
+                        ? t("Waiting")
                         : row.state === "error"
-                          ? row.error
+                          ? translateError(row.error)
                           : row.progress?.phase === "validating"
-                            ? "Preparing audio…"
-                            : `Uploading ${row.progress?.percent ?? 0}%`}
+                            ? t("Preparing audio…")
+                            : t("Uploading {0}%", {
+                                "0": row.progress?.percent ?? 0,
+                              })}
                   </small>
                   {row.progress?.phase === "sending" && (
                     <progress
                       max={100}
                       value={row.progress.percent ?? undefined}
-                      aria-label={`Upload ${index + 1}`}
+                      aria-label={t("Upload {0}", { "0": index + 1 })}
                     />
                   )}
                 </div>
                 <div className="track-row-actions">
                   <button
                     type="button"
-                    aria-label={`Move track ${index + 1} up`}
+                    aria-label={t("Move track {0} up", { "0": index + 1 })}
                     disabled={disabled || index === 0}
                     onClick={() => editor.move(index, -1)}
                   >
@@ -203,7 +219,7 @@ export default function ProjectUploadForm({
                   </button>
                   <button
                     type="button"
-                    aria-label={`Move track ${index + 1} down`}
+                    aria-label={t("Move track {0} down", { "0": index + 1 })}
                     disabled={disabled || index === editor.rows.length - 1}
                     onClick={() => editor.move(index, 1)}
                   >
@@ -215,13 +231,14 @@ export default function ProjectUploadForm({
                       disabled={disabled}
                       onClick={() => void editor.retry(row)}
                     >
-                      Retry
+                      {" "}
+                      {t("Retry")}{" "}
                     </button>
                   )}
                   <button
                     type="button"
                     disabled={disabled}
-                    aria-label={`Remove track ${index + 1}`}
+                    aria-label={t("Remove track {0}", { "0": index + 1 })}
                     onClick={() => editor.remove(row.key)}
                   >
                     ×
@@ -235,8 +252,8 @@ export default function ProjectUploadForm({
       <footer className="publish-footer">
         <p>
           {editor.saved?.status === "published"
-            ? "Your project is published."
-            : "Only you can see this draft."}
+            ? t("Your project is published.")
+            : t("Only you can see this draft.")}
         </p>
         <div>
           <button
@@ -245,10 +262,10 @@ export default function ProjectUploadForm({
             onClick={() => void editor.save(false)}
           >
             {editor.busy
-              ? "Saving…"
+              ? t("Saving…")
               : editor.saved?.status === "published"
-                ? "Save changes"
-                : "Save draft"}
+                ? t("Save changes")
+                : t("Save draft")}
           </button>
           <button
             className="publish-primary"
@@ -260,19 +277,19 @@ export default function ProjectUploadForm({
             }
           >
             {editor.busy
-              ? "Saving…"
+              ? t("Saving…")
               : editor.saved?.status === "published"
-                ? "Save publication"
-                : "Publish"}
+                ? t("Save publication")
+                : t("Publish")}
           </button>
         </div>
       </footer>
       {editor.error && (
         <p role="alert" className="publish-error">
-          {editor.error}
+          {translateError(editor.error)}
         </p>
       )}
-      {editor.message && <p role="status">{editor.message}</p>}
+      {editor.message && <p role="status">{translateError(editor.message)}</p>}
       {editor.saved?.status === "published" && (
         <button
           type="button"
@@ -280,7 +297,8 @@ export default function ProjectUploadForm({
             if (editor.saved) onPublished(editor.saved);
           }}
         >
-          View in catalogue
+          {" "}
+          {t("View in catalogue")}{" "}
         </button>
       )}
     </form>

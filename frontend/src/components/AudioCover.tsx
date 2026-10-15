@@ -1,3 +1,5 @@
+import { translate as t } from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
 import EmptyArtwork from "./EmptyArtwork";
 /** Image privée de l’audio, chargée avec un Blob borné et remplacée sans conserver l’ancienne image d’un autre compte. */
 import { useEffect, useState } from "react";
@@ -11,6 +13,7 @@ export default function AudioCover({
 }: {
   /** Audio privé et métadonnées de sa pochette facultative. */ file: ReadyFile;
 }) {
+  useLanguage();
   const [failedUrl, setFailedUrl] = useState("");
   const token = getAccessToken(),
     coverId = file.cover?.id,
@@ -45,7 +48,7 @@ export default function AudioCover({
   }, [file, key, token]);
   if (!coverId)
     return (
-      <EmptyArtwork className="audio-cover-placeholder" label="No cover" />
+      <EmptyArtwork className="audio-cover-placeholder" label={t("No cover")} />
     );
   if (
     result.key !== key ||
@@ -56,14 +59,14 @@ export default function AudioCover({
     return (
       <EmptyArtwork
         className="audio-cover-placeholder"
-        label="Cover unavailable"
+        label={t("Cover unavailable")}
       />
     );
   return (
     <img
       className="audio-cover"
       src={result.url}
-      alt="Audio cover"
+      alt={t("Audio cover")}
       onError={() => setFailedUrl(result.url!)}
     />
   );

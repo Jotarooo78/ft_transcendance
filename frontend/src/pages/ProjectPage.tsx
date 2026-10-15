@@ -1,3 +1,11 @@
+import {
+  translate as t,
+  translateError,
+  translateState,
+  translateCount,
+  formatDate,
+} from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
 import RefreshNotice from "../components/RefreshNotice";
 import CollectionButton from "../components/CollectionButton";
 /** Présentation publique d’un album, EP, mixtape ou titre seul. */
@@ -14,6 +22,7 @@ export default function ProjectPage({
 }: {
   /** Identité de l’adresse courante. */ id: string;
 }) {
+  useLanguage();
   const resource = useResource(
     useCallback((signal) => getProject(id, false, signal), [id]),
   );
@@ -23,9 +32,11 @@ export default function ProjectPage({
     return (
       <main className="music-page">
         <p role={resource.error ? "alert" : "status"}>
-          {resource.error ?? "Loading project…"}
+          {translateError(resource.error) || t("Loading project…")}
         </p>
-        {resource.error && <button onClick={resource.reload}>Retry</button>}
+        {resource.error && (
+          <button onClick={resource.reload}>{t("Retry")}</button>
+        )}
       </main>
     );
   return (
@@ -33,7 +44,9 @@ export default function ProjectPage({
       <header className="project-hero">
         <ProjectArtwork url={project.coverUrl} />
         <div>
-          <p className="page-label">{project.releaseType.toUpperCase()}</p>
+          <p className="page-label">
+            {translateState(project.releaseType).toUpperCase()}
+          </p>
           <h1>{project.title}</h1>
           <p>
             {project.artist && (
@@ -44,7 +57,8 @@ export default function ProjectPage({
                 {project.artist.displayName}
               </button>
             )}{" "}
-            · {project.releaseDate} · {project.tracks.length} tracks
+            · {formatDate(project.releaseDate)} ·{" "}
+            {translateCount(project.tracks.length, "track")}
           </p>
           <p className="track-description">{project.description}</p>
         </div>
@@ -61,7 +75,8 @@ export default function ProjectPage({
               });
           }}
         >
-          Play project
+          {" "}
+          {t("Play project")}{" "}
         </button>
         <button
           disabled={!project.tracks.length}
@@ -76,7 +91,8 @@ export default function ProjectPage({
               });
           }}
         >
-          Shuffle play
+          {" "}
+          {t("Shuffle play")}{" "}
         </button>
         <CollectionButton kind="project" id={id} />
       </div>

@@ -1,3 +1,9 @@
+import {
+  translate as t,
+  translateError,
+  formatNumber,
+} from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
 import RefreshNotice from "../components/RefreshNotice";
 /** Hub musical : une recherche et trois familles de résultats indépendantes. */
 import { useCallback, useState } from "react";
@@ -23,6 +29,7 @@ export default function CatalogPage({
   ) => Promise<MusicPlaylist>;
   /** Ancien point d’entrée conservé durant la transition de navigation. */ initialTrack?: Track | null;
 }) {
+  useLanguage();
   const [query, setQuery] = useState(""),
     [category, setCategory] = useState<Category>("all"),
     [page, setPage] = useState(1);
@@ -89,14 +96,14 @@ export default function CatalogPage({
   return (
     <main className="music-page catalog-hub">
       <header>
-        <p className="page-label">DISCOVER</p>
-        <h1>Find your next sound.</h1>
+        <p className="page-label">{t("DISCOVER")}</p>
+        <h1>{t("Find your next sound.")}</h1>
       </header>
       <input
         className="music-search"
-        aria-label="Search music"
+        aria-label={t("Search music")}
         type="search"
-        placeholder="Artists, projects, tracks"
+        placeholder={t("Artists, projects, tracks")}
         value={query}
         maxLength={200}
         onChange={(event) => {
@@ -105,7 +112,11 @@ export default function CatalogPage({
         }}
       />
       {(query || category !== "all") && (
-        <div className="music-tabs" role="group" aria-label="Search category">
+        <div
+          className="music-tabs"
+          role="group"
+          aria-label={t("Search category")}
+        >
           {(["all", "artists", "projects", "tracks"] as Category[]).map(
             (item) => (
               <button
@@ -113,28 +124,29 @@ export default function CatalogPage({
                 aria-pressed={category === item}
                 onClick={() => select(item)}
               >
-                {item[0].toUpperCase() + item.slice(1)}
+                {t(item[0].toUpperCase() + item.slice(1))}
               </button>
             ),
           )}
         </div>
       )}
       {resource.loading ? (
-        <p role="status">Searching your music…</p>
+        <p role="status">{t("Searching your music…")}</p>
       ) : resource.error ? (
         <div role="alert">
-          {resource.error}
-          <button onClick={resource.reload}>Retry</button>
+          {translateError(resource.error)}
+          <button onClick={resource.reload}>{t("Retry")}</button>
         </div>
       ) : (
         <>
           {data?.artists && (
             <section>
               <div className="music-section-heading">
-                <h2>Artists</h2>
+                <h2>{t("Artists")}</h2>
                 {category === "all" && (
                   <button onClick={() => select("artists")}>
-                    See all artists
+                    {" "}
+                    {t("See all artists")}{" "}
                   </button>
                 )}
               </div>
@@ -143,16 +155,17 @@ export default function CatalogPage({
                   <ArtistCard key={artist.userId} artist={artist} />
                 ))}
               </div>
-              {!data.artists.total && <p>No artists found.</p>}
+              {!data.artists.total && <p>{t("No artists found.")}</p>}
             </section>
           )}
           {data?.projects && (
             <section>
               <div className="music-section-heading">
-                <h2>Projects</h2>
+                <h2>{t("Projects")}</h2>
                 {category === "all" && (
                   <button onClick={() => select("projects")}>
-                    See all projects
+                    {" "}
+                    {t("See all projects")}{" "}
                   </button>
                 )}
               </div>
@@ -161,16 +174,17 @@ export default function CatalogPage({
                   <ProjectCard key={project.id} project={project} />
                 ))}
               </div>
-              {!data.projects.total && <p>No projects found.</p>}
+              {!data.projects.total && <p>{t("No projects found.")}</p>}
             </section>
           )}
           {data?.tracks && (
             <section>
               <div className="music-section-heading">
-                <h2>Tracks</h2>
+                <h2>{t("Tracks")}</h2>
                 {category === "all" && (
                   <button onClick={() => select("tracks")}>
-                    See all tracks
+                    {" "}
+                    {t("See all tracks")}{" "}
                   </button>
                 )}
               </div>
@@ -185,17 +199,20 @@ export default function CatalogPage({
                         : data.tracks!.items.slice(0, limit)
                     }
                     source={query.trim() ? "Search" : "Catalogue"}
+                    sourceLocalized
                     extra={
                       playlists.length > 0 ? (
                         <select
-                          aria-label={`Add ${track.title} to playlist`}
+                          aria-label={t("Add {0} to playlist", {
+                            "0": track.title,
+                          })}
                           value=""
                           disabled={adding}
                           onChange={(event) =>
                             void add(track, event.target.value)
                           }
                         >
-                          <option value="">Add to playlist</option>
+                          <option value="">{t("Add to playlist")}</option>
                           {playlists.map((p) => (
                             <option key={p.id} value={p.id}>
                               {p.name}
@@ -207,7 +224,7 @@ export default function CatalogPage({
                   />
                 ))}
               </div>
-              {!data.tracks.total && <p>No tracks found.</p>}
+              {!data.tracks.total && <p>{t("No tracks found.")}</p>}
             </section>
           )}
           {category !== "all" && !!total && (
@@ -216,22 +233,28 @@ export default function CatalogPage({
                 disabled={page === 1}
                 onClick={() => setPage((p) => p - 1)}
               >
-                Previous
+                {" "}
+                {t("Previous")}{" "}
               </button>
               <span>
-                Page {page} of {Math.ceil(total / 24)}
+                {" "}
+                {t("Page {page} of {pages}", {
+                  page: formatNumber(page),
+                  pages: formatNumber(Math.ceil(total / 24)),
+                })}
               </span>
               <button
                 disabled={page * 24 >= total}
                 onClick={() => setPage((p) => p + 1)}
               >
-                Next
+                {" "}
+                {t("Next")}{" "}
               </button>
             </div>
           )}
         </>
       )}
-      {message && <p role="status">{message}</p>}
+      {message && <p role="status">{translateError(message)}</p>}
       <RefreshNotice error={resource.refreshError} retry={resource.reload} />
     </main>
   );

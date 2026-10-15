@@ -1,3 +1,5 @@
+import { translate as t, translateError } from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
 import {
   createPlaybackProgress,
   PlaybackProgressContext,
@@ -33,6 +35,7 @@ export default function MusicPlayerProvider({
   /** Compte servant uniquement de clé locale ; absent en consultation invitée. */ accountId?: string;
   /** Pages utilisant le lecteur. */ children: ReactNode;
 }) {
+  useLanguage();
   const [saved] = useState(() => readPlayer(accountId));
   const [initialPosition, setInitialPosition] = useState(0);
   const ready = useRef(!saved?.entries.length),
@@ -99,6 +102,7 @@ export default function MusicPlayerProvider({
           history: saved.history.filter((key) => keys.has(key)),
           forward: saved.forward.filter((key) => keys.has(key)),
           source: saved.source,
+          sourceLocalized: saved.sourceLocalized,
           shuffle: saved.shuffle,
           repeat: saved.repeat,
         };
@@ -226,15 +230,16 @@ export default function MusicPlayerProvider({
     }
     failed.current.clear();
     setNotice("");
-    start(
-      selectQueue(
+    start({
+      ...selectQueue(
         entries,
         index,
         queueRef.current,
         options.source ?? "Selected tracks",
         options.shuffle,
       ),
-    );
+      sourceLocalized: options.sourceLocalized ?? options.source === undefined,
+    });
   }
   /** Passe au suivant ou termine en conservant la dernière sélection visible. */
   function advance(natural = false) {
@@ -383,13 +388,14 @@ export default function MusicPlayerProvider({
         {children}
         {!current && notice && (
           <div className="player-empty-notice" role="status">
-            <span>{notice}</span>
+            <span>{translateError(notice)}</span>
             {!ready.current && (
               <button onClick={() => setRestoreAttempt((value) => value + 1)}>
-                Retry restoration
+                {" "}
+                {t("Retry restoration")}{" "}
               </button>
             )}
-            <button onClick={value.close}>Dismiss</button>
+            <button onClick={value.close}>{t("Dismiss")}</button>
           </div>
         )}
         {current && (

@@ -1,3 +1,4 @@
+import { useLanguage } from "../hooks/useLanguage";
 /** Carte d’un compte artiste, distincte des pochettes carrées de projets. */
 import type { MusicArtist } from "../types/projects";
 import { openMusic } from "../services/music-navigation";
@@ -7,6 +8,7 @@ export default function ArtistCard({
 }: {
   /** Identité publique actuelle. */ artist: MusicArtist;
 }) {
+  useLanguage();
   return (
     <button
       data-scroll-anchor={artist.userId}

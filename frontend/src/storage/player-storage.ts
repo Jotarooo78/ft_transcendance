@@ -13,6 +13,7 @@ export type SavedPlayer = {
   /** Parcours récent pour précédent. */ history: string[];
   /** Retour en avant après précédent. */ forward: string[];
   /** Libellé de l’origine. */ source: string;
+  /** Absent sur les anciennes sauvegardes : leur libellé est conservé tel quel. */ sourceLocalized?: boolean;
   /** Aléatoire activé. */ shuffle: boolean;
   /** Mode de répétition validé. */ repeat: RepeatMode;
   /** Position en secondes. */ position: number;
@@ -34,6 +35,8 @@ export function validSavedPlayer(value: unknown): value is SavedPlayer {
     !Array.isArray(s.entries) ||
     s.entries.length > 10000 ||
     typeof s.source !== "string" ||
+    (s.sourceLocalized !== undefined &&
+      typeof s.sourceLocalized !== "boolean") ||
     s.source.length > 240 ||
     typeof s.shuffle !== "boolean" ||
     typeof s.muted !== "boolean" ||
@@ -110,6 +113,7 @@ export function writePlayer(
     history: queue.history,
     forward: queue.forward,
     source: queue.source.slice(0, 240),
+    sourceLocalized: queue.sourceLocalized,
     shuffle: queue.shuffle,
     repeat: queue.repeat,
     position: Math.max(0, position),

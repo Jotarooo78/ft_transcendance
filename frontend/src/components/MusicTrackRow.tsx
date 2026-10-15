@@ -1,3 +1,5 @@
+import { translate as t } from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
 import CollectionButton from "./CollectionButton";
 /** Ligne de morceau commune au catalogue, aux projets, à la bibliothèque et à l’historique. */
 import type { ReactNode } from "react";
@@ -17,15 +19,18 @@ export default function MusicTrackRow({
   queueIds,
   queueIndex,
   source,
+  sourceLocalized,
 }: {
   /** Morceau confirmé. */ track: Track;
   /** Ordre de lecture facultatif. */ queue?: Track[];
   /** Identités des places de la liste complète. */ queueIds?: string[];
   /** Place choisie, distincte de l’identité du morceau. */ queueIndex?: number;
   /** Origine de la sélection affichée dans la file. */ source?: string;
+  /** Indique que l'origine est un libellé applicatif à traduire. */ sourceLocalized?: boolean;
   /** Rang affiché dans un projet. */ number?: number;
   /** Informations et actions du contexte. */ extra?: ReactNode;
 }) {
+  useLanguage();
   const player = useMusicPlayer();
   const occurrence = queueIds?.[queueIndex ?? 0] ?? track.id;
   const active =
@@ -33,7 +38,12 @@ export default function MusicTrackRow({
     (!queueIds || player.currentOccurrence === occurrence);
   /** Un clic sur la surface de la ligne reprend le titre courant sans le recommencer. */
   function play() {
-    player.play(track, queue, { ids: queueIds, index: queueIndex, source });
+    player.play(track, queue, {
+      ids: queueIds,
+      index: queueIndex,
+      source,
+      sourceLocalized,
+    });
   }
   const seconds = Math.floor(track.durationSeconds ?? 0);
   return (
@@ -42,7 +52,7 @@ export default function MusicTrackRow({
       className={`music-track-row${active ? " is-current" : ""}${active && player.playing ? " is-playing" : ""}`}
       tabIndex={track.audioUrl ? 0 : undefined}
       role="group"
-      aria-label={`${track.title}${active ? (player.playing ? ", playing" : ", paused") : ""}`}
+      aria-label={`${track.title}${active ? (player.playing ? t(", playing") : t(", paused")) : ""}`}
       aria-current={active ? "true" : undefined}
       onClick={(event) => {
         if (
@@ -69,7 +79,7 @@ export default function MusicTrackRow({
     >
       <button
         className="track-play"
-        aria-label={`${active && player.playing ? "Pause" : "Play"} ${track.title}`}
+        aria-label={`${active && player.playing ? t("Pause") : t("Play")} ${track.title}`}
         disabled={!track.audioUrl}
         onClick={() => (active ? player.toggle() : play())}
       >

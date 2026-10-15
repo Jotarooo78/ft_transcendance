@@ -1,3 +1,4 @@
+import { useLanguage } from "../hooks/useLanguage";
 import RefreshNotice from "./RefreshNotice";
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import { useResource } from "../hooks/useResource";
@@ -12,6 +13,7 @@ export default function CollectionsProvider({
   /** Pages où les boutons de collection ou la bibliothèque sont visibles. */ active?: boolean;
   children: ReactNode;
 }) {
+  useLanguage();
   const resource = useResource(
     useCallback(async (signal) => {
       const kinds: CollectionKind[] = [

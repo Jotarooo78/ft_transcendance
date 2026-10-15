@@ -1,3 +1,9 @@
+import {
+  translate as t,
+  translateCount,
+  translateError,
+} from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
 /** Panneau de détail chargé indépendamment de la liste Catalogue, avec annulation et nouvelle tentative locale. */
 import { useEffect, useRef, useState } from "react";
 import ArtistLink from "./ArtistLink";
@@ -19,6 +25,7 @@ export default function TrackDetails({
   /** Demande la fermeture de l’écran ou du composant concerné. */
   onClose: () => void;
 }) {
+  useLanguage();
   const panel = useRef<HTMLElement>(null);
   const player = useMusicPlayer();
   const [retry, setRetry] = useState(0);
@@ -55,19 +62,20 @@ export default function TrackDetails({
     <section
       ref={panel}
       tabIndex={-1}
-      aria-label="Track details"
+      aria-label={t("Track details")}
       onKeyDown={(e) => {
         if (e.key === "Escape") onClose();
       }}
     >
-      <h2>Track details</h2>
+      <h2>{t("Track details")}</h2>
       {result.key !== key ? (
-        <p role="status">Loading track…</p>
+        <p role="status">{t("Loading track…")}</p>
       ) : result.error ? (
         <div role="alert">
-          <p>{result.error}</p>
+          <p>{translateError(result.error)}</p>
           <button type="button" onClick={() => setRetry((n) => n + 1)}>
-            Retry detail
+            {" "}
+            {t("Retry detail")}{" "}
           </button>
         </div>
       ) : null}
@@ -75,31 +83,33 @@ export default function TrackDetails({
         <>
           <TrackArtwork track={track} />
           <dl>
-            <dt>Title</dt>
+            <dt>{t("Title")}</dt>
             <dd>{track.title}</dd>
-            <dt>Artists</dt>
+            <dt>{t("Artists")}</dt>
             <dd>
               <ArtistLink track={track} />
             </dd>
-            <dt>Album</dt>
-            <dd>{track.albumTitle || "No album"}</dd>
-            <dt>Genre</dt>
-            <dd>{track.genre || "Unknown"}</dd>
-            <dt>Duration</dt>
+            <dt>{t("Album")}</dt>
+            <dd>{track.albumTitle || t("No album")}</dd>
+            <dt>{t("Genre")}</dt>
+            <dd>{track.genre || t("Unknown")}</dd>
+            <dt>{t("Duration")}</dt>
             <dd>
               {track.durationSeconds === null
-                ? "Unknown"
-                : `${track.durationSeconds} seconds`}
+                ? t("Unknown")
+                : translateCount(track.durationSeconds, "second")}
             </dd>
           </dl>
           <p className="track-description">{track.description}</p>
           <button type="button" onClick={() => player.play(track)}>
-            Listen to {track.title}
+            {" "}
+            {t("Listen to")} {track.title}
           </button>
         </>
       )}
       <button type="button" onClick={onClose}>
-        Close details
+        {" "}
+        {t("Close details")}{" "}
       </button>
     </section>
   );
