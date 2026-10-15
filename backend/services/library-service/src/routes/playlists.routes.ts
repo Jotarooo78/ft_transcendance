@@ -11,7 +11,7 @@
  * `/api/library/playlists`, ce service reçoit `/playlists`.
  */
 
-import { PageQuerySchema, type App } from '@ft/service-kit'
+import { PageQuerySchema, noStore, type App } from '@ft/service-kit'
 import type { PlaylistsController } from '../controllers/playlists.controller.js'
 import {
   CreatePlaylistBodySchema,
@@ -24,14 +24,22 @@ import {
 
 /**
  * @brief Déclare les cinq routes de playlists sur le serveur.
- * @details Toutes portent `onRequest: app.authenticate` : le jeton de connexion est vérifié dès
+ * @details Les routes personnelles portent `onRequest: app.authenticate` : le jeton est vérifié dès
  *   l'arrivée de la requête, avant toute validation. Un visiteur non connecté reçoit `401` quelle
  *   que soit sa requête.
  * @param app Serveur Fastify sur lequel déclarer les routes.
  * @param playlists Contrôleur dont les fonctions répondent à ces routes.
  */
 export function registerPlaylistsRoutes(app: App, playlists: PlaylistsController) {
-  const onRequest = app.authenticate
+  app.get(
+    '/public/playlists/:id',
+    {
+      onRequest: noStore,
+      schema: { params: PlaylistParamsSchema, response: { 200: PlaylistSchema } },
+    },
+    playlists.publicShow
+  )
+  const onRequest = [noStore, app.authenticate]
   const params = PlaylistParamsSchema
 
   app.get(

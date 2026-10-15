@@ -1,3 +1,5 @@
+import { createCollectionsRepository } from './repositories/collections.repository.js'
+import { createCollectionTargets } from './clients/collection-targets.client.js'
 /**
  * @file server.ts
  * @brief Programme principal de library-service : c'est ce fichier que Docker lance (`npm run
@@ -37,6 +39,10 @@ const prisma = createPrisma(config.databaseUrl)
  */
 const app = await buildApp(config, {
   playlists: createPlaylistsRepository(prisma),
+  collections: {
+    repository: createCollectionsRepository(prisma),
+    targets: createCollectionTargets(config.catalogUrl, config.usersUrl),
+  },
   catalog: createCatalogClient(config.catalogUrl),
   ready: () => prisma.$queryRaw`SELECT 1`,
   close: () => prisma.$disconnect(),

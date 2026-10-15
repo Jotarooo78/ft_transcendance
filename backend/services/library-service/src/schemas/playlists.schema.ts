@@ -20,6 +20,9 @@ import { Type, type Static } from 'typebox'
  * @details Toute modification doit le fournir. Le serveur le compare à la version réelle pour
  *   détecter une modification concurrente.
  */
+const visibility = Type.Union([Type.Literal('private'), Type.Literal('public')])
+
+/** @brief Version de concurrence attendue. */
 const expectedVersion = Type.Integer({ minimum: 1, maximum: Number.MAX_SAFE_INTEGER })
 
 /** @brief Partie variable de l'URL `/playlists/:id` : l'identifiant de la playlist. */
@@ -36,7 +39,11 @@ export const PlaylistItemParamsSchema = Type.Object({ id: UuidSchema, itemId: Uu
  *   rien d'autre.
  */
 export const CreatePlaylistBodySchema = Type.Object(
-  { name: Type.String(), description: Type.Optional(Type.String()) },
+  {
+    name: Type.String(),
+    description: Type.Optional(Type.String()),
+    visibility: Type.Optional(visibility),
+  },
   { additionalProperties: false }
 )
 
@@ -48,6 +55,7 @@ export const EditPlaylistBodySchema = Type.Object(
   {
     name: Type.Optional(Type.String()),
     description: Type.Optional(Type.String()),
+    visibility: Type.Optional(visibility),
     expectedVersion,
   },
   { additionalProperties: false }
@@ -70,6 +78,7 @@ export const PlaylistSchema = Type.Object({
   id: Type.String(),
   name: Type.String(),
   description: Type.String(),
+  visibility,
   version: Type.Integer(),
   items: Type.Array(
     Type.Object({ id: Type.String(), trackId: Type.String(), position: Type.Integer() })

@@ -33,6 +33,7 @@ test('the public playlist has a safe version, separate occurrences and no owner 
     id: 'p',
     name: 'Private',
     description: '',
+    visibility: 'private',
     version: 1,
     items,
   })

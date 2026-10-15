@@ -72,11 +72,6 @@ export function createProfilesController(profiles: ProfilesService) {
      */
     async directory(request: FastifyRequest) {
       return {
-        /** Profil public d’artiste avec sa bio ; aucune donnée de connexion n’est renvoyée. */
-        artist(request: FastifyRequest<{ Params: { userId: string } }>) {
-          if (!isUuid(request.params.userId)) throw invalidUserId()
-          return profiles.me(request.params.userId.toLowerCase())
-        },
         users: await profiles.directory(request.userId),
       }
     },

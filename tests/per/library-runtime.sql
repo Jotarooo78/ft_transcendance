@@ -42,5 +42,12 @@ DELETE FROM library.track_favorites
 WHERE user_id = '50000000-0000-4000-8000-000000000099'
   AND track_id = '50000000-0000-4000-8000-000000000098';
 
+-- La nouvelle table de références reste accessible au seul rôle Library.
+INSERT INTO library.saved_items(user_id, kind, target_id)
+VALUES ('50000000-0000-4000-8000-000000000099', 'project', '50000000-0000-4000-8000-000000000098');
+UPDATE library.saved_items SET created_at=now() WHERE kind='project';
+SELECT count(*) FROM library.saved_items;
+DELETE FROM library.saved_items WHERE kind='project';
+
 -- Retire les écritures d’essai de cette transaction après les assertions.
 ROLLBACK;

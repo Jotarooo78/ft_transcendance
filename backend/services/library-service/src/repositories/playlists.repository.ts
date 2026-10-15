@@ -5,9 +5,8 @@
  * @details Un repository est la couche qui parle à la base. Il sait quelles tables lire et comment,
  *   mais ne décide de rien : c'est le service qui l'appelle et qui applique les règles.
  *
- * Précaution appliquée à toutes les lectures de ce fichier : elles filtrent sur le propriétaire.
- * Même si une erreur se glissait ailleurs dans le code, il est impossible de lire ici la playlist
- * d'un autre compte.
+ * Les lectures personnelles filtrent sur le propriétaire. La lecture de partage
+ * vérifie séparément la visibilité publique actuelle.
  */
 
 import type { Pagination } from '@ft/service-kit'
@@ -37,15 +36,22 @@ const orderedItems = { items: { orderBy: { position: 'asc' } } } as const
  */
 export function createPlaylistsRepository(prisma: Database) {
   /**
-   * @brief Fabrique la condition « playlists privées appartenant à ce compte », utilisée par toutes
-   *   les lectures.
+   * @brief Fabrique la condition « playlists appartenant à ce compte », utilisée par les
+   *   lectures personnelles.
    * @param owner Identifiant du compte.
    * @returns La condition à passer à Prisma.
    */
-  const privateOf = (owner: string) => ({ ownerUserId: owner, visibility: 'private' })
+  const ownedBy = (owner: string) => ({ ownerUserId: owner })
 
   return {
     ...createPlaylistMutations(prisma),
+    /** @brief Lit seulement une playlist actuellement publique, sans cache. */
+    findPublic(id: string): Promise<PlaylistRow | null> {
+      return prisma.playlist.findFirst({
+        where: { id, visibility: 'public' },
+        include: orderedItems,
+      })
+    },
 
     /**
      * @brief Lit une page des playlists d'un compte.
@@ -56,7 +62,7 @@ export function createPlaylistsRepository(prisma: Database) {
      * @returns Les playlists de la page et le nombre total de playlists du compte.
      */
     async list(owner: string, { page, pageSize }: Pagination) {
-      const where = privateOf(owner)
+      const where = ownedBy(owner)
       const [rows, total] = await prisma.$transaction(
         [
           prisma.playlist.findMany({
@@ -82,21 +88,26 @@ export function createPlaylistsRepository(prisma: Database) {
      */
     find(owner: string, id: string): Promise<PlaylistRow | null> {
       return prisma.playlist.findFirst({
-        where: { id, ...privateOf(owner) },
+        where: { id, ...ownedBy(owner) },
         include: orderedItems,
       })
     },
 
     /**
      * @brief Crée une playlist vide.
-     * @details Elle est privée et commence à la version 1.
+     * @details Elle commence à la version 1, privée sauf choix explicite du propriétaire.
      * @param owner Identifiant du compte propriétaire.
      * @param input Nom et description déjà vérifiés.
      * @returns La playlist créée.
      */
     create(owner: string, input: PlaylistInput): Promise<PlaylistRow> {
       return prisma.playlist.create({
-        data: { ...input, ownerUserId: owner, visibility: 'private', version: 1n },
+        data: {
+          ...input,
+          ownerUserId: owner,
+          visibility: input.visibility ?? 'private',
+          version: 1n,
+        },
         include: { items: true },
       })
     },

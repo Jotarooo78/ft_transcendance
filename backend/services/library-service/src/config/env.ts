@@ -21,6 +21,7 @@ const EnvSchema = Type.Object({
   PORT: Type.Optional(Type.String({ pattern: '^[0-9]+$' })),
   LIBRARY_DATABASE_URL: Type.String({ minLength: 1 }),
   JWT_SECRET: Type.String({ minLength: 1 }),
+  USER_SERVICE_URL: Type.Optional(Type.String({ minLength: 1 })),
   CATALOG_SERVICE_URL: Type.Optional(Type.String({ minLength: 1 })),
 })
 
@@ -31,7 +32,13 @@ const EnvSchema = Type.Object({
  *   servant à vérifier les jetons de connexion, identique dans tous les services. `catalogUrl` :
  *   adresse de catalog-service sur le réseau interne.
  */
-export type Config = { port: number; databaseUrl: string; jwtSecret: string; catalogUrl: string }
+export type Config = {
+  port: number
+  databaseUrl: string
+  jwtSecret: string
+  catalogUrl: string
+  usersUrl: string
+}
 
 /**
  * @brief Port utilisé quand `PORT` n'est pas définie. Docker Compose ne la définit pas : c'est donc
@@ -56,6 +63,7 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): Config {
     port: Number(env.PORT ?? defaultPort),
     databaseUrl: env.LIBRARY_DATABASE_URL,
     jwtSecret: env.JWT_SECRET,
+    usersUrl: env.USER_SERVICE_URL ?? 'http://user-service:4001',
     catalogUrl: env.CATALOG_SERVICE_URL ?? defaultCatalogUrl,
   }
 }

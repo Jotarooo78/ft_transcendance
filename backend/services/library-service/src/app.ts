@@ -1,3 +1,8 @@
+import type { CollectionsRepository } from './repositories/collections.repository.js'
+import type { CollectionTargets } from './clients/collection-targets.client.js'
+import { createCollectionsService } from './services/collections.service.js'
+import { createCollectionsController } from './controllers/collections.controller.js'
+import { registerCollectionsRoutes } from './routes/collections.routes.js'
 /**
  * @file app.ts
  * @brief Assemblage du serveur web de library-service.
@@ -32,6 +37,8 @@ const service = 'library-service'
 
 /** @brief Tout ce que le serveur reçoit de l'extérieur pour fonctionner. */
 export type Dependencies = {
+  /** @brief Dépendances des références personnelles ; injectées en production. */
+  collections?: { repository: CollectionsRepository; targets: CollectionTargets }
   /**
    * @brief Objet qui lit et écrit les playlists en base (voir
    *   repositories/playlists.repository.ts).
@@ -58,8 +65,8 @@ export type Dependencies = {
 
 /**
  * @brief Construit le serveur web de library-service, sans ouvrir de port.
- * @details Toutes les routes de ce service sont privées : `authPlugin` installe la vérification du
- *   jeton de connexion, que chaque route utilise. En cas de panne imprévue, le client reçoit `503
+ * @details Les routes personnelles utilisent `authPlugin` pour vérifier le jeton.
+ *   Seule la lecture explicite de partage est publique. En cas de panne imprévue, le client reçoit `503
  *   library_unavailable`.
  * @param config Configuration ; seul le secret des jetons (`jwtSecret`) est utilisé ici.
  * @param dependencies Repository, client du catalogue, test de disponibilité et fonction de
@@ -88,5 +95,12 @@ export async function buildApp(config: Pick<Config, 'jwtSecret'>, dependencies: 
     createPlaylistItemsController(createPlaylistItemsService(playlists, catalog))
   )
 
+  if (dependencies.collections) {
+    const { repository, targets } = dependencies.collections
+    registerCollectionsRoutes(
+      app,
+      createCollectionsController(createCollectionsService(repository, targets, playlists))
+    )
+  }
   return app
 }

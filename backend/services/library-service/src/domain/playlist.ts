@@ -7,8 +7,8 @@
  *   données. Ses fonctions sont « pures » : elles transforment une valeur en une autre sans rien
  *   lire ni écrire ailleurs, ce qui les rend très faciles à tester.
  *
- * Deux idées à connaître pour ce service. Une playlist appartient à un seul compte et n'est visible
- * que par lui. Et elle porte un numéro de version qui augmente de 1 à chaque modification : quand
+ * Deux idées à connaître pour ce service. Une playlist appartient à un seul compte ; son propriétaire peut
+ * choisir de la rendre publique. Et elle porte un numéro de version qui augmente de 1 à chaque modification : quand
  * un client veut la modifier, il envoie la version qu'il a lue ; si entre-temps elle a changé (par
  * exemple depuis un autre onglet), la modification est refusée au lieu d'écraser le changement
  * précédent.
@@ -37,6 +37,8 @@ export type Playlist = {
   name: string
   /** @brief Description ; chaîne vide quand il n'y en a pas. */
   description: string
+  /** @brief Visibilité confirmée par le serveur. */
+  visibility: 'private' | 'public'
   /** @brief Numéro de version, incrémenté à chaque modification. */
   version: number
   /** @brief Occurrences, dans l'ordre des positions. */
@@ -44,7 +46,7 @@ export type Playlist = {
 }
 
 /** @brief Nom et description d'une playlist, une fois nettoyés et vérifiés. */
-export type PlaylistInput = { name: string; description: string }
+export type PlaylistInput = { name: string; description: string; visibility?: 'private' | 'public' }
 /**
  * @brief Modifications à appliquer à une playlist. Un champ absent signifie « ne pas toucher à ce
  *   champ ».
@@ -63,6 +65,8 @@ export type PlaylistRow = {
   name: string
   /** @brief Description, ou null. */
   description: string | null
+  /** @brief Visibilité stockée ; unlisted historique est traité comme privé. */
+  visibility?: string
   /** @brief Numéro de version stocké. */
   version: bigint
   /** @brief Occurrences de la playlist. */
@@ -123,8 +127,16 @@ function cleanDescription(value: string): string {
  * @throws {DomainError} `400 invalid_request` si le nom ou la description ne respecte pas ses
  *   limites.
  */
-export function toPlaylistInput(body: { name: string; description?: string }): PlaylistInput {
-  return { name: cleanName(body.name), description: cleanDescription(body.description ?? '') }
+export function toPlaylistInput(body: {
+  name: string
+  description?: string
+  visibility?: 'private' | 'public'
+}): PlaylistInput {
+  return {
+    name: cleanName(body.name),
+    description: cleanDescription(body.description ?? ''),
+    visibility: body.visibility ?? 'private',
+  }
 }
 
 /**
@@ -136,11 +148,16 @@ export function toPlaylistInput(body: { name: string; description?: string }): P
  * @throws {DomainError} `400 invalid_request` si aucun champ n'est fourni ou si une limite est
  *   dépassée.
  */
-export function toPlaylistChanges(body: { name?: string; description?: string }): PlaylistChanges {
-  if (body.name === undefined && body.description === undefined) {
+export function toPlaylistChanges(body: {
+  name?: string
+  description?: string
+  visibility?: 'private' | 'public'
+}): PlaylistChanges {
+  if (body.name === undefined && body.description === undefined && body.visibility === undefined) {
     throw invalidRequest()
   }
   return {
+    ...(body.visibility === undefined ? {} : { visibility: body.visibility }),
     ...(body.name === undefined ? {} : { name: cleanName(body.name) }),
     ...(body.description === undefined ? {} : { description: cleanDescription(body.description) }),
   }
@@ -163,6 +180,7 @@ export function toPlaylist(row: PlaylistRow): Playlist {
     id: row.id,
     name: row.name,
     description: row.description ?? '',
+    visibility: row.visibility === 'public' ? 'public' : 'private',
     version: Number(row.version),
     items: row.items.map(({ id, trackId, position }) => ({ id, trackId, position })),
   }

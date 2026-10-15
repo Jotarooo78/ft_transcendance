@@ -12,7 +12,14 @@ import { test } from 'node:test'
 import { buildTestApp, createFakePlaylists, other, owner, playlistId, emptyRow } from './helpers.js'
 
 /** @brief Forme attendue de la playlist d'exemple dans une réponse. */
-const playlist = { id: playlistId, name: 'Private', description: '', version: 1, items: [] }
+const playlist = {
+  id: playlistId,
+  name: 'Private',
+  description: '',
+  visibility: 'private',
+  version: 1,
+  items: [],
+}
 
 test('JWT verification precedes storage and ownership scopes every read', async (t) => {
   const { repository, state } = createFakePlaylists()
@@ -120,7 +127,7 @@ test('create uses the authenticated owner and validates the entire body', async 
     { name: 'ok', description: 'x'.repeat(2001) },
     { name: 'ok', description: null },
     { name: 'ok', ownerUserId: other },
-    { name: 'ok', visibility: 'public' },
+    { name: 'ok', visibility: 'unlisted' },
     { name: 'ok', version: 5 },
   ]
   for (const payload of refused) {
@@ -160,7 +167,7 @@ test('edit validates all fields before an atomic versioned update', async (t) =>
     { expectedVersion: 1, name: ' ', description: 'valid' },
     { expectedVersion: 1, name: 'valid', description: 'x'.repeat(2001) },
     { expectedVersion: 1, name: 'valid', ownerUserId: other },
-    { expectedVersion: 1, description: 'valid', visibility: 'public' },
+    { expectedVersion: 1, description: 'valid', visibility: 'unlisted' },
     { name: 'valid' },
     { name: 'valid', expectedVersion: 0 },
   ]
@@ -230,4 +237,33 @@ test('delete requires ownership and the current version; repeats are explicit 40
   assert.equal((await remove(url, payload)).statusCode, 404)
   assert.equal(state.writes, 1)
   assert.equal(lookups, 0)
+})
+
+test('public link is revoked immediately; owner can still edit and strangers cannot', async (t) => {
+  const fake = createFakePlaylists()
+  const { app, bearer } = await buildTestApp({ playlists: fake.repository })
+  t.after(() => app.close())
+  const url = `/public/playlists/${playlistId}`
+  assert.equal((await app.inject(url)).statusCode, 404)
+  const patch = (visibility: string, expectedVersion: number, subject = owner) =>
+    app.inject({
+      method: 'PATCH',
+      url: `/playlists/${playlistId}`,
+      headers: bearer(subject),
+      payload: { visibility, expectedVersion },
+    })
+  assert.equal((await patch('public', 1, other)).statusCode, 404)
+  assert.equal((await patch('public', 1)).statusCode, 200)
+  const shared = await app.inject(url)
+  assert.equal(shared.statusCode, 200)
+  assert.equal(shared.headers['cache-control'], 'no-store')
+  assert.equal(shared.json().visibility, 'public')
+  assert.equal(shared.json().ownerUserId, undefined)
+  assert.equal((await patch('private', 1)).statusCode, 409)
+  assert.equal((await patch('private', 2)).statusCode, 200)
+  assert.equal((await app.inject(url)).statusCode, 404)
+  assert.equal(
+    (await app.inject({ url: `/playlists/${playlistId}`, headers: bearer(owner) })).statusCode,
+    200
+  )
 })

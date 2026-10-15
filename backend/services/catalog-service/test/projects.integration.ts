@@ -100,6 +100,8 @@ try {
   })
   assert.equal(response.statusCode, 200, response.body)
   const date = response.json().releaseDate
+  const firstPublication = (await db.release.findUniqueOrThrow({ where: { id } })).publishedAt
+  assert.ok(firstPublication)
   assert.equal(await db.track.count({ where: { id: { in: audio }, status: 'published' } }), 3)
   response = await app.inject({
     method: 'POST',
@@ -120,6 +122,8 @@ try {
     response.json().tracks.map((t: { id: string }) => t.id),
     [...audio].reverse()
   )
+  assert.equal((await db.release.findUniqueOrThrow({ where: { id } })).publishedAt?.toISOString(), firstPublication.toISOString())
+  assert.equal((await projects.list('', 1, 24)).items[0]?.id, id)
   const draft = randomUUID(),
     draftAudio = randomUUID()
   response = await app.inject({

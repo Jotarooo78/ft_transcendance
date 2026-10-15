@@ -51,6 +51,10 @@ const keyOf = (request: Versioned<{ expectedVersion: number }>) => ({
  */
 export function createPlaylistsController(playlists: PlaylistsService) {
   return {
+    /** @brief Lit une playlist publique sans identité de visiteur. */
+    publicShow(request: FastifyRequest<{ Params: PlaylistParams }>) {
+      return playlists.getPublic(request.params.id.toLowerCase())
+    },
     /**
      * @brief Répond à `GET /playlists` : renvoie une page des playlists du compte connecté.
      * @param request Requête reçue ; `request.query` contient `page` et `pageSize`.

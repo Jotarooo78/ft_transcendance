@@ -35,6 +35,7 @@ ALTER TABLE library._prisma_migrations OWNER TO library_migration;
 ALTER TABLE library.playlists OWNER TO library_migration;
 ALTER TABLE library.playlist_items OWNER TO library_migration;
 ALTER TABLE library.track_favorites OWNER TO library_migration;
+ALTER TABLE library.saved_items OWNER TO library_migration;
 
 ALTER SCHEMA playback OWNER TO playback_migration;
 ALTER TABLE playback._prisma_migrations OWNER TO playback_migration;

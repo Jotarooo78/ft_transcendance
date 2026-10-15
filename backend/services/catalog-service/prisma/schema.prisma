@@ -147,6 +147,8 @@ model Release {
   releaseType  String    @map("release_type")
   /// Date de sortie sans heure ni fuseau, contrairement aux dates techniques de création.
   releaseDate  DateTime? @map("release_date") @db.Date
+  /// Instant de première publication, immuable pour classer les ajouts récents.
+  publishedAt DateTime? @map("published_at") @db.Timestamptz(6)
   /// UUID logique de la couverture Media ; protège la suppression même pour une sortie en brouillon.
   coverAssetId String?   @map("cover_asset_id") @db.Uuid
   /// draft ou published ; les lectures publiques filtrent published.
@@ -161,6 +163,7 @@ model Release {
   /// Associations aux morceaux, selon le modèle local contenant cette relation.
   tracks  ReleaseTrack[]
 
+  @@index([status, publishedAt(sort: Desc), id], map: "releases_recent_idx")
   @@map("releases")
   @@schema("catalog")
 }
