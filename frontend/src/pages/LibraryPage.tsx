@@ -1,3 +1,4 @@
+import EmptyArtwork from "../components/EmptyArtwork";
 import { useCallback, useState } from "react";
 import { useCollections } from "../contexts/collections";
 import { useResource } from "../hooks/useResource";
@@ -119,7 +120,7 @@ function SavedSection({ kind }: { kind: CollectionKind }) {
                       className="music-card playlist-card"
                       onClick={() => openMusic("playlists", id)}
                     >
-                      <span className="playlist-artwork">♫</span>
+                      <EmptyArtwork className="playlist-artwork" />
                       <strong>{data.value.name}</strong>
                       <span>
                         {data.value.items.length} tracks · Public playlist

@@ -1404,7 +1404,6 @@ form > p[id$="-help"],
   object-fit: contain;
   border-radius: 8px;
   background: #272936;
-  margin-bottom: 12px;
 }
 .track-artwork-placeholder {
   display: grid;

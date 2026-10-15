@@ -1,3 +1,4 @@
+import EmptyArtwork from "./EmptyArtwork";
 /** Formulaire de projet ; les transferts et sauvegardes appartiennent à useProjectUpload. */
 import { useEffect, useRef, useState } from "react";
 import { useProjectUpload } from "../hooks/useProjectUpload";
@@ -107,7 +108,7 @@ export default function ProjectUploadForm({
             ) : artwork && !editor.defaultCover ? (
               <AudioCover file={artwork} />
             ) : (
-              <div className="publish-artwork-placeholder">♪</div>
+              <EmptyArtwork className="publish-artwork-placeholder" />
             )}
           </div>
           <label>

@@ -897,7 +897,7 @@ aucun conflit.
   Cette mesure ne reproduit pas le ressenti au trackpad physique.
 - [x] Chargement audio : couleur lavande, anneau retardé de 200 ms et statut accessible
   sans ligne visible supplémentaire. Lint/build et test navigateur de hauteur stable.
-- [ ] Pochettes vectorielles communes.
+- [x] Pochettes vectorielles communes : centre et limites vérifiés en Chromium à 1024, 1280 et 1440 px, y compris après refus des images.
 - [ ] Actualisation commune et intégration des écrans.
 - [ ] Comparaison finale du rendu, parcours globaux et publication.
 - Compréhension utilisateur et ressenti physique au trackpad : non validés à sa place.

@@ -1,3 +1,4 @@
+import EmptyArtwork from "../components/EmptyArtwork";
 import { useCallback, useEffect } from "react";
 import { useResource } from "../hooks/useResource";
 import { getPublicPlaylist } from "../services/library";
@@ -24,9 +25,7 @@ export default function PublicPlaylistPage({ id }: { id: string }) {
       {playlist ? (
         <>
           <header className="project-hero">
-            <div className="playlist-artwork" aria-hidden="true">
-              ♫
-            </div>
+            <EmptyArtwork className="playlist-artwork" />
             <div>
               <p className="page-label">PUBLIC PLAYLIST</p>
               <h1>{playlist.name}</h1>

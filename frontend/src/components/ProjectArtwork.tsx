@@ -1,3 +1,4 @@
+import EmptyArtwork from "./EmptyArtwork";
 /** Pochette commune : URL publique ou lecture privée bornée, avec remplacement visuel en cas d’absence. */
 import { useEffect, useState } from "react";
 import { readProjectArtwork } from "../services/read-files";
@@ -46,11 +47,9 @@ export default function ProjectArtwork({
       onError={() => setFailed(image)}
     />
   ) : (
-    <div
+    <EmptyArtwork
       className="project-artwork artwork-placeholder"
-      aria-label="Default artwork"
-    >
-      ♪
-    </div>
+      label="Default artwork"
+    />
   );
 }

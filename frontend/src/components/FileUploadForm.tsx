@@ -1,3 +1,4 @@
+import EmptyArtwork from "./EmptyArtwork";
 /** Ajout public d’un morceau : transfert immédiat, édition simultanée et publication confirmée séparément. */
 import { useEffect, useRef, useState, type SubmitEvent } from "react";
 import { validateFile } from "../services/validate-file";
@@ -151,7 +152,7 @@ export default function FileUploadForm({ user, onPublished }: Props) {
       <div className="publish-layout">
         <div className="publish-artwork">
           <div className="publish-artwork-preview">
-            {coverChoice === "manual" && cover && coverUrl ? <img src={coverUrl} alt="Selected cover" /> : coverChoice === "embedded" && asset ? <AudioCover file={asset} /> : <div className="publish-artwork-placeholder" aria-label="No cover">♪</div>}
+            {coverChoice === "manual" && cover && coverUrl ? <img src={coverUrl} alt="Selected cover" /> : coverChoice === "embedded" && asset ? <AudioCover file={asset} /> : <EmptyArtwork className="publish-artwork-placeholder" label="No cover" />}
             <button type="button" className="cover-select" disabled={publishing} onClick={() => coverInput.current?.click()}>Choose artwork</button>
           </div>
           <input className="visually-hidden" aria-label="Cover image" ref={coverInput} type="file" accept="image/png,image/jpeg,image/webp" disabled={publishing} onChange={event => void selectCover(event.target.files?.[0] ?? null)} />

@@ -25,6 +25,7 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 1200));
     await route.continue();
   });
+  await page.route("**/artwork", (route) => route.abort());
   await page.goto(base + "/#/projects/" + project.id);
   await page.getByRole("button", { name: "Play project", exact: true }).click();
   const bar = page.locator(".music-player-bar");
@@ -43,6 +44,35 @@ try {
   assert.equal(await page.locator(".player-loading-ring").count(), 0);
   assert.equal(await page.locator(".player-notice").count(), 0);
   await page.getByRole("button", { name: "Pause", exact: true }).click();
+  await page.getByRole("button", { name: "Queue", exact: true }).click();
+  /** Contrôle le centre géométrique et le débordement dans les cartes, lignes et file. */
+  for (const width of [1024, 1280, 1440]) {
+    await page.setViewportSize({ width, height: 800 });
+    const boxes = await page.locator(".empty-artwork").evaluateAll((elements) =>
+      elements.map((element) => {
+        const box = element.getBoundingClientRect(),
+          svg = element.querySelector("svg").getBoundingClientRect();
+        return {
+          width: box.width,
+          height: box.height,
+          dx: Math.abs((svg.left + svg.right - box.left - box.right) / 2),
+          dy: Math.abs((svg.top + svg.bottom - box.top - box.bottom) / 2),
+          fits:
+            svg.left >= box.left &&
+            svg.right <= box.right &&
+            svg.top >= box.top &&
+            svg.bottom <= box.bottom,
+        };
+      }),
+    );
+    assert(boxes.length >= 4);
+    assert(
+      boxes.every((box) => box.fits && box.dx < 1 && box.dy < 1),
+      JSON.stringify(boxes),
+    );
+  }
+  await page.screenshot({ path: "/tmp/music-interface.png", fullPage: true });
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Next track", exact: true }).click();
   await page.locator(".player-loading-ring").waitFor({ state: "attached" });
   await page

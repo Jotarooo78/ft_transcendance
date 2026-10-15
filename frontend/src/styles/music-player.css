@@ -222,7 +222,7 @@ body.has-music-player {
   background: var(--lavender);
   border-radius: 12px;
 }
-.queue-current > div {
+.queue-current > div:not(.track-artwork) {
   min-width: 0;
   flex: 1;
 }

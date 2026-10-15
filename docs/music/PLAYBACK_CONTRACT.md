@@ -201,3 +201,11 @@ apparaît après 200 ms, sans changer la taille du bouton ni de la barre. Son an
 est supprimée avec son élément au changement de titre ou à la fin de l’attente ;
 la préférence de réduction des mouvements conserve seulement l’anneau fixe.
 Le statut reste annoncé aux lecteurs d’écran. Les erreurs et leur reprise restent visibles.
+
+### Pochettes absentes
+
+`EmptyArtwork` fournit une croche SVG commune aux titres, projets, playlists,
+formulaires et lecteur. Le contexte fixe la taille et la couleur ; l’icône occupe
+la moitié centrale de la boîte, sans métrique de police ni marge sous la vignette.
+Les images privées passent toujours par une lecture authentifiée ; une image
+absente, en attente ou illisible conserve la boîte de remplacement.
