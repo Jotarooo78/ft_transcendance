@@ -47,10 +47,12 @@ export type PlaylistItem = {
   position: number;
 };
 /**
- * Playlist persistante privée du compte, avec version de concurrence et occurrences renvoyées par
+ * Playlist persistante du compte ou projection publique, avec version de concurrence et occurrences renvoyées par
  * Library.
  */
-export type PrivatePlaylist = {
+export type MusicPlaylist = {
+  /** Visibilité actuelle ; privé reste la valeur initiale. */
+  visibility: "private" | "public";
   /** Identifiant de cette entité ; distinct des identifiants des objets liés. */
   id: string;
   /** Nom de la playlist ou libellé lu par cette projection. */

@@ -1,16 +1,18 @@
+import { requestJson } from "./request-json";
 /** Client JWT des playlists persistantes ; les mutations incluent la version connue et ne confirment que la réponse serveur. */
 import { authenticatedFetch } from "./api";
 import { getAccessToken } from "./session";
-import type { PrivatePlaylist } from "../types/music";
+import type { MusicPlaylist } from "../types/music";
 
 /**
  * Vérifie l’identité, la version entière positive et chaque occurrence avant d’utiliser une réponse
  * Library.
  */
-export function isPlaylist(value: unknown): value is PrivatePlaylist {
+export function isPlaylist(value: unknown): value is MusicPlaylist {
   if (!value || typeof value !== "object") return false;
   const p = value as Record<string, unknown>;
   return (
+    (p.visibility === "private" || p.visibility === "public") &&
     typeof p.id === "string" &&
     typeof p.name === "string" &&
     typeof p.description === "string" &&
@@ -36,9 +38,9 @@ export function isPlaylist(value: unknown): value is PrivatePlaylist {
  */
 export async function getPlaylists(
   signal?: AbortSignal,
-): Promise<PrivatePlaylist[]> {
+): Promise<MusicPlaylist[]> {
   const token = getAccessToken();
-  const result = new Map<string, PrivatePlaylist>();
+  const result = new Map<string, MusicPlaylist>();
   let page = 1,
     lastPage = 1;
   do {
@@ -75,7 +77,7 @@ export async function getPlaylists(
 export async function getPlaylist(
   id: string,
   signal?: AbortSignal,
-): Promise<PrivatePlaylist> {
+): Promise<MusicPlaylist> {
   const response = await authenticatedFetch(
     `/api/library/playlists/${encodeURIComponent(id)}`,
     { signal },
@@ -98,11 +100,12 @@ export async function getPlaylist(
 export async function createPlaylist(
   name: string,
   description: string,
-): Promise<PrivatePlaylist> {
+  visibility: MusicPlaylist["visibility"] = "private",
+): Promise<MusicPlaylist> {
   const response = await authenticatedFetch("/api/library/playlists", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, description }),
+    body: JSON.stringify({ name, description, visibility }),
   });
   if (!response.ok)
     throw new Error(
@@ -137,7 +140,7 @@ async function mutatePlaylist(
   path: string,
   method: string,
   body: object,
-): Promise<PrivatePlaylist> {
+): Promise<MusicPlaylist> {
   const response = await authenticatedFetch(`/api/library/playlists/${path}`, {
     method,
     headers: { "Content-Type": "application/json" },
@@ -157,7 +160,7 @@ async function mutatePlaylist(
 }
 
 /** Ajoute une occurrence de trackId en transmettant la version courante de la playlist. */
-export function addPlaylistItem(playlist: PrivatePlaylist, trackId: string) {
+export function addPlaylistItem(playlist: MusicPlaylist, trackId: string) {
   return mutatePlaylist(`${encodeURIComponent(playlist.id)}/items`, "POST", {
     trackId,
     expectedVersion: playlist.version,
@@ -165,7 +168,7 @@ export function addPlaylistItem(playlist: PrivatePlaylist, trackId: string) {
 }
 
 /** Retire uniquement l’occurrence itemId, avec la version connue du client. */
-export function removePlaylistItem(playlist: PrivatePlaylist, itemId: string) {
+export function removePlaylistItem(playlist: MusicPlaylist, itemId: string) {
   return mutatePlaylist(
     `${encodeURIComponent(playlist.id)}/items/${encodeURIComponent(itemId)}`,
     "DELETE",
@@ -178,13 +181,15 @@ export function removePlaylistItem(playlist: PrivatePlaylist, itemId: string) {
  * concurrente.
  */
 export function updatePlaylist(
-  playlist: PrivatePlaylist,
+  playlist: MusicPlaylist,
   name: string,
   description: string,
+  visibility: MusicPlaylist["visibility"] = "private",
 ) {
   return mutatePlaylist(encodeURIComponent(playlist.id), "PATCH", {
     name,
     description,
+    visibility,
     expectedVersion: playlist.version,
   });
 }
@@ -193,7 +198,7 @@ export function updatePlaylist(
  * Demande la suppression avec expectedVersion et exige une confirmation 204 ; rejette tout autre
  * résultat.
  */
-export async function deletePlaylist(playlist: PrivatePlaylist): Promise<void> {
+export async function deletePlaylist(playlist: MusicPlaylist): Promise<void> {
   const response = await authenticatedFetch(
     `/api/library/playlists/${encodeURIComponent(playlist.id)}`,
     {
@@ -207,4 +212,19 @@ export async function deletePlaylist(playlist: PrivatePlaylist): Promise<void> {
       response.status,
       "Unable to delete playlist. Refresh its contents before trying again.",
     );
+}
+
+/** Relit la visibilité à chaque accès public ; un lien privé renvoie 404. */
+export async function getPublicPlaylist(
+  id: string,
+  signal?: AbortSignal,
+): Promise<MusicPlaylist> {
+  const data = await requestJson(
+    `/api/library/public/playlists/${encodeURIComponent(id)}`,
+    { signal, cache: "no-store" },
+    false,
+  );
+  if (!isPlaylist(data) || data.visibility !== "public")
+    throw new Error("This playlist is no longer available.");
+  return data;
 }

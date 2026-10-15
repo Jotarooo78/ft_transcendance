@@ -41,9 +41,19 @@ export function isTrack(value: unknown): value is Track {
     ["id", "title", "artistName", "albumTitle", "genre"].every(
       (key) => typeof track[key] === "string",
     ) &&
-    (track.artistUserId === undefined || track.artistUserId === null || (typeof track.artistUserId === "string" && /^[a-f0-9-]{36}$/i.test(track.artistUserId))) &&
-    (track.description === undefined || track.description === null || typeof track.description === "string") &&
-    (track.coverUrl === undefined || track.coverUrl === null || (typeof track.coverUrl === "string" && /^\/api\/media\/assets\/[a-f0-9-]{36}\/artwork$/i.test(track.coverUrl))) &&
+    (track.artistUserId === undefined ||
+      track.artistUserId === null ||
+      (typeof track.artistUserId === "string" &&
+        /^[a-f0-9-]{36}$/i.test(track.artistUserId))) &&
+    (track.description === undefined ||
+      track.description === null ||
+      typeof track.description === "string") &&
+    (track.coverUrl === undefined ||
+      track.coverUrl === null ||
+      (typeof track.coverUrl === "string" &&
+        /^\/api\/media\/assets\/[a-f0-9-]{36}\/artwork$/i.test(
+          track.coverUrl,
+        ))) &&
     (track.audioUrl === null ||
       (typeof track.audioUrl === "string" &&
         /^\/api\/media\/assets\/[0-9a-f-]+\/audio$/i.test(track.audioUrl))) &&
@@ -71,7 +81,7 @@ export async function getTracks(
     genre: query.genre,
     sort: query.sort,
   });
-  if (query.owner) params.set('owner',query.owner);
+  if (query.owner) params.set("owner", query.owner);
   const response = await fetch(`/api/catalog/tracks?${params}`, { signal });
   if (!response.ok)
     throw new Error(
