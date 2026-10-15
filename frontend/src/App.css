@@ -485,9 +485,9 @@ form > p[id$="-help"],
   border: 1px solid rgb(255 255 255 / 70%);
   border-radius: 50%;
   color: var(--accent);
-  background: rgb(255 255 255 / 82%);
+  /* Surface opaque : aucun flou du profil à recalculer pendant le défilement. */
+  background: var(--surface);
   box-shadow: 0 4px 14px rgb(84 57 75 / 10%);
-  backdrop-filter: blur(6px);
 }
 
 .edit-profile-button svg {
@@ -582,11 +582,11 @@ form > p[id$="-help"],
   border: 1px solid var(--border);
   border-radius: 50%;
   color: var(--text);
-  background: rgb(255 255 255 / 88%);
+  /* Même règle que le bouton d’édition, y compris avec un grand aperçu d’avatar. */
+  background: var(--surface);
   font-size: 1rem;
   line-height: 1;
   box-shadow: 0 2px 8px rgb(58 43 70 / 16%);
-  backdrop-filter: blur(4px);
 }
 
 .remove-avatar-button:hover:not(:disabled) {

@@ -16,6 +16,8 @@
  */
 
 import multipart from '@fastify/multipart'
+import type { PlaylistImagesService } from './services/playlist-images.service.js'
+import { registerPlaylistImagesRoutes } from './routes/playlist-images.routes.js'
 import type { CoverStore } from './domain/cover.js'
 import type { PublicationsRepository } from './repositories/publications.repository.js'
 import { createCoversService } from './services/covers.service.js'
@@ -48,6 +50,8 @@ const service = 'media-service'
 
 /** @brief Tout ce que le serveur reçoit de l'extérieur pour fonctionner. */
 export type Dependencies = {
+  /** Images propres aux playlists, injectées uniquement avec le stockage réel. */
+  playlistImages?: PlaylistImagesService
   /** Remplacement atomique et nettoyage des pochettes. */
   covers: CoverStore
   /** Réservation durable et liste des audios abandonnés. */
@@ -109,6 +113,8 @@ export async function buildApp(
   const uploads = createUploadService({ storageDir, assets, validate })
 
   const gate = createUploadGate()
+  if (dependencies.playlistImages)
+    registerPlaylistImagesRoutes(app, dependencies.playlistImages, gate)
   registerCoversRoutes(
     app,
     createCoversController(
@@ -124,6 +130,7 @@ export async function buildApp(
     if (!cleanup)
       cleanup = publications
         .expire()
+        .then(() => dependencies.playlistImages?.cleanup())
         .catch((error) => app.log.error(error, 'Expired upload cleanup failed'))
         .finally(() => {
           cleanup = undefined

@@ -23,14 +23,22 @@ import { invalidRequest } from '@ft/service-kit'
  *   sans toucher à l'autre. `trackId` est l'identifiant du morceau dans le catalogue. `position`
  *   est son rang dans la playlist.
  */
-export type PlaylistItem = { id: string; trackId: string; position: number }
+export type PlaylistItem = { id: string; trackId: string; position: number; addedAt?: string }
 
 /**
  * @brief Une playlist telle que le client la reçoit dans une réponse HTTP.
- * @details Elle ne contient pas l'identifiant de son propriétaire : le client ne reçoit de toute
- *   façon que ses propres playlists.
+ * @details L'identité publique du créateur permet d'afficher son profil ; aucune donnée de connexion
+ *   n'est exposée. L'accès privé et la visibilité publique sont contrôlés avant cette conversion.
  */
 export type Playlist = {
+  /** Identité publique du créateur, disponible sur les lignes persistées. */
+  ownerUserId?: string
+  /** Date ISO de création de la playlist. */
+  createdAt?: string
+  /** Date ISO de la dernière modification confirmée. */
+  updatedAt?: string
+  /** Image validée chez Media ; null laisse la place à la pochette automatique. */
+  coverAssetId?: string | null
   /** @brief UUID de la playlist. */
   id: string
   /** @brief Nom de la playlist. */
@@ -59,6 +67,11 @@ export type PlaylistChanges = Partial<PlaylistInput>
  *   `bigint`, un type d'entier que JSON ne sait pas écrire.
  */
 export type PlaylistRow = {
+  /** Métadonnées SQL ; facultatives pour les anciennes doublures de tests. */
+  ownerUserId?: string
+  createdAt?: Date
+  updatedAt?: Date
+  coverAssetId?: string | null
   /** @brief UUID de la playlist. */
   id: string
   /** @brief Nom de la playlist. */
@@ -70,7 +83,7 @@ export type PlaylistRow = {
   /** @brief Numéro de version stocké. */
   version: bigint
   /** @brief Occurrences de la playlist. */
-  items: PlaylistItem[]
+  items: (Omit<PlaylistItem, 'addedAt'> & { addedAt?: Date })[]
 }
 
 /** @brief Longueur maximale du nom d'une playlist, en caractères. */
@@ -178,10 +191,19 @@ export function toPlaylist(row: PlaylistRow): Playlist {
   }
   return {
     id: row.id,
+    ...(row.ownerUserId ? { ownerUserId: row.ownerUserId } : {}),
+    ...(row.createdAt ? { createdAt: row.createdAt.toISOString() } : {}),
+    ...(row.updatedAt ? { updatedAt: row.updatedAt.toISOString() } : {}),
+    ...(row.coverAssetId !== undefined ? { coverAssetId: row.coverAssetId } : {}),
     name: row.name,
     description: row.description ?? '',
     visibility: row.visibility === 'public' ? 'public' : 'private',
     version: Number(row.version),
-    items: row.items.map(({ id, trackId, position }) => ({ id, trackId, position })),
+    items: row.items.map(({ id, trackId, position, addedAt }) => ({
+      id,
+      trackId,
+      position,
+      ...(addedAt ? { addedAt: addedAt.toISOString() } : {}),
+    })),
   }
 }

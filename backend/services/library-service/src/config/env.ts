@@ -14,13 +14,15 @@ import { Type } from 'typebox'
 
 /**
  * @brief Description des variables d'environnement attendues.
- * @details `LIBRARY_DATABASE_URL` et `JWT_SECRET` sont obligatoires. `PORT` et
- *   `CATALOG_SERVICE_URL` sont facultatives et ont une valeur par défaut.
+ * @details `LIBRARY_DATABASE_URL`, `JWT_SECRET` et `INTERNAL_SERVICE_TOKEN` sont obligatoires.
+ *   `PORT`, `CATALOG_SERVICE_URL`, `MEDIA_SERVICE_URL` et `USER_SERVICE_URL` ont une valeur par défaut.
  */
 const EnvSchema = Type.Object({
   PORT: Type.Optional(Type.String({ pattern: '^[0-9]+$' })),
   LIBRARY_DATABASE_URL: Type.String({ minLength: 1 }),
   JWT_SECRET: Type.String({ minLength: 1 }),
+  INTERNAL_SERVICE_TOKEN: Type.String({ minLength: 1 }),
+  MEDIA_SERVICE_URL: Type.Optional(Type.String({ minLength: 1 })),
   USER_SERVICE_URL: Type.Optional(Type.String({ minLength: 1 })),
   CATALOG_SERVICE_URL: Type.Optional(Type.String({ minLength: 1 })),
 })
@@ -33,6 +35,9 @@ const EnvSchema = Type.Object({
  *   adresse de catalog-service sur le réseau interne.
  */
 export type Config = {
+  /** Adresse et secret du contrat de réservation des pochettes. */
+  mediaUrl: string
+  internalServiceToken: string
   port: number
   databaseUrl: string
   jwtSecret: string
@@ -63,6 +68,8 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): Config {
     port: Number(env.PORT ?? defaultPort),
     databaseUrl: env.LIBRARY_DATABASE_URL,
     jwtSecret: env.JWT_SECRET,
+    internalServiceToken: env.INTERNAL_SERVICE_TOKEN,
+    mediaUrl: env.MEDIA_SERVICE_URL ?? 'http://media-service:4003',
     usersUrl: env.USER_SERVICE_URL ?? 'http://user-service:4001',
     catalogUrl: env.CATALOG_SERVICE_URL ?? defaultCatalogUrl,
   }

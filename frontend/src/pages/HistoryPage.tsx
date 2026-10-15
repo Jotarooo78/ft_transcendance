@@ -6,7 +6,8 @@ import {
 } from "../services/translate";
 import { useLanguage } from "../hooks/useLanguage";
 import RefreshNotice from "../components/RefreshNotice";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
+import { useLibraryView } from "../contexts/library-view";
 import { useResource } from "../hooks/useResource";
 import { readTrackDetails } from "../services/track-details";
 import { getPlaybackHistory } from "../services/playback";
@@ -14,7 +15,11 @@ import MusicTrackRow from "../components/MusicTrackRow";
 /** Historique chronologique : chaque écoute reste une ligne, même pour un titre répété. */
 export default function HistoryPage() {
   useLanguage();
-  const [page, setPage] = useState(1);
+  const [view, setView] = useLibraryView("history");
+  const page = view.page;
+  /** Conserve la page de l'historique lors d'une visite d'une autre section. */
+  const setPage = (change: (page: number) => number) =>
+    setView((v) => ({ ...v, page: change(v.page) }));
   const history = useResource(
     useCallback(
       async (signal) => {
@@ -36,7 +41,7 @@ export default function HistoryPage() {
   }, [reload]);
   const pages = Math.max(1, Math.ceil((history.data?.total ?? 0) / 20));
   return (
-    <main className="music-page history-page">
+    <section className="history-page">
       <header>
         <p className="page-label">{t("YOUR LISTENING")}</p>
         <h1>{t("Recently played")}</h1>
@@ -117,6 +122,6 @@ export default function HistoryPage() {
         </>
       )}
       <RefreshNotice error={history.refreshError} retry={history.reload} />
-    </main>
+    </section>
   );
 }

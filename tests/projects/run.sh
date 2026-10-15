@@ -35,6 +35,9 @@ if [[ "$campaign" == languages ]]; then
 fi
 node tests/projects/verify-projects.mjs
 
+# Vérifie les mutations atomiques et les nouveaux parcours intégrés de bibliothèque.
+node tests/projects/verify-library-workflow.mjs
+
 # Vérifie les commandes du lecteur avec les publications réelles créées juste avant.
 node tests/projects/verify-player.mjs
 

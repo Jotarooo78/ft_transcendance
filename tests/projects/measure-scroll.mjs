@@ -108,6 +108,23 @@ await page.route("**/api/playback/sessions?*", (route) =>
   }),
 );
 const results = [];
+/** Amis simulés pour mesurer une page Profil longue sans créer de relations réelles. */
+let friendCount = 0;
+await page.route("**/api/users/friends", (route) =>
+  route.fulfill({
+    json: {
+      friends: Array.from({ length: friendCount }, (_, index) => ({
+        userId: `40000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+        username: `friend_${index}`,
+        displayName: `Friend ${index}`,
+        bio: null,
+        avatarUrl: null,
+        onlineStatus: index % 2 ? "online" : "offline",
+        lastSeenAt: null,
+      })),
+    },
+  }),
+);
 /** Échantillonne les images, tâches >50 ms et déplacements pendant trois secondes aller-retour. */
 async function measure(name) {
   await page.waitForTimeout(700);
@@ -167,6 +184,34 @@ try {
   await page.getByRole("button", { name: "Log in", exact: true }).click();
   await page.getByRole("button", { name: "Upload", exact: true }).waitFor();
   await measure("profile");
+  if (process.argv.includes("--without-profile-blur"))
+    await page.addStyleTag({
+      content:
+        ".edit-profile-button, .remove-avatar-button { backdrop-filter: none; }",
+    });
+  for (const count of [24, 120]) {
+    friendCount = count;
+    await page.waitForTimeout(550);
+    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await page.locator(".friend-card").last().waitFor();
+    await page.waitForFunction(
+      (expected) =>
+        document.querySelectorAll(".friend-card").length === expected,
+      count,
+    );
+    await measure(`profile-${count}-friends`);
+    await page
+      .getByRole("button", { name: "Edit profile", exact: true })
+      .click();
+    await measure(`profile-${count}-friends-edit`);
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  }
+  if (process.argv.includes("--profile-only")) {
+    console.log(JSON.stringify(results));
+    await writeFile(process.argv[2], JSON.stringify(results, null, 2));
+    await browser.close();
+    process.exit(0);
+  }
   await page.getByRole("button", { name: "Catalog", exact: true }).click();
   await page
     .getByRole("button", { name: "See all tracks", exact: true })
@@ -196,16 +241,28 @@ try {
     await profiler.send("Profiler.start");
   }
   for (const [button, label] of [
+    ["Profile", "profile-120-audio"],
     ["Catalog", "catalog-audio"],
     ["Library", "library-audio"],
     ["History", "history-audio"],
   ]) {
     await page.getByRole("button", { name: button, exact: true }).click();
+    if (button === "Library")
+      await page
+        .getByRole("button", { name: "Liked tracks", exact: true })
+        .click();
     if (button === "Catalog")
       await page
         .getByRole("button", { name: "See all tracks", exact: true })
         .click();
     await measure(label);
+    if (button === "Profile") {
+      await page
+        .getByRole("button", { name: "Edit profile", exact: true })
+        .click();
+      await measure("profile-120-audio-edit");
+      await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    }
   }
   if (profiler) {
     const { profile } = await profiler.send("Profiler.stop");

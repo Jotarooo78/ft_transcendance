@@ -6,7 +6,7 @@ import { defineConfig } from '@playwright/test';
  * correspondante.
  */
 const baseURL=process.env.MUSIC_BASE_URL ?? 'https://127.0.0.1:3443';
-assert.equal(new URL(baseURL).href,'https://127.0.0.1:3443/','Music browser tests require the isolated loopback gateway');
+assert(['https://127.0.0.1:3443/','https://127.0.0.1:5445/'].includes(new URL(baseURL).href),'Music browser tests require a disposable loopback gateway');
 export default defineConfig({
   testDir: '.', testMatch: 'browser.spec.mjs', timeout: 90000,
   expect: { timeout: 10000 }, retries: 0, workers: 1, reporter: 'line',

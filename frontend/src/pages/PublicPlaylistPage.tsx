@@ -5,7 +5,7 @@ import {
 } from "../services/translate";
 import { useLanguage } from "../hooks/useLanguage";
 import RefreshNotice from "../components/RefreshNotice";
-import EmptyArtwork from "../components/EmptyArtwork";
+import PlaylistArtwork from "../components/PlaylistArtwork";
 import { useCallback } from "react";
 import { useResource } from "../hooks/useResource";
 import { getPublicPlaylist } from "../services/library";
@@ -24,7 +24,7 @@ export default function PublicPlaylistPage({ id }: { id: string }) {
       {playlist ? (
         <>
           <header className="project-hero">
-            <EmptyArtwork className="playlist-artwork" />
+            <PlaylistArtwork playlist={playlist} />
             <div>
               <p className="page-label">{t("PUBLIC PLAYLIST")}</p>
               <h1>{playlist.name}</h1>

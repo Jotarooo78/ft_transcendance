@@ -957,3 +957,85 @@ volumes et réseaux a été vérifiée. Les fichiers préexistants de `docs/musi
 et `services/` sont préservés. Le frontend de développement n’a pas été redéployé ;
 pour utiliser les changements : `docker compose up -d --build --no-deps frontend`.
 La validation au trackpad physique et la compréhension utilisateur restent ouvertes.
+# Bibliothèque et playlists — salve du 15 octobre 2026
+
+Branche : `feat/library-playlists-refresh`, base `91cfbc2`. Le plan validé reste dans la conversation.
+Les modifications locales de `docs/music-plan/` et `services/` restent hors périmètre.
+
+- [x] Profil : retrait des deux filtres de flou ; le répertoire Users n’est plus chargé sur Profil.
+- [x] Opérations serveur et données des playlists.
+- [x] Pochettes de playlist.
+- [x] Navigation bibliothèque et historique.
+- [x] Listes et page dédiée.
+- [x] Ajout partagé, multiple et par projet.
+- [x] Tri, recherche, déplacement et ordre de lecture.
+- [x] Annulation du retrait et duplication.
+- [x] Vérifications techniques finales.
+- [ ] Publication : destination distante demandée, réponse encore attendue.
+
+Mesures Profil dans Chromium/Vite, 1440×800, amis simulés (0, 24 et 120), trois secondes
+par scénario. Avant : p95 16,8 ms sauf édition avec 120 amis (33,4 ms, trois tâches >50 ms).
+Diagnostic sans flou : édition avec 120 amis à 16,8 ms, aucune tâche >50 ms.
+Après : p95 16,7–16,8 ms sur les six scénarios, aucune tâche >50 ms, aucun déplacement
+de mise en page mesuré ; des images isolées restent lentes (maximum 150 ms).
+Ces premiers relevés partagent la machine avec les validations et ne suffisent pas à attribuer
+tous les écarts au code ; la validation finale doit répéter la comparaison sans charge concurrente,
+avec audio et distribution compilée. Aucun test ne remplace le ressenti au trackpad réel.
+Lint et compilation frontend réussis ; socle projets/publication/bibliothèque existant vérifié
+sur la pile jetable `transcendence_projects`, HTTPS 5445.
+
+Validation finale, distributions compilées comparées séquentiellement, sans autre
+campagne lancée en parallèle : login, profil sans amis, 24/120 amis, édition,
+catalogue, bibliothèque, historique, puis les mêmes écrans avec un véritable
+audio en boucle. Avant et après : p95 de 16,7–16,8 ms, aucune tâche >50 ms et
+aucun déplacement de mise en page mesuré. Une image isolée dépasse 25 ms dans
+chaque distribution : bibliothèque avec audio avant (33,4 ms), édition du profil
+120 amis après (33,3 ms). Ces mesures ne démontrent donc pas un gain perceptible
+sur un trackpad ; elles ne montrent pas de régression globale. Les suppressions
+de flou et de la lecture Users inutile réduisent du travail, mais le ressenti
+sur le matériel de l'utilisateur reste à confirmer.
+
+Les mécanismes communs restent `useResource` (annulation, conservation du contenu,
+ancre de défilement) et `useVisibleRefresh` (relectures visibles regroupées).
+`useLibraryView` ajoute seulement la mémoire de navigation par section ; il
+ne capture pas la molette pour simuler un défilement. Les images et le lecteur
+réutilisent leurs composants existants, les formulaires et ajouts sont partagés.
+Users, amitiés et chat ne sont pas modifiés.
+
+Preuves obtenues :
+
+- Library : vérification TypeScript et 11 tests réussis.
+- Media : 27 tests réussis dans l'image Docker disposant des vrais décodeurs,
+  dont le nettoyage prudent des images référencées ou réservées concurremment.
+  Le lancement initial sur l'hôte échouait faute de décodeur ; ce défaut
+  d'environnement est absent de la campagne Docker complète.
+- Frontend : lint sans avertissement, compilation et quatre fichiers de tests
+  musique réussis, dont ordre de lecture indépendant du filtre visuel.
+- `verify-library-workflow.mjs` : créations simultanées et réponses perdues sans
+  doublon, lots atomiques, droits, positions et dates préservées, annulation,
+  copies privées indépendantes, images réelles privées/publiques et révocation.
+  Chromium couvre les filtres conservés, déplacement souris/clavier, file complète,
+  ajout via menu, création dans le sélecteur, sélection multiple et projet entier.
+- `verify-projects.mjs` : publication, partage confirmé, historique, collections
+  et lecture continue, après adaptation aux nouveaux écrans.
+- `verify-refresh.mjs` : saisies conservées, conflit explicite, réponses anciennes,
+  ancres stables et révocation d'une carte malgré la panne d'une autre.
+- Campagne musique existante : deux scénarios de lecture et un scénario de
+  bibliothèque réussis, dont perte de réponse et isolation entre comptes.
+- `tests/per/assert-state.sql` : droits validés, six tables Library avec leur
+  propriétaire et permissions attendus.
+
+Artefacts locaux : `/tmp/tr-library-evidence/detail.png`,
+`/tmp/profile-baseline-compiled.json`, `/tmp/profile-final-compiled.json`.
+Le socle serveur est enregistré dans `0907814`, après la correction Profil
+`e544545`. Le reste de la salve fait l'objet du commit d'interface et de preuves.
+Les migrations sont additives ; pour essayer cette version avec Docker, reconstruire
+les services via `docker compose up -d --build` afin d'exécuter les migrations
+avant les permissions. La pile de développement n'a pas été redéployée.
+La fusion dans main et la suppression de branche attendent le signal utilisateur.
+
+Nettoyage final effectué : aucun conteneur, volume ni réseau étiqueté
+`transcendence_projects` ne subsiste. Les artefacts de preuve restent dans `/tmp`.
+Aucun pull, push ou merge n'a été effectué pour cette salve après les commits
+locaux : `git-sync` attend la destination distante, cette branche n'ayant pas
+d'upstream. Aucun conflit rencontré ; les fichiers hors périmètre sont préservés.

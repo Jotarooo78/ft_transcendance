@@ -29,6 +29,8 @@ model Playlist {
   description String?
   /// Visibilité de playlist ; private par défaut, public sur choix explicite du propriétaire.
   visibility  String   @default("private")
+  /// Image Media indépendante des pochettes audio ; null active la mosaïque.
+  coverAssetId String? @map("cover_asset_id") @db.Uuid
   /// Version de concurrence de la playlist ; une mutation réussie l’incrémente.
   version     BigInt   @default(1)
   /// Date de création prise par PostgreSQL.
@@ -38,9 +40,26 @@ model Playlist {
 
   /// Éléments de la page ou occurrences de playlist ; le total peut dépasser cette liste.
   items PlaylistItem[]
+  /// Reçus des modifications : une réponse perdue ne doit pas rejouer l’ajout.
+  changes PlaylistChange[]
 
   @@index([ownerUserId, updatedAt, id], map: "playlists_owner_idx")
   @@map("playlists")
+  @@schema("library")
+}
+
+/// Reçu durable d’une opération, privé au compte et supprimé avec la playlist.
+model PlaylistChange {
+  id String @id @db.Uuid
+  playlistId String @map("playlist_id") @db.Uuid
+  ownerUserId String @map("owner_user_id") @db.Uuid
+  fingerprint String
+  /// Copie de l’occurrence retirée et de ses voisins pour l’annulation.
+  undo Json?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  @@index([playlistId])
+  @@map("playlist_changes")
   @@schema("library")
 }
 

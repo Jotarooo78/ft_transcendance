@@ -31,7 +31,18 @@ const labels = {
     library: "Library",
     empty:
       "Nothing saved here yet. Explore the catalogue to add something you love.",
-    playlists: "Playlists",
+    playlists: "My playlists",
+    startPlaylist: "Create a playlist",
+    editPlaylist: "Edit playlist",
+    description: "Description",
+    cancel: "Cancel",
+    searchPlaylists: "Search playlists",
+    sortPlaylists: "Sort playlists",
+    artwork: "Cover image",
+    invalidArtwork: "Choose a PNG, JPEG or WebP image up to 25 MB.",
+    addTracks: "Add tracks",
+    addSelection: "Add selection (1)",
+    duplicateConfirmation: "Already present (1 track):",
     name: "Name",
     createPlaylist: "Create playlist",
     created: "Playlist created.",
@@ -70,7 +81,18 @@ const labels = {
     library: "Bibliothèque",
     empty:
       "Rien n’est encore enregistré ici. Explorez le catalogue pour ajouter vos coups de cœur.",
-    playlists: "Playlists",
+    playlists: "Mes playlists",
+    startPlaylist: "Créer une playlist",
+    editPlaylist: "Modifier la playlist",
+    description: "Description",
+    cancel: "Annuler",
+    searchPlaylists: "Rechercher des playlists",
+    sortPlaylists: "Trier les playlists",
+    artwork: "Image de pochette",
+    invalidArtwork: "Choisissez une image PNG, JPEG ou WebP de 25 Mo maximum.",
+    addTracks: "Ajouter des morceaux",
+    addSelection: "Ajouter la sélection (1)",
+    duplicateConfirmation: "Déjà dans la playlist (1 morceau) :",
     name: "Nom",
     createPlaylist: "Créer la playlist",
     created: "Playlist créée.",
@@ -109,7 +131,18 @@ const labels = {
     library: "Biblioteca",
     empty:
       "Todavía no hay nada guardado aquí. Explora el catálogo para añadir lo que te gusta.",
-    playlists: "Listas",
+    playlists: "Mis listas",
+    startPlaylist: "Crear una lista",
+    editPlaylist: "Editar lista",
+    description: "Descripción",
+    cancel: "Cancelar",
+    searchPlaylists: "Buscar listas",
+    sortPlaylists: "Ordenar listas",
+    artwork: "Imagen de portada",
+    invalidArtwork: "Elige una imagen PNG, JPEG o WebP de hasta 25 MB.",
+    addTracks: "Añadir canciones",
+    addSelection: "Añadir selección (1)",
+    duplicateConfirmation: "Ya en la lista (1 canción):",
     name: "Nombre",
     createPlaylist: "Crear lista",
     created: "Lista creada.",
@@ -303,18 +336,69 @@ try {
     ).toBeVisible();
     await tab(page, l.library);
     await expect(page.getByText(l.empty, { exact: true })).toBeVisible();
-    await tab(page, l.playlists);
+    await page
+      .locator(".music-tabs")
+      .getByRole("button", { name: l.playlists, exact: true })
+      .click();
+    await page.getByLabel(l.searchPlaylists, { exact: true }).fill("History");
+    await page
+      .getByLabel(l.sortPlaylists, { exact: true })
+      .selectOption("name");
+    await page
+      .getByRole("button", { name: l.startPlaylist, exact: true })
+      .click();
     await page.getByLabel(l.name, { exact: true }).fill("History");
+    // Changer de langue ne remonte pas le formulaire ni ne perd son brouillon.
+    await language(page, "es");
+    await expect(page.getByLabel(labels.es.name, { exact: true })).toHaveValue(
+      "History",
+    );
+    await language(page, locale);
     await page
       .getByRole("button", { name: l.createPlaylist, exact: true })
       .click();
-    await expect(page.getByRole("status")).toHaveText(l.created);
+    await expect(
+      page.getByRole("heading", { name: "History", exact: true }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: l.editPlaylist, exact: true })
+      .click();
+    await page
+      .getByLabel(l.description, { exact: true })
+      .fill("History — unchanged draft");
+    await language(page, "es");
+    await expect(
+      page.getByLabel(labels.es.description, { exact: true }),
+    ).toHaveValue("History — unchanged draft");
+    await expect(
+      page.getByRole("heading", { name: "History", exact: true }),
+    ).toBeVisible();
+    await language(page, locale);
+    // Une erreur produite par le nouveau formulaire reste traduisible après son affichage.
+    await page.getByLabel(l.artwork, { exact: true }).setInputFiles({
+      name: "invalid.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("invalid image"),
+    });
+    await page.getByRole("button", { name: l.save, exact: true }).click();
+    await expect(page.getByRole("alert")).toHaveText(l.invalidArtwork);
+    await language(page, "es");
+    await expect(page.getByRole("alert")).toHaveText(labels.es.invalidArtwork);
+    await expect(
+      page.getByLabel(labels.es.description, { exact: true }),
+    ).toHaveValue("History — unchanged draft");
+    await language(page, locale);
+    await page.getByRole("button", { name: l.cancel, exact: true }).click();
     await tab(page, l.catalog);
     await page
       .getByRole("searchbox", { name: l.search })
       .fill("no_match_" + randomUUID());
     await expect(page.getByText(l.noTracks, { exact: true })).toBeVisible();
-    await tab(page, l.history);
+    await tab(page, l.library);
+    await page
+      .locator(".music-tabs")
+      .getByRole("button", { name: l.history, exact: true })
+      .click();
     await expect(
       page.getByRole("heading", { name: l.historyHeading }),
     ).toBeVisible();
@@ -391,8 +475,65 @@ try {
     await language(page, locale);
     await page.locator(".player-close").click();
 
+    // Les sélections et confirmations du nouveau détail restent cohérentes dans chaque langue.
+    await tab(page, l.library);
+    await page
+      .locator(".music-tabs")
+      .getByRole("button", { name: l.playlists, exact: true })
+      .click();
+    await page
+      .locator(".playlist-card")
+      .filter({ has: page.getByText("History", { exact: true }) })
+      .click();
+    const trackSearch = page.getByRole("region", {
+      name: l.addTracks,
+      exact: true,
+    });
+    await trackSearch.getByRole("checkbox").first().check();
+    await language(page, "es");
+    const spanishSearch = page.getByRole("region", {
+      name: labels.es.addTracks,
+      exact: true,
+    });
+    await expect(spanishSearch.getByRole("checkbox").first()).toBeChecked();
+    await expect(
+      spanishSearch.getByRole("button", {
+        name: labels.es.addSelection,
+        exact: true,
+      }),
+    ).toBeEnabled();
+    await language(page, locale);
+    await trackSearch
+      .getByRole("button", { name: l.addSelection, exact: true })
+      .click();
+    await expect(page.locator(".music-occurrences [data-item-id]")).toHaveCount(
+      1,
+    );
+    await expect(trackSearch.getByRole("checkbox").first()).not.toBeChecked();
+    await trackSearch.getByRole("checkbox").first().check();
+    let duplicateMessage;
+    page.once("dialog", async (dialog) => {
+      duplicateMessage = dialog.message();
+      await dialog.accept();
+    });
+    await trackSearch
+      .getByRole("button", { name: l.addSelection, exact: true })
+      .click();
+    assert(
+      duplicateMessage?.startsWith(l.duplicateConfirmation),
+      duplicateMessage,
+    );
+    await expect(page.locator(".music-occurrences [data-item-id]")).toHaveCount(
+      2,
+    );
+
     // Contrôle le sélecteur au clavier et la largeur de l'en-tête sur mobile.
     await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: `/tmp/tr-library-language-${locale}.png`, fullPage: true });
+    const layout = await page.evaluate(() => ({
+      width: innerWidth, content: document.documentElement.scrollWidth,
+    }));
+    assert(layout.content <= layout.width + 1, `Library overflows in ${locale}: ${JSON.stringify(layout)}`);
     await page.locator(".language-selector select").focus();
     await expect(page.locator(".language-selector select")).toBeFocused();
     await page.keyboard.press("Home");

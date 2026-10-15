@@ -30,7 +30,7 @@ conservés dans leur langue d’origine.
 
 | Emplacement dans `src/` | Responsabilité |
 | --- | --- |
-| `translations/en.ts`, `fr.ts`, `es.ts` | 527 textes par langue, avec les mêmes clés et paramètres. L’anglais définit le contrat commun vérifié par TypeScript. |
+| `translations/en.ts`, `fr.ts`, `es.ts` | 583 textes par langue, avec les mêmes clés et paramètres. L’anglais définit le contrat commun vérifié par TypeScript. |
 | `services/language.ts` | Détection, préférence locale, langue du document et notifications de changement. |
 | `hooks/useLanguage.ts` | Abonnement React au choix de langue, sans recréer les composants. |
 | `services/translate.ts` | Traduction, interpolation des valeurs, erreurs connues, pluriels, dates et nombres. |
@@ -47,6 +47,13 @@ reçoit un message générique traduit.
 Les dates d’écoute utilisent la langue sélectionnée et le fuseau du navigateur.
 Les dates de publication sans heure sont formatées en UTC pour conserver leur
 jour. Les nombres et pluriels suivent les règles de la langue choisie.
+
+Les sections de bibliothèque regroupent les playlists créées et enregistrées,
+les favoris et l’historique. Les nouveaux formulaires, tris, sélections multiples,
+pochettes, confirmations de doublons et actions d’annulation utilisent les mêmes
+dictionnaires. Les noms des playlists et morceaux restent inchangés. Les erreurs
+déjà visibles et les saisies du formulaire suivent le changement de langue sans
+recommencer une création ou un envoi.
 
 La file de lecture distingue une origine applicative à traduire, comme
 « History », d’un titre utilisateur identique. Cette distinction est conservée
@@ -98,7 +105,7 @@ npm run test:music --prefix frontend
 Les tests de langue couvrent la priorité des préférences, les variantes
 régionales, le repli anglais, le stockage indisponible, la correspondance des
 clés et paramètres, les erreurs, les pluriels et les formats. Le contrôle de
-couverture inspecte 42 fichiers visuels : textes JSX, attributs accessibles et
+couverture inspecte 48 fichiers visuels : textes JSX, attributs accessibles et
 clés explicites. Les expressions dynamiques et la qualité rédactionnelle
 nécessitent aussi les scénarios navigateur et une relecture.
 
@@ -116,7 +123,7 @@ bash tests/projects/run.sh languages
 ```
 
 La campagne ciblée `languages` est autonome. Pour exécuter également les
-parcours existants de publication, lecteur et actualisation :
+parcours de publication, bibliothèque, lecteur et actualisation :
 
 ```sh
 bash tests/projects/run.sh
@@ -126,11 +133,11 @@ bash tests/projects/run.sh
 | --- | --- |
 | Inscription et connexion | Champs et validations traduits ; erreur réelle d’identifiants incorrects ; saisie conservée après changement de langue. |
 | Profil et communauté | Modification du profil confirmée ; titres utilisateur conservés ; page des utilisateurs traduite. |
-| Bibliothèque, playlists et recherche | État vide traduit, création réelle d’une playlist et recherche sans résultat. |
+| Bibliothèque, playlists et recherche | État vide traduit, création réelle, brouillon conservé entre langues, erreur de pochette retraduite, sélection conservée et confirmation de doublons ; recherche sans résultat. |
 | Historique et liens publics | Page d’historique traduite et erreur de projet inexistant traduite. |
 | Publication | Un seul transfert réel malgré le changement de langue pendant l’attente ; publication confirmée. |
 | Lecteur | Même élément audio, toujours en lecture, avec progression conservée après changement de langue. |
-| Préférences et accessibilité | Détection, rechargement, déconnexion, stockage bloqué, sélecteur au clavier et largeur mobile de 390 pixels. |
+| Préférences et accessibilité | Détection, rechargement, déconnexion, stockage bloqué, sélecteur au clavier et bibliothèque sans débordement à 390 pixels. |
 
 ## Résultats vérifiés
 
@@ -146,3 +153,14 @@ réponses simulées : le nouveau scénario utilise des comptes, transferts et
 publications réels ; il retarde volontairement une réponse de transfert pour
 observer le changement de langue pendant l’attente. Les simulations des suites
 existantes restent signalées dans leurs messages de résultat.
+
+Après intégration de `feat/library-playlists-refresh`, le 15 octobre 2026 :
+la compilation, ESLint, les tests de langue (583 clés, 48 fichiers visuels) et
+les tests du lecteur et du tri des playlists passent. La campagne complète
+`bash tests/projects/run.sh` a terminé avec succès, nettoyage compris :
+publication, actions atomiques et pochettes de bibliothèque, lecteur,
+actualisation et parcours français, anglais et espagnol. Les vérifications de
+langue incluent désormais les nouveaux formulaires, les erreurs de pochette,
+les sélections et confirmations de doublons. La bibliothèque reste contenue
+dans la largeur de 390 pixels ; les onglets reviennent à la ligne, la pochette
+passe au-dessus du texte et les actions des morceaux restent accessibles.

@@ -100,6 +100,8 @@ export function createUploadService({ storageDir, assets, validate }: Options) {
      * @param owner Identifiant du compte qui envoie le fichier.
      * @param receive Fonction qui écrit le fichier reçu sur le disque.
      * @param signal Signal qui se déclenche si l'utilisateur annule son envoi.
+     * @param expiresAt Date limite d'un fichier provisoire, absente pour un fichier permanent.
+     * @param purpose Type attendu pour un envoi provisoire : audio de projet ou image de playlist.
      * @returns Le fichier enregistré.
      * @throws {DomainError} Le refus prononcé par la vérification (type, taille, contenu...) ; `400
      *   upload_aborted` si l'envoi est annulé ; `503 file_storage_unavailable` si le disque ou la
@@ -109,7 +111,8 @@ export function createUploadService({ storageDir, assets, validate }: Options) {
       owner: string,
       receive: Receive,
       signal?: AbortSignal,
-      expiresAt?: Date
+      expiresAt?: Date,
+      purpose: 'audio' | 'image' = 'audio'
     ): Promise<StoredFile> {
       const id = randomUUID()
       const staging = stagingDirOf(storageDir, id)
@@ -129,7 +132,7 @@ export function createUploadService({ storageDir, assets, validate }: Options) {
           throw uploadAborted()
         }
 
-        if (file.purpose !== 'audio') throw fileError(415, 'audio_required')
+        if (file.purpose !== purpose) throw fileError(415, `${purpose}_required`)
         const previewKey = file.purpose === 'audio' ? previewKeyOf(id) : undefined
         await syncDirectory(staging)
         await link(original, join(storageDir, originalKeyOf(id)))

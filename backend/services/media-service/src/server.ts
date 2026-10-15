@@ -14,6 +14,7 @@
  */
 
 import { buildApp } from './app.js'
+import { createPlaylistImagesService } from './services/playlist-images.service.js'
 import { createCoversRepository } from './repositories/covers.repository.js'
 import { createPublicationsRepository } from './repositories/publications.repository.js'
 import { recoverCoverUploads, cleanRetiredCovers } from './services/save-audio-cover.js'
@@ -63,6 +64,14 @@ await createFileDeletionService({ storageDir, assets, catalog }).recover()
 
 /** @brief Serveur web prêt à écouter, construit avec les dépendances réelles. */
 const app = await buildApp(config, {
+  playlistImages: createPlaylistImagesService(
+    prisma,
+    createUploadService({ storageDir, assets, validate }),
+    createFileDeletionService({ storageDir, assets, catalog }),
+    storageDir,
+    config.libraryUrl,
+    config.internalServiceToken
+  ),
   assets,
   covers,
   publications: createPublicationsRepository(prisma),

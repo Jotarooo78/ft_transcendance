@@ -83,7 +83,7 @@ export async function readAudioCover(
 }
 
 /** Lit un contenu privé borné, vérifie ses en-têtes et annule toute réponse d’un ancien compte. */
-async function readPrivateBlob(
+export async function readPrivateBlob(
   path: string,
   expected: string | string[],
   maximum: number,

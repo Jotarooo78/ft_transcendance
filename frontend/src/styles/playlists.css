@@ -1,0 +1,246 @@
+/* Vues de bibliothèque : surfaces opaques, couleurs communes et dimensions stables. */
+/* Les libellés traduits gardent leur largeur naturelle et passent sur une autre ligne. */
+.music-page .music-tabs {
+  flex-wrap: wrap;
+}
+.playlist-toolbar {
+  display: flex;
+  gap: 1rem;
+  align-items: end;
+  flex-wrap: wrap;
+  margin: 1.25rem 0;
+}
+.playlist-toolbar label,
+.playlist-edit-form label {
+  display: grid;
+  gap: 0.4rem;
+}
+.playlist-toolbar input,
+.playlist-toolbar select,
+.playlist-edit-form input,
+.playlist-edit-form textarea,
+.playlist-edit-form select,
+.playlist-dialog input {
+  background: var(--surface);
+  color: inherit;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 0.7rem 0.9rem;
+  font: inherit;
+}
+.playlist-edit-form {
+  padding: 1.5rem;
+  background: var(--surface);
+  border-radius: 1rem;
+  display: grid;
+  gap: 1rem;
+  max-width: 640px;
+}
+.playlist-edit-form textarea {
+  resize: vertical;
+  min-height: 5rem;
+}
+.playlist-grid {
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+.playlist-card {
+  width: 100%;
+  text-align: left;
+  gap: 0.7rem;
+  padding: 1rem;
+  border: 0;
+}
+.playlist-card strong {
+  font-size: 1.1rem;
+  overflow-wrap: anywhere;
+}
+.playlist-artwork {
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  flex: none;
+  background: var(--accent-bg);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+}
+.playlist-artwork > img,
+.playlist-artwork > .playlist-mosaic {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.playlist-artwork > .empty-artwork {
+  width: 100%;
+  height: 100%;
+}
+.playlist-mosaic {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+}
+.playlist-mosaic.single-cover {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+}
+.playlist-mosaic img {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: cover;
+}
+.playlist-hero {
+  margin-top: 1.5rem;
+  padding: 2rem;
+  background: var(--surface);
+  border-radius: 1rem;
+  align-items: end;
+}
+.playlist-hero > .playlist-artwork {
+  width: 220px;
+  height: 220px;
+}
+.playlist-hero h1 {
+  font-size: clamp(2.5rem, 5vw, 5rem);
+  line-height: 1.08;
+  overflow-wrap: anywhere;
+}
+.playlist-hero p {
+  white-space: pre-wrap;
+}
+.playlist-detail .music-occurrences > li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.playlist-detail .music-occurrences .music-track-row,
+.playlist-select-row > .music-track-row {
+  flex: 1;
+  min-width: 0;
+}
+.playlist-drag-handle {
+  cursor: grab;
+  padding: 0.7rem 0.4rem;
+  flex: none;
+}
+.playlist-drag-handle:active {
+  cursor: grabbing;
+}
+.playlist-dragging {
+  opacity: 0.5;
+}
+.playlist-hint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.playlist-select-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.playlist-select-row > input {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: none;
+  accent-color: var(--accent);
+}
+.playlist-search {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+.playlist-undo {
+  position: fixed;
+  bottom: 110px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  padding: 0.8rem 1.5rem;
+  box-shadow: 0 8px 30px #0005;
+}
+.playlist-dialog {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  width: min(600px, 85vw);
+  max-height: 80vh;
+  padding: 2rem;
+}
+.playlist-dialog::backdrop {
+  background: #0009;
+}
+.playlist-picker-list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 1rem 0;
+  max-height: 35vh;
+  overflow-y: auto;
+}
+.playlist-picker-list button {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  text-align: left;
+}
+/* Sur mobile, réserve une ligne aux actions et place la pochette au-dessus du texte. */
+@media (max-width: 700px) {
+  .playlist-hero {
+    flex-direction: column;
+    align-items: start;
+    padding: 1rem;
+    gap: 1rem;
+  }
+  .playlist-hero > div:last-child {
+    width: 100%;
+  }
+  .playlist-toolbar label,
+  .playlist-edit-form label {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .playlist-toolbar input,
+  .playlist-toolbar select,
+  .playlist-edit-form input:not([type="checkbox"]),
+  .playlist-edit-form textarea,
+  .playlist-dialog input:not([type="checkbox"]) {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+  .playlist-detail .music-section-heading,
+  .playlist-detail .music-track-row,
+  .playlist-select-row > .music-track-row {
+    flex-wrap: wrap;
+  }
+  .playlist-detail .music-track-row,
+  .playlist-select-row > .music-track-row {
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+  .playlist-detail .track-label,
+  .playlist-select-row .track-label {
+    min-width: 0;
+    flex: 1 1 100px;
+  }
+  .playlist-detail .track-row-actions,
+  .playlist-select-row .track-row-actions {
+    flex: 1 0 100%;
+    flex-wrap: wrap;
+  }
+  .playlist-picker-list button {
+    flex-wrap: wrap;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .playlist-dragging {
+    transition: none;
+  }
+}

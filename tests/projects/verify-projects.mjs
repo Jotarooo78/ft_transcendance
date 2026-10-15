@@ -303,7 +303,10 @@ try {
     .getByRole("button", { name: project.title, exact: false })
     .waitFor();
   await page.getByRole("button", { name: "My playlists", exact: true }).click();
-  const form = page.locator("form.playlist-form");
+  await page
+    .getByRole("button", { name: "Create a playlist", exact: true })
+    .click();
+  const form = page.getByRole("form", { name: "Create playlist", exact: true });
   assert.equal(
     await form.getByLabel("Visibility", { exact: true }).inputValue(),
     "private",
@@ -313,7 +316,7 @@ try {
     .getByRole("button", { name: "Create playlist", exact: true })
     .click();
   await page
-    .getByRole("heading", { name: "Tracks in Night drive", exact: true })
+    .getByRole("heading", { name: "Night drive", exact: true })
     .waitFor();
   let playlist = (
     await api("/api/library/playlists", { token: a.token })
@@ -339,7 +342,7 @@ try {
   await api(`/api/library/public/playlists/${playlist.id}`, { status: 404 });
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
-  await page.getByText("Playlist saved · Public.", { exact: true }).waitFor();
+  await page.getByText("PUBLIC PLAYLIST", { exact: true }).waitFor();
   playlist = await api(`/api/library/public/playlists/${playlist.id}`);
   assert.equal(playlist.items.length, 1);
   await api(`/api/library/playlists/${playlist.id}`, {
@@ -374,7 +377,7 @@ try {
     .selectOption("private");
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
-  await page.getByText("Playlist saved · Private.", { exact: true }).waitFor();
+  await page.getByText("PRIVATE PLAYLIST", { exact: true }).waitFor();
   await api(`/api/library/public/playlists/${playlist.id}`, { status: 404 });
   await guest.bringToFront();
   await returnToTab(guest);
@@ -437,6 +440,7 @@ try {
     fullPage: true,
   });
   await page.getByRole("button", { name: "Library", exact: true }).click();
+  await page.getByRole("button", { name: "Liked tracks", exact: true }).click();
   await page.getByText("First light", { exact: true }).waitFor();
   await page.screenshot({
     path: "/tmp/tr-projects-evidence/library.png",

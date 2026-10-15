@@ -31,6 +31,8 @@ model Asset {
   expiresAt      DateTime? @map("expires_at") @db.Timestamptz(6)
   /// Réservation durable avant publication : interdit la suppression même si Catalogue tarde à confirmer.
   publicationTrackId String? @map("publication_track_id") @db.Uuid
+  /// Réservation d’une image par une playlist ; protège le fichier contre une suppression concurrente.
+  playlistId String? @map("playlist_id") @db.Uuid
   /// Nom interne du fichier sur le volume durable ; ne doit pas être exposé au client.
   storageKey     String   @unique @map("storage_key")
   /// Type MIME du contenu vérifié, utilisé pour servir les octets avec leur format.
@@ -50,6 +52,7 @@ model Asset {
   variants Variant[]
 
   @@index([uploaderUserId], map: "assets_uploader_idx")
+  @@index([playlistId], map: "assets_playlist_id_idx")
   @@map("assets")
   @@schema("media")
 }

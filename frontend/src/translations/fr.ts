@@ -662,4 +662,72 @@ export const fr = {
   ARTIST: "ARTISTE",
   DISCOVER: "DÉCOUVRIR",
   "(optional)": "(facultatif)",
+  "Search playlists": "Rechercher des playlists",
+  "Sort playlists": "Trier les playlists",
+  "Recently modified": "Modifiées récemment",
+  "Recently created": "Créées récemment",
+  "Playlist pages": "Pages des playlists",
+  "No playlists match this search.":
+    "Aucune playlist ne correspond à cette recherche.",
+  "Create your first playlist to collect music you love.":
+    "Créez votre première playlist pour rassembler vos morceaux préférés.",
+  "Save a public playlist to find it here.":
+    "Enregistrez une playlist publique pour la retrouver ici.",
+  "Playlist unavailable": "Playlist indisponible",
+  "Use automatic artwork": "Utiliser une pochette automatique",
+  "This playlist changed. Your inputs are preserved. Review them before saving again.":
+    "Cette playlist a changé. Vos saisies sont conservées. Vérifiez-les avant de réenregistrer.",
+  "Everyone can view its contents.":
+    "Tout le monde pourra consulter son contenu.",
+  "Its contents will no longer be publicly available.":
+    "Son contenu ne sera plus accessible publiquement.",
+  "Unable to add tracks.": "Impossible d’ajouter les morceaux.",
+  "Add {tracks} to a playlist": "Ajouter {tracks} à une playlist",
+  "Find a playlist": "Rechercher une playlist",
+  Close: "Fermer",
+  "Add tracks": "Ajouter des morceaux",
+  "Find more music": "Découvrir d’autres morceaux",
+  "Search tracks to add": "Rechercher des morceaux à ajouter",
+  "Search by title or artist": "Rechercher par titre ou artiste",
+  "Add selection ({count})": "Ajouter la sélection ({count})",
+  "Add selection to playlist ({count})":
+    "Ajouter la sélection à une playlist ({count})",
+  "Clear selection": "Effacer la sélection",
+  "No matching tracks.": "Aucun morceau correspondant.",
+  "Track search pages": "Pages de recherche de morceaux",
+  "Playlist search": "Recherche pour la playlist",
+  "Select {0}": "Sélectionner {0}",
+  "Retry removal": "Réessayer le retrait",
+  "Search in playlist": "Rechercher dans la playlist",
+  "Title or artist": "Titre ou artiste",
+  "Track order": "Ordre des morceaux",
+  "Custom order": "Ordre personnalisé",
+  "Date added": "Date d’ajout",
+  "Drag the handle to arrange tracks in custom order, with search cleared. Keyboard: focus a handle and use Alt + ↑ or ↓.":
+    "Videz la recherche, puis faites glisser les poignées pour personnaliser l’ordre des morceaux. Au clavier : placez le focus sur une poignée et utilisez Alt + ↑ ou ↓.",
+  "Drag, or Alt + arrow keys": "Faire glisser, ou Alt + touches fléchées",
+  "Reorder {0}": "Déplacer {0}",
+  "unavailable track": "morceau indisponible",
+  "No tracks match this search.":
+    "Aucun morceau ne correspond à cette recherche.",
+  "Unable to reorder playlist.": "Impossible de réorganiser la playlist.",
+  "Add project to playlist": "Ajouter le projet à une playlist",
+  "Back to library": "Retour à la bibliothèque",
+  "← Back to library": "← Retour à la bibliothèque",
+  "PRIVATE PLAYLIST": "PLAYLIST PRIVÉE",
+  "Duplicate playlist": "Dupliquer la playlist",
+  "Track removed.": "Morceau retiré.",
+  Undo: "Annuler",
+  "Unable to update playlist.": "Impossible de mettre à jour la playlist.",
+  " (known duration)": " (durée connue)",
+  "Select between 1 and 500 tracks.": "Sélectionnez entre 1 et 500 morceaux.",
+  "This playlist changed. Review it before trying again.":
+    "Cette playlist a changé. Vérifiez-la avant de réessayer.",
+  "Choose a PNG, JPEG or WebP image up to 25 MB.":
+    "Choisissez une image PNG, JPEG ou WebP de 25 Mo maximum.",
+  "Unable to upload this image.": "Impossible d’envoyer cette image.",
+  "Invalid image response.": "La réponse concernant l’image est invalide.",
+  "Already present ({tracks}): {titles}. Add all selected tracks anyway?":
+    "Déjà dans la playlist ({tracks}) : {titles}. Ajouter quand même tous les morceaux sélectionnés ?",
+  "Failed to fetch": "Réseau indisponible. Veuillez réessayer.",
 } satisfies Dictionary;

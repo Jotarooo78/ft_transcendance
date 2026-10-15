@@ -7,7 +7,6 @@ import {
 import { useLanguage } from "../hooks/useLanguage";
 import { RequestError } from "../services/request-json";
 import RefreshNotice from "../components/RefreshNotice";
-import EmptyArtwork from "../components/EmptyArtwork";
 import { useCallback, useState } from "react";
 import { useCollections } from "../contexts/collections";
 import { useResource } from "../hooks/useResource";
@@ -15,7 +14,6 @@ import type { useLibrary } from "../hooks/useLibrary";
 import { readTrackDetails } from "../services/track-details";
 import { getTrack } from "../services/catalog";
 import { getProject, getProjects } from "../services/projects";
-import { getPublicPlaylist } from "../services/library";
 import { getArtist } from "../services/artists";
 import { openMusic } from "../services/music-navigation";
 import type { CollectionKind } from "../types/collections";
@@ -23,26 +21,37 @@ import MusicTrackRow from "../components/MusicTrackRow";
 import ProjectCard from "../components/ProjectCard";
 import ArtistCard from "../components/ArtistCard";
 import CollectionButton from "../components/CollectionButton";
-import PlaylistsPage from "./PlaylistsPage";
+import PlaylistCollection from "../components/PlaylistCollection";
+import PlaylistDetailPage from "./PlaylistDetailPage";
+import PlaylistPicker from "../components/PlaylistPicker";
+import HistoryPage from "./HistoryPage";
+import {
+  PlaylistActionsContext,
+  usePlaylistActions,
+  type PlaylistSelection,
+} from "../contexts/playlist-actions";
+import { useLibraryView } from "../contexts/library-view";
+/** Références dont l'affichage n'est pas pris en charge par PlaylistCollection. */
+type SavedKind = Exclude<CollectionKind, "playlist">;
 /** Relit les détails publics : une référence ne garde jamais le contenu d'une playlist devenue privée. */
-async function loadReference(
-  kind: CollectionKind,
-  id: string,
-  signal: AbortSignal,
-) {
+async function loadReference(kind: SavedKind, id: string, signal: AbortSignal) {
   if (kind === "track")
     return { kind, value: await getTrack(id, signal) } as const;
   if (kind === "project")
     return { kind, value: await getProject(id, false, signal) } as const;
-  if (kind === "playlist")
-    return { kind, value: await getPublicPlaylist(id, signal) } as const;
   return { kind, value: await getArtist(id, signal) } as const;
 }
 /** Liste une section avec ses indisponibilités et son retrait toujours possible. */
-function SavedSection({ kind }: { kind: CollectionKind }) {
+function SavedSection({ kind }: { kind: SavedKind }) {
   useLanguage();
-  const collection = useCollections()!,
-    [page, setPage] = useState(1);
+  const collection = useCollections()!;
+  const [view, setView] = useLibraryView(kind, !collection.loading);
+  const page = view.page;
+  /** Change la page en conservant les autres préférences de cette section. */
+  const setPage = (change: (page: number) => number) =>
+    setView((v) => ({ ...v, page: change(v.page) }));
+  const addToPlaylist = usePlaylistActions();
+  const [selection, setSelection] = useState<PlaylistSelection>([]);
   const all = collection.data?.[kind] ?? [];
   const ids = JSON.stringify(
     (kind === "track" ? all : all.slice((page - 1) * 24, page * 24)).map(
@@ -117,6 +126,24 @@ function SavedSection({ kind }: { kind: CollectionKind }) {
         <p role="status">{t("Loading library…")}</p>
       ) : (
         <>
+          {kind === "track" && (
+            <div className="playlist-toolbar">
+              <button
+                disabled={!selection.length}
+                onClick={() => addToPlaylist?.(selection)}
+              >
+                {t("Add selection to playlist ({count})", {
+                  count: formatNumber(selection.length),
+                })}
+              </button>
+              {!!selection.length && (
+                <button onClick={() => setSelection([])}>
+                  {" "}
+                  {t("Clear selection")}{" "}
+                </button>
+              )}
+            </div>
+          )}
           {!all.length && (
             <p>
               {" "}
@@ -146,36 +173,50 @@ function SavedSection({ kind }: { kind: CollectionKind }) {
                 );
               if (data.kind === "track")
                 return (
-                  <MusicTrackRow
-                    key={id}
-                    track={data.value}
-                    queue={resource.data?.flatMap((item) =>
-                      item.data?.kind === "track" ? [item.data.value] : [],
-                    )}
-                    source="Liked tracks"
-                    sourceLocalized
-                  />
+                  <div className="playlist-select-row" key={id}>
+                    <input
+                      type="checkbox"
+                      aria-label={t("Select {0}", { "0": data.value.title })}
+                      checked={selection.some((t) => t.id === id)}
+                      disabled={
+                        selection.length >= 500 &&
+                        !selection.some((t) => t.id === id)
+                      }
+                      onChange={(e) =>
+                        setSelection((items) =>
+                          e.target.checked
+                            ? [...items, data.value]
+                            : items.filter((t) => t.id !== id),
+                        )
+                      }
+                    />
+                    <MusicTrackRow
+                      track={data.value}
+                      queue={resource.data?.flatMap((item) =>
+                        item.data?.kind === "track" ? [item.data.value] : [],
+                      )}
+                      source="Liked tracks"
+                      sourceLocalized
+                    />
+                  </div>
                 );
               return (
                 <div key={id}>
                   {data.kind === "project" ? (
                     <ProjectCard project={data.value} />
-                  ) : data.kind === "artist" ? (
-                    <ArtistCard artist={data.value} />
                   ) : (
-                    <button
-                      className="music-card playlist-card"
-                      onClick={() => openMusic("playlists", id)}
-                    >
-                      <EmptyArtwork className="playlist-artwork" />
-                      <strong>{data.value.name}</strong>
-                      <span>
-                        {translateCount(data.value.items.length, "track")} ·{" "}
-                        {t("Public playlist")}{" "}
-                      </span>
-                    </button>
+                    <ArtistCard artist={data.value} />
                   )}
                   <CollectionButton kind={kind} id={id} />
+                  {data.kind === "project" && (
+                    <button
+                      disabled={!data.value.tracks.length}
+                      onClick={() => addToPlaylist?.(data.value.tracks)}
+                    >
+                      {" "}
+                      {t("Add project to playlist")}{" "}
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -253,14 +294,15 @@ function UploadsSection({ onUploads }: { onUploads: () => void }) {
 export default function LibraryPage({
   library,
   onUploads,
+  route,
 }: {
   library: ReturnType<typeof useLibrary>;
   onUploads: () => void;
+  route?: string;
 }) {
   useLanguage();
-  const [section, setSection] = useState<CollectionKind | "owned" | "uploads">(
-    "track",
-  );
+  const [section, detailId] = (route ?? "track").split("/");
+  const [selection, setSelection] = useState<PlaylistSelection | null>(null);
   const sections = [
     ["track", "Liked tracks"],
     ["project", "Saved projects"],
@@ -268,41 +310,54 @@ export default function LibraryPage({
     ["owned", "My playlists"],
     ["playlist", "Saved playlists"],
     ["uploads", "My uploads"],
+    ["history", "History"],
   ] as const;
   return (
-    <main className="music-page">
-      <header>
-        <p className="page-label">{t("YOUR MUSIC")}</p>
-        <h1>{t("Library")}</h1>
-      </header>
-      <nav className="music-tabs" aria-label={t("Library sections")}>
-        {sections.map(([key, label]) => (
-          <button
-            key={key}
-            aria-pressed={section === key}
-            onClick={() => setSection(key)}
-          >
-            {t(label)}
-          </button>
-        ))}
-      </nav>
-      {section === "owned" ? (
-        <PlaylistsPage
-          playlists={library.playlists}
-          loading={library.loading}
-          error={library.error}
-          refreshError={library.refreshError}
-          onRetry={library.reload}
-          onCreate={library.create}
-          onRemoveItem={library.removeItem}
-          onUpdate={library.update}
-          onDelete={library.remove}
-        />
-      ) : section === "uploads" ? (
-        <UploadsSection onUploads={onUploads} />
-      ) : (
-        <SavedSection key={section} kind={section} />
-      )}
-    </main>
+    <PlaylistActionsContext.Provider value={setSelection}>
+      <main className="music-page">
+        <header>
+          <p className="page-label">{t("YOUR MUSIC")}</p>
+          <h1>{t("Library")}</h1>
+        </header>
+        <nav className="music-tabs" aria-label={t("Library sections")}>
+          {sections.map(([key, label]) => (
+            <button
+              key={key}
+              aria-pressed={section === key}
+              onClick={() => openMusic("library", key)}
+            >
+              {t(label)}
+            </button>
+          ))}
+        </nav>
+        {detailId && (section === "owned" || section === "playlist") ? (
+          <PlaylistDetailPage
+            key={`${section}:${detailId}`}
+            id={detailId}
+            owned={section === "owned"}
+            library={library}
+          />
+        ) : section === "owned" || section === "playlist" ? (
+          <PlaylistCollection
+            key={section}
+            owned={section === "owned"}
+            library={library}
+          />
+        ) : section === "history" ? (
+          <HistoryPage />
+        ) : section === "uploads" ? (
+          <UploadsSection onUploads={onUploads} />
+        ) : (
+          <SavedSection key={section} kind={section as SavedKind} />
+        )}
+        {selection && (
+          <PlaylistPicker
+            tracks={selection}
+            library={library}
+            onClose={() => setSelection(null)}
+          />
+        )}
+      </main>
+    </PlaylistActionsContext.Provider>
   );
 }
