@@ -180,7 +180,13 @@ export function createAssetsRepository(prisma: AssetStore) {
      *   déjà fait. Cela évite que deux suppressions simultanées travaillent sur le même fichier.
      */
     async markDeleting(id: string, owner: string): Promise<boolean> {
-      const where = { id, uploaderUserId: owner, state: 'ready', publicationTrackId: null }
+      const where = {
+        id,
+        uploaderUserId: owner,
+        state: 'ready',
+        publicationTrackId: null,
+        playlistId: null,
+      }
       const updated = await prisma.asset.updateMany({ where, data: { state: 'deleting' } })
       return updated.count === 1
     },

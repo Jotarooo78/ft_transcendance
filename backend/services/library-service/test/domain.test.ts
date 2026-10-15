@@ -16,7 +16,7 @@ import { createCatalogClient } from '../src/clients/catalog.client.js'
 import { toPlaylist } from '../src/domain/playlist.js'
 import { createFakePlaylists, owner, trackId } from './helpers.js'
 
-test('the public playlist has a safe version, separate occurrences and no owner field', () => {
+test('the playlist exposes its creator identity, a safe version and separate occurrences', () => {
   const items = [
     { id: 'item-a', trackId: 'same-track', position: 1 },
     { id: 'item-b', trackId: 'same-track', position: 3 },
@@ -31,6 +31,7 @@ test('the public playlist has a safe version, separate occurrences and no owner 
   }
   assert.deepEqual(toPlaylist(row), {
     id: 'p',
+    ownerUserId: owner,
     name: 'Private',
     description: '',
     visibility: 'private',

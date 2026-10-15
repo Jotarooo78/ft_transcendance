@@ -43,6 +43,8 @@ export const CreatePlaylistBodySchema = Type.Object(
     name: Type.String(),
     description: Type.Optional(Type.String()),
     visibility: Type.Optional(visibility),
+    /** Identifie une création pour pouvoir reprendre une réponse perdue sans deuxième playlist. */
+    creationId: Type.Optional(UuidSchema),
   },
   { additionalProperties: false }
 )
@@ -75,13 +77,22 @@ export const AddItemBodySchema = Type.Object(
 
 /** @brief Forme d'une playlist dans une réponse. Seuls ces champs sont envoyés au client. */
 export const PlaylistSchema = Type.Object({
+  ownerUserId: Type.Optional(Type.String()),
+  createdAt: Type.Optional(Type.String()),
+  updatedAt: Type.Optional(Type.String()),
+  coverAssetId: Type.Optional(Type.Union([UuidSchema, Type.Null()])),
   id: Type.String(),
   name: Type.String(),
   description: Type.String(),
   visibility,
   version: Type.Integer(),
   items: Type.Array(
-    Type.Object({ id: Type.String(), trackId: Type.String(), position: Type.Integer() })
+    Type.Object({
+      id: Type.String(),
+      trackId: Type.String(),
+      position: Type.Integer(),
+      addedAt: Type.Optional(Type.String()),
+    })
   ),
 })
 

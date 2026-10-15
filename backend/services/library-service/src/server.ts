@@ -19,6 +19,8 @@ import { buildApp } from './app.js'
 import { createCatalogClient } from './clients/catalog.client.js'
 import { loadConfig } from './config/env.js'
 import { createPlaylistsRepository } from './repositories/playlists.repository.js'
+import { createPlaylistActionsRepository } from './repositories/playlist-actions.repository.js'
+import { createPlaylistArtworkService } from './services/playlist-artwork.service.js'
 import { createPrisma } from './repositories/prisma.js'
 
 /**
@@ -38,6 +40,8 @@ const prisma = createPrisma(config.databaseUrl)
  *   échoue si la base ne répond pas. `close` ferme la connexion à l'arrêt.
  */
 const app = await buildApp(config, {
+  artwork: createPlaylistArtworkService(prisma, config.mediaUrl, config.internalServiceToken),
+  actions: createPlaylistActionsRepository(prisma),
   playlists: createPlaylistsRepository(prisma),
   collections: {
     repository: createCollectionsRepository(prisma),

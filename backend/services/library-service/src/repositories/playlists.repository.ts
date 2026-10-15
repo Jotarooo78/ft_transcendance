@@ -9,7 +9,8 @@
  * vérifie séparément la visibilité publique actuelle.
  */
 
-import type { Pagination } from '@ft/service-kit'
+import { DomainError, type Pagination } from '@ft/service-kit'
+import { createHash } from 'node:crypto'
 import type { PlaylistInput, PlaylistRow } from '../domain/playlist.js'
 import { createPlaylistMutations } from './playlist-mutations.js'
 import type { Database } from './prisma.js'
@@ -100,16 +101,39 @@ export function createPlaylistsRepository(prisma: Database) {
      * @param input Nom et description déjà vérifiés.
      * @returns La playlist créée.
      */
-    create(owner: string, input: PlaylistInput): Promise<PlaylistRow> {
-      return prisma.playlist.create({
-        data: {
-          ...input,
-          ownerUserId: owner,
-          visibility: input.visibility ?? 'private',
-          version: 1n,
-        },
-        include: { items: true },
-      })
+    async create(owner: string, input: PlaylistInput, creationId?: string): Promise<PlaylistRow> {
+      const fingerprint = `create:${createHash('sha256').update(JSON.stringify(input)).digest('hex')}`
+      try {
+        return await prisma.playlist.create({
+          data: {
+            ...(creationId
+              ? {
+                  id: creationId,
+                  changes: { create: { id: creationId, ownerUserId: owner, fingerprint } },
+                }
+              : {}),
+            ...input,
+            ownerUserId: owner,
+            visibility: input.visibility ?? 'private',
+            version: 1n,
+          },
+          include: { items: true },
+        })
+      } catch (error) {
+        if (
+          !creationId ||
+          !(error && typeof error === 'object' && 'code' in error && error.code === 'P2002')
+        )
+          throw error
+        // L'unicité SQL protège également deux créations simultanées portant le même UUID.
+        const receipt = await prisma.playlistChange.findUnique({
+          where: { id: creationId },
+          include: { playlist: { include: orderedItems } },
+        })
+        if (!receipt || receipt.ownerUserId !== owner || receipt.fingerprint !== fingerprint)
+          throw new DomainError(409, 'operation_conflict')
+        return receipt.playlist
+      }
     },
   }
 }

@@ -38,7 +38,12 @@ export function createPublicationsRepository(database: Database) {
     /** Ne sélectionne jamais les fichiers historiques ni les publications au résultat incertain. */
     async expired() {
       return database.asset.findMany({
-        where: { state: 'ready', expiresAt: { lte: new Date() }, publicationTrackId: null },
+        where: {
+          purpose: 'audio',
+          state: 'ready',
+          expiresAt: { lte: new Date() },
+          publicationTrackId: null,
+        },
         take: 100,
         orderBy: { expiresAt: 'asc' },
       })

@@ -18,7 +18,9 @@ import { registerCollectionsRoutes } from './routes/collections.routes.js'
  * données.
  */
 
-import { authPlugin, createApp, opsPlugin } from '@ft/service-kit'
+import { authPlugin, createApp, opsPlugin, internalTokenPlugin } from '@ft/service-kit'
+import type { createPlaylistArtworkService } from './services/playlist-artwork.service.js'
+import { registerPlaylistArtworkRoutes } from './routes/playlist-artwork.routes.js'
 import type { CatalogClient } from './clients/catalog.client.js'
 import type { Config } from './config/env.js'
 import { createPlaylistItemsController } from './controllers/playlist-items.controller.js'
@@ -28,6 +30,9 @@ import { registerPlaylistItemsRoutes } from './routes/playlist-items.routes.js'
 import { registerPlaylistsRoutes } from './routes/playlists.routes.js'
 import { createPlaylistItemsService } from './services/playlist-items.service.js'
 import { createPlaylistsService } from './services/playlists.service.js'
+import type { PlaylistActionsRepository } from './repositories/playlist-actions.repository.js'
+import { createPlaylistActionsService } from './services/playlist-actions.service.js'
+import { registerPlaylistActionsRoutes } from './routes/playlist-actions.routes.js'
 
 /**
  * @brief Nom du service, renvoyé par `/health` et utilisé comme étiquette des mesures lues par
@@ -37,6 +42,10 @@ const service = 'library-service'
 
 /** @brief Tout ce que le serveur reçoit de l'extérieur pour fonctionner. */
 export type Dependencies = {
+  /** Contrat Media de pochette, séparé des commandes de morceaux. */
+  artwork?: ReturnType<typeof createPlaylistArtworkService>
+  /** Écritures atomiques du nouveau parcours ; injectées en production. */
+  actions?: PlaylistActionsRepository
   /** @brief Dépendances des références personnelles ; injectées en production. */
   collections?: { repository: CollectionsRepository; targets: CollectionTargets }
   /**
@@ -75,7 +84,10 @@ export type Dependencies = {
  *   dans un test.
  * @throws {Error} Si le secret des jetons est vide : le service refuse de démarrer.
  */
-export async function buildApp(config: Pick<Config, 'jwtSecret'>, dependencies: Dependencies) {
+export async function buildApp(
+  config: Pick<Config, 'jwtSecret'> & Partial<Pick<Config, 'internalServiceToken'>>,
+  dependencies: Dependencies
+) {
   const { playlists, catalog } = dependencies
   const app = createApp({
     service,
@@ -85,11 +97,20 @@ export async function buildApp(config: Pick<Config, 'jwtSecret'>, dependencies: 
 
   await app.register(opsPlugin, { service, ready: dependencies.ready })
   await app.register(authPlugin, { secret: config.jwtSecret })
+  if (dependencies.artwork) {
+    await app.register(internalTokenPlugin, { token: config.internalServiceToken ?? '' })
+    registerPlaylistArtworkRoutes(app, dependencies.artwork)
+  }
   app.addHook('onClose', async () => {
     await dependencies.close?.()
   })
 
   registerPlaylistsRoutes(app, createPlaylistsController(createPlaylistsService(playlists)))
+  if (dependencies.actions)
+    registerPlaylistActionsRoutes(
+      app,
+      createPlaylistActionsService(playlists, dependencies.actions, catalog)
+    )
   registerPlaylistItemsRoutes(
     app,
     createPlaylistItemsController(createPlaylistItemsService(playlists, catalog))

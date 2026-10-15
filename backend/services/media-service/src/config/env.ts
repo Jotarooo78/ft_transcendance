@@ -29,11 +29,14 @@ const EnvSchema = Type.Object({
   JWT_SECRET: required,
   INTERNAL_SERVICE_TOKEN: required,
   CATALOG_SERVICE_URL: optional,
+  LIBRARY_SERVICE_URL: optional,
   MEDIA_STORAGE_DIR: optional,
 })
 
 /** @brief Configuration du service une fois lue et vérifiée. */
 export type Config = {
+  /** Library décide de la visibilité et de l’usage des images de playlist. */
+  libraryUrl: string
   /** @brief Port d'écoute. */
   port: number
   /** @brief URL PostgreSQL du rôle `media_runtime`. */
@@ -67,6 +70,7 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): Config {
     jwtSecret: env.JWT_SECRET,
     internalServiceToken: env.INTERNAL_SERVICE_TOKEN,
     catalogUrl: env.CATALOG_SERVICE_URL ?? 'http://catalog-service:4002',
+    libraryUrl: env.LIBRARY_SERVICE_URL ?? 'http://library-service:4004',
     storageDir: env.MEDIA_STORAGE_DIR ?? '/data/audio',
   }
 }

@@ -80,8 +80,8 @@ export function createPlaylistsService(playlists: PlaylistsRepository) {
      * @param input Nom et description déjà vérifiés.
      * @returns La playlist créée.
      */
-    async create(owner: string, input: PlaylistInput): Promise<Playlist> {
-      return toPlaylist(await playlists.create(owner, input))
+    async create(owner: string, input: PlaylistInput, creationId?: string): Promise<Playlist> {
+      return toPlaylist(await playlists.create(owner, input, creationId))
     },
 
     /**

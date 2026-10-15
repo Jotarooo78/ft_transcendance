@@ -56,7 +56,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE
   TO media_runtime;
 
 GRANT SELECT, INSERT, UPDATE, DELETE
-  ON TABLE library.playlists, library.playlist_items, library.track_favorites, library.saved_items
+  ON TABLE library.playlists, library.playlist_items, library.track_favorites, library.saved_items, library.playlist_changes
   TO library_runtime;
 
 GRANT SELECT, INSERT, UPDATE, DELETE
