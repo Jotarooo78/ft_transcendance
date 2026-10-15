@@ -1058,3 +1058,22 @@ form > p[id$="-help"],
   .publish-footer > div { justify-content: flex-end; flex-wrap: wrap; }
   .audio-dropzone { margin: 14px; padding: 35px 16px; min-height: 300px; }
 }
+
+/* Parcours musicaux : mêmes surfaces, espacements et actions dans chaque section. */
+.project-type-picker, .music-section-heading, .music-pagination, .track-row-actions { display: flex; align-items: center; gap: 12px; }
+.project-type-picker { margin-bottom: 22px; }
+.project-type-picker button[aria-pressed="true"], .music-tabs button[aria-pressed="true"] { background: var(--accent); color: white; border-color: var(--accent); }
+.upload-file-label { display: inline-flex; flex-direction: column; gap: 12px; align-items: center; }
+.upload-file-label input { max-width: 340px; }
+.upload-track-list { padding: 0; list-style: none; display: grid; gap: 10px; }
+.upload-track-list li { display: grid; grid-template-columns: 24px minmax(160px,1fr) auto; align-items: center; gap: 14px; padding: 12px; border-radius: 12px; background: var(--surface-soft); }
+.upload-track-list small { display: block; margin-top: 5px; }
+.upload-track-list input { width: 100%; }
+.upload-track-list progress { width: 100%; }
+.project-drafts { margin-bottom: 30px; }
+.music-section-heading { justify-content: space-between; margin: 20px 0; }
+.draft-list { display: flex; flex-wrap: wrap; gap: 12px; }
+.draft-list > div { display: flex; gap: 4px; align-items: center; }
+.draft-list strong, .draft-list span { display: block; }
+.draft-list span { font-size: 12px; margin-top: 5px; }
+.music-pagination { justify-content: center; margin: 24px 0; }

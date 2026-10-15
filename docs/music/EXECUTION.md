@@ -735,3 +735,10 @@ Les 26 tests Media passent dans l’image isolée. Le scénario PostgreSQL confi
 nouvelle suppression la termine. L’image de test utilise une copie temporaire
 du Dockerfile sans cache BuildKit, indisponible sur le moteur local ; les
 instructions de production du dépôt ne sont pas modifiées.
+
+## Projets musicaux — formulaire
+
+Formulaire multi-fichiers, reprise des projets sauvegardés, ordre au clavier,
+pochette commune, sauvegarde et publication branchés sur les routes Catalogue.
+Lint et compilation frontend réussis. Le contrôle navigateur avec fichiers réels
+reste à réaliser dans la campagne finale ; il n’est pas déclaré acquis ici.

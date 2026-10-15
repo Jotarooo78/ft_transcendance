@@ -301,3 +301,19 @@ d’annuler l’envoi, notamment pour remplacer un audio expiré. Le bouton
 View in catalogue ouvre le détail confirmé et recherche son titre. TrackArtwork
 et ArtistLink affichent le visuel public et le profil actuel ; PlaylistTracks
 réutilise les mêmes crédits. Les interfaces restent en anglais.
+
+## Import de projets sur ordinateur
+
+`ProjectUploadForm.tsx` assemble le formulaire ; `useProjectUpload.ts` gère une
+file séquentielle utilisant `validateFile` et `sendFile`. Chaque ligne garde son
+état et peut être réessayée indépendamment. Les morceaux se déplacent avec des
+boutons accessibles au clavier. Sauvegarder un brouillon conserve uniquement les
+fichiers prêts ; le message précise lorsque des transferts échoués devront être
+sélectionnés à nouveau. La publication attend toutes les lignes.
+
+`services/projects.ts` vérifie les réponses Catalogue définies dans
+`types/projects.ts`. `request-json.ts` centralise les erreurs et la garde de
+session. `useResource.ts` annule les lectures devenues anciennes. `FilesPage.tsx`
+liste les projets personnels par pages, reprend l’éditeur et confirme l’abandon.
+`ProjectArtwork.tsx` réutilise la lecture bornée de `read-files.ts` pour les
+pochettes privées ; les URL locales sont libérées au démontage.
