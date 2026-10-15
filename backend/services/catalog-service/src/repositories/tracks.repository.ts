@@ -12,6 +12,7 @@
  * la place une version en mémoire qui respecte le même type.
  */
 
+import type { ArtistProfile } from '../domain/artist.js'
 import type { TrackListQuery } from '../domain/track-list.js'
 import type { TrackRow } from '../domain/track.js'
 import { Prisma } from '../generated/prisma/client.js'
@@ -37,7 +38,7 @@ export type TracksRepository = {
    */
   findPublished: (id: string) => Promise<TrackRow | null>
   /** @brief Lit une page de morceaux selon les critères, avec le total et les genres. */
-  list: (query: TrackListQuery) => Promise<TrackListResult>
+  list: (query: TrackListQuery, profiles?: ArtistProfile[]) => Promise<TrackListResult>
 }
 
 /**
@@ -56,7 +57,7 @@ export function createTracksRepository(prisma: Database): TracksRepository {
      */
     async findPublished(id) {
       const rows = await prisma.$queryRaw<TrackRow[]>(
-        Prisma.sql`${publishedTracks} AND t.id = ${id}::uuid`
+        Prisma.sql`${publishedTracks()} AND t.id = ${id}::uuid`
       )
       return rows[0] ?? null
     },
@@ -71,8 +72,8 @@ export function createTracksRepository(prisma: Database): TracksRepository {
      * @param query Critères de recherche validés.
      * @returns Les morceaux de la page, le total et les genres.
      */
-    list(query) {
-      const filtered = filteredTracks(query)
+    list(query, profiles = []) {
+      const filtered = filteredTracks(query, profiles)
       const offset = (query.page - 1) * query.pageSize
       // RepeatableRead : le total et la page ne peuvent pas décrire deux états différents.
       return prisma.$transaction(

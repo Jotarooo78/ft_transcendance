@@ -8,6 +8,7 @@
  */
 
 import type { App } from '@ft/service-kit'
+import { Type } from 'typebox'
 import type { FilesController } from '../controllers/files.controller.js'
 import type { UploadController } from '../controllers/upload.controller.js'
 import { FileParamsSchema, FilesQuerySchema } from '../schemas/files.schema.js'
@@ -67,7 +68,20 @@ export function registerFilesRoutes(app: App, files: FilesController, uploads: U
   const onRequest = app.authenticate
   const params = FileParamsSchema
 
-  app.post('/assets', { onRequest, errorHandler: uploadRefusal }, uploads.upload)
+  app.post(
+    '/assets',
+    {
+      onRequest,
+      schema: {
+        querystring: Type.Object(
+          { temporary: Type.Optional(Type.Literal('1')) },
+          { additionalProperties: false }
+        ),
+      },
+      errorHandler: uploadRefusal,
+    },
+    uploads.upload
+  )
 
   app.get(
     '/assets',

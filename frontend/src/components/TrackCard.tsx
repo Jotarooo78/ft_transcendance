@@ -1,3 +1,5 @@
+import ArtistLink from "./ArtistLink";
+import TrackArtwork from "./TrackArtwork";
 import type { Track } from "../types/music";
 
 type TrackCardProps = {
@@ -19,9 +21,11 @@ function formatDuration(durationSeconds: number | null): string {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
+/** Présente le morceau publié, son visuel et le compte artiste consultable. */
 function TrackCard({ track, isSelected, onPlay }: TrackCardProps) {
   return (
-    <article className="track-card">
+    <article className="track-card" data-track-id={track.id}>
+      <TrackArtwork track={track} />
       <header>
         <p className="track-genre">{track.genre}</p>
 
@@ -31,7 +35,7 @@ function TrackCard({ track, isSelected, onPlay }: TrackCardProps) {
       <dl className="track-information">
         <div>
           <dt>Artist</dt>
-          <dd>{track.artistName}</dd>
+          <dd><ArtistLink track={track} /></dd>
         </div>
 
         <div>

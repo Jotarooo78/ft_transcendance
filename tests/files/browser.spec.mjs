@@ -1,169 +1,175 @@
-/** Preuves Chromium réelles des fichiers : progression réseau, aperçu, suppression, erreurs, annulation et changement de compte. */
+/** Régressions du formulaire d’envoi avant publication ; la publication complète est vérifiée dans tests/publication. */
 import { test, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
-import { writeFile } from 'node:fs/promises';
-import { createFixtures } from './fixtures/create-fixtures.mjs';
-import { createAccount, login as apiLogin, request, expect as status, upload, sql, uuid, compose } from './verify-files.mjs';
+import { createAccount, login as apiLogin, request, expect as status, coverFixtures } from './verify-files.mjs';
 
-/** Mot de passe public réservé aux comptes jetables de cette campagne ; jamais un secret utilisateur. */
-const password = 'Files-test-only-password-2026';
-/**
- * Remplit le vrai formulaire du compte et attend la confirmation de connexion avant d’ouvrir ses
- * fichiers.
- */
-async function login(page, account) {
-  await page.goto('/'); await page.getByRole('button', { name: 'Login', exact: true }).click();
-  await page.getByLabel('Email', { exact: true }).fill(account.email); await page.getByLabel('Password', { exact: true }).fill(password);
-  await page.getByRole('button', { name: 'Log in', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Mes fichiers', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Mes fichiers', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Mes fichiers', exact: true })).toBeVisible();
+/** Mot de passe public des comptes jetables de la campagne. */
+const password='Files-test-only-password-2026';
+/** Ouvre le formulaire réel sous un compte neuf ; aucune identité de développement. */
+async function start(page) {
+ const account=await createAccount(randomUUID().replaceAll('-','').slice(0,10),'browser');
+ await page.goto('/');await page.getByRole('button',{name:'Login',exact:true}).click();
+ await page.getByLabel('Email',{exact:true}).fill(account.email);await page.getByLabel('Password',{exact:true}).fill(password);
+ await page.getByRole('button',{name:'Log in',exact:true}).click();await page.getByRole('button',{name:'Upload',exact:true}).click();return account;
 }
-/**
- * Sélectionne le fichier dans le formulaire et attend la requête réelle d’upload ou sa confirmation
- * selon le scénario.
- */
-async function submit(page, bytes, name, mimeType) {
-  await page.getByLabel('Choisir un fichier audio ou une image').setInputFiles({ name, mimeType, buffer: bytes });
-  const response = page.waitForResponse(response => new URL(response.url()).pathname === '/api/media/assets' && response.request().method() === 'POST');
-  await page.getByRole('button', { name: 'Envoyer le fichier', exact: true }).click();
-  const result = await response; expect(result.status()).toBe(201); const file = await result.json(); uuid(file.id);
-  await expect(page.locator(`[data-file-id="${file.id}"]`)).toBeVisible(); return file;
+/** Retire seulement les audios non publiés créés par ce compte de test. */
+async function cleanup(account) {
+ const token=await apiLogin(account);const files=status(await request('/api/media/assets?pageSize=100',{token}),200).items;
+ for(const file of files)status(await request(`/api/media/assets/${file.id}`,{method:'DELETE',token}),204);
 }
-/**
- * Supprime uniquement les fichiers et références identifiés comme fixtures du scénario ; conserve les
- * données étrangères.
- */
-async function cleanup(accounts, referenceIds) {
-  for (const id of referenceIds) sql(`DELETE FROM catalog.tracks WHERE id='${uuid(id)}';`);
-  for (const account of accounts) {
-    const token = await apiLogin(account); const files = status(await request('/api/media/assets?pageSize=100', { token }), 200).items;
-    for (const file of files) status(await request(`/api/media/assets/${uuid(file.id)}`, { method: 'DELETE', token }), 204);
-    expect(status(await request('/api/media/assets', { token }), 200).total).toBe(0);
+
+test('embedded artwork appears while the title remains editable, then cancel removes the temporary audio',async({page})=>{
+ const account=await start(page);
+ try {
+  const fixtures=coverFixtures();await page.getByLabel('Audio file',{exact:true}).setInputFiles({name:'Embedded.mp3',mimeType:'audio/mpeg',buffer:fixtures['png.mp3']});
+  await page.getByLabel('Title',{exact:false}).fill('My title');await expect(page.getByText('✓ Audio ready',{exact:true})).toBeVisible();
+  await expect.poll(()=>page.locator('.publish-artwork img').evaluateAll(images=>images.some(i=>i.complete&&i.naturalWidth>0))).toBe(true);
+  await expect(page.getByRole('button',{name:'Publish track',exact:true})).toBeEnabled();await page.getByRole('button',{name:'Cancel',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Choose a file',exact:true})).toBeVisible();
+ } finally {await cleanup(account);}
+});
+
+test('a bad optional image preserves ready audio and can be removed',async({page})=>{
+ const account=await start(page);
+ try {
+  const fixtures=coverFixtures();await page.getByLabel('Audio file',{exact:true}).setInputFiles({name:'Song.mp3',mimeType:'audio/mpeg',buffer:fixtures['jpeg.mp3']});
+  await expect(page.getByText('✓ Audio ready',{exact:true})).toBeVisible();
+  await page.getByLabel('Cover image',{exact:true}).setInputFiles({name:'bad.png',mimeType:'image/png',buffer:Buffer.from('broken image')});
+  await expect(page.getByRole('button',{name:'Continue without artwork',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Publish track',exact:true})).toBeDisabled();
+  await page.getByRole('button',{name:'Continue without artwork',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Publish track',exact:true})).toBeEnabled();
+ } finally {await cleanup(account);}
+});
+
+test('an image alone and corrupt audio cannot enable publication',async({page})=>{
+ const account=await start(page);
+ try {
+  const fixtures=coverFixtures();await page.getByLabel('Audio file',{exact:true}).setInputFiles({name:'image.jpg',mimeType:'image/jpeg',buffer:fixtures['jpeg.image']});
+  await expect(page.getByRole('alert')).toBeVisible();await expect(page.getByRole('button',{name:'Publish track',exact:true})).toBeDisabled();
+  await page.getByRole('button',{name:'Cancel',exact:true}).click();
+  await page.getByLabel('Audio file',{exact:true}).setInputFiles({name:'broken.mp3',mimeType:'audio/mpeg',buffer:Buffer.from('corrupt audio')});
+  await expect(page.getByRole('alert')).toBeVisible();await expect(page.getByRole('button',{name:'Publish track',exact:true})).toBeDisabled();
+ } finally {await cleanup(account);}
+});
+
+test('session change aborts an active upload and hides the previous form',async({page})=>{
+ const account=await start(page);
+ try {
+  const fixtures=coverFixtures();let release;
+  const gate=new Promise(resolve=>{release=resolve;});
+  await page.route('**/api/media/assets?temporary=1',async route=>{await gate;await route.abort().catch(()=>{});});
+  await page.getByLabel('Audio file',{exact:true}).setInputFiles({name:'Song.mp3',mimeType:'audio/mpeg',buffer:fixtures['png.mp3']});
+  await page.getByRole('button',{name:'Cancel upload',exact:true}).waitFor();
+  await page.getByRole('button',{name:'Log out',exact:true}).click();release();
+  await expect(page.getByRole('button',{name:'Log in',exact:true})).toBeVisible();await expect(page.getByLabel('Title',{exact:false})).toHaveCount(0);
+ } finally {await cleanup(account);}
+});
+
+/** Contrôle les événements XHR sans envoyer de fichier : distingue transfert, attente et confirmation serveur. */
+for (const width of [1280, 390, 320]) {
+test(`upload progress becomes animated preparation until the server confirms readiness (${width}px)`, async ({ page }) => {
+ await page.setViewportSize({ width, height: 960 });
+ await page.clock.install();
+ // Cette identité reste dans le navigateur ; aucune requête ne touche les comptes ou fichiers réels.
+ await page.route('**/api/**', async route => {
+  const path = new URL(route.request().url()).pathname;
+  const data = path === '/api/auth/login' ? { token: 'progress-preview' }
+   : path === '/api/users/me' ? { userId: '00000000-0000-4000-8000-000000000001', displayName: 'Preview', username: 'preview', bio: null, avatarUrl: null }
+   : { users: [], friends: [], items: [], playlists: [] };
+  await route.fulfill({ status: 200, json: data });
+ });
+ await page.addInitScript(() => {
+  /** Garde les autres XHR natifs ; seul le transfert audio reçoit les événements pilotés par le scénario. */
+  class ControlledUpload extends XMLHttpRequest {
+   /** Repère l’envoi Media sans ouvrir de connexion. */
+   open(method, url, ...args) { this.controlled = url.startsWith('/api/media/assets'); if (!this.controlled) super.open(method, url, ...args); }
+   /** Ignore l’en-tête uniquement pour l’envoi simulé. */
+   setRequestHeader(...args) { if (!this.controlled) super.setRequestHeader(...args); }
+   /** Expose le transfert en attente au scénario sans transmettre ses octets. */
+   send(body) { if (this.controlled) window.controlledUpload = this; else super.send(body); }
+   /** Reproduit la notification d’annulation du navigateur. */
+   abort() { if (this.controlled) this.dispatchEvent(new Event('abort')); else super.abort(); }
   }
+  window.XMLHttpRequest = ControlledUpload;
+ });
+ await page.goto('/');
+ await page.getByRole('button', { name: 'Login', exact: true }).click();
+ await page.getByLabel('Email', { exact: true }).fill('preview@example.invalid');
+ await page.getByLabel('Password', { exact: true }).fill('Preview-password');
+ await page.getByRole('button', { name: 'Log in', exact: true }).click();
+ await page.getByRole('button', { name: 'Upload', exact: true }).click();
+ // WAV mono silencieux de deux secondes, valide pour la prévalidation locale.
+ const wav = Buffer.alloc(32044);
+ wav.write('RIFF'); wav.writeUInt32LE(wav.length - 8, 4); wav.write('WAVEfmt ', 8);
+ wav.writeUInt32LE(16, 16); wav.writeUInt16LE(1, 20); wav.writeUInt16LE(1, 22);
+ wav.writeUInt32LE(8000, 24); wav.writeUInt32LE(16000, 28); wav.writeUInt16LE(2, 32);
+ wav.writeUInt16LE(16, 34); wav.write('data', 36); wav.writeUInt32LE(32000, 40);
+ await page.getByLabel('Audio file', { exact: true }).setInputFiles({ name: 'Wait.wav', mimeType: 'audio/wav', buffer: wav });
+ await expect.poll(() => page.evaluate(() => Boolean(window.controlledUpload))).toBe(true);
+ await page.evaluate(() => window.controlledUpload.upload.dispatchEvent(new ProgressEvent('progress', { lengthComputable: true, loaded: 9999, total: 10000 })));
+ await expect(page.getByText('Uploading audio — 99%', { exact: true })).toBeVisible();
+ // Mesure les repères visibles avant le changement de phase, sans dépendre des classes d’animation.
+ /** Mesure dans la page, indépendamment du défilement automatique vers les champs sur mobile. */
+ async function documentBounds(selector) {
+  return page.locator(selector).evaluate(element => {
+   const rect = element.getBoundingClientRect();
+   return { x: rect.x + scrollX, y: rect.y + scrollY, width: rect.width, height: rect.height };
+  });
+ }
+ const statusBefore = await documentBounds('.upload-status-content');
+ const formBefore = await documentBounds('.publish-layout');
+ const filename = await documentBounds('.upload-filename');
+ if (width > 640) expect(statusBefore.x).toBeGreaterThan(filename.x + filename.width);
+ else expect(statusBefore.y).toBeGreaterThanOrEqual(filename.y + filename.height);
+ /** Vérifie que les étapes et le message prolongé ne déplacent aucun des deux repères. */
+ async function expectStablePosition() {
+  const statusNow = await documentBounds('.upload-status-content');
+  const formNow = await documentBounds('.publish-layout');
+  expect(statusNow).toEqual(statusBefore);
+  expect(formNow.y).toBe(formBefore.y);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+ }
+ await page.evaluate(() => window.controlledUpload.upload.dispatchEvent(new ProgressEvent('progress', { lengthComputable: true, loaded: 10000, total: 10000 })));
+ await expectStablePosition();
+ await expect(page.locator('.audio-preparation')).toContainText('Preparing audio');
+ await expect(page.getByRole('progressbar')).toHaveCount(0);
+ await expect(page.locator('.upload-status')).not.toContainText('100%');
+ await expect(page.getByRole('button', { name: 'Publish track', exact: true })).toBeDisabled();
+ await page.getByLabel('Title', { exact: false }).fill('Edited during preparation');
+ await page.getByLabel('Description', { exact: false }).fill('Still editable');
+ await expect(page.getByRole('button', { name: 'Choose artwork', exact: true })).toBeEnabled();
+ await expect(page.locator('.audio-preparation-title')).toHaveCSS('animation-name', 'preparation-shimmer');
+ await page.emulateMedia({ reducedMotion: 'reduce' });
+ await expect(page.locator('.audio-preparation-title')).toHaveCSS('animation-name', 'none');
+ await expect(page.getByText(/This is taking a little longer/)).toHaveCount(0);
+ await page.clock.fastForward(8000);
+ await expect(page.getByText(/This is taking a little longer/)).toBeVisible();
+ await expectStablePosition();
+ await page.screenshot({ path: test.info().outputPath('preparing.png'), fullPage: true });
+ // Une confirmation valide, et elle seule, rend l’audio publiable.
+ await page.evaluate(() => {
+  const xhr = window.controlledUpload;
+  Object.defineProperty(xhr, 'status', { value: 201 });
+  Object.defineProperty(xhr, 'responseText', { value: JSON.stringify({ id: '00000000-0000-4000-8000-000000000002', state: 'ready', usage: 'audio', mimeType: 'audio/wav', byteSize: 32044, durationMs: 2000, cover: null }) });
+  xhr.dispatchEvent(new Event('load'));
+ });
+ await expect(page.getByText('✓ Audio ready', { exact: true })).toBeVisible();
+ await expectStablePosition();
+ await expect(page.locator('.audio-preparation')).toHaveCount(0);
+ await expect(page.getByRole('button', { name: 'Publish track', exact: true })).toBeEnabled();
+ // Un nouvel envoi utilise aussi upload.onload si le total n’était pas mesurable, puis reste annulable.
+ await page.getByRole('button', { name: 'Upload', exact: true }).click();
+ await page.getByRole('button', { name: 'Profile', exact: true }).click();
+ await page.getByRole('button', { name: 'Upload', exact: true }).click();
+ await page.evaluate(() => { window.controlledUpload = null; });
+ await page.getByLabel('Audio file', { exact: true }).setInputFiles({ name: 'Cancel.wav', mimeType: 'audio/wav', buffer: wav });
+ await expect.poll(() => page.evaluate(() => Boolean(window.controlledUpload))).toBe(true);
+ await page.evaluate(() => window.controlledUpload.upload.dispatchEvent(new Event('load')));
+ await expect(page.locator('.audio-preparation')).toBeVisible();
+ await page.getByRole('button', { name: 'Cancel upload', exact: true }).click();
+ await page.clock.fastForward(8000);
+ await expect(page.locator('.audio-preparation')).toHaveCount(0);
+ await expect(page.getByRole('button', { name: 'Choose a file', exact: true })).toBeVisible();
+});
 }
-
-test('real UI: image, slow audio progress, MP3 playback, persistence, refusal and confirmed deletion', async ({ page }) => {
-  const campaign = randomUUID().replaceAll('-', '').slice(0, 10); const path = `/tmp/transcendence-files-browser-${campaign}.json`;
-  const a = await createAccount(campaign, 'a'); const b = await createAccount(campaign, 'b'); const references = [];
-  const fixtures = await createFixtures(`${path}.fixtures`);
-  await writeFile(path, JSON.stringify({ a, b, references }), { mode: 0o600, flag: 'wx' });
-  try {
-    await login(page, a);
-    const image = await submit(page, fixtures['image.png'], 'image.png', 'image/png'); const imageRow = page.locator(`[data-file-id="${image.id}"]`);
-    await imageRow.getByRole('button', { name: 'Ouvrir l’aperçu', exact: true }).click();
-    await expect.poll(() => imageRow.locator('img').evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
-
-    const cdp = await page.context().newCDPSession(page);
-    await cdp.send('Network.enable'); await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 40, downloadThroughput: 1024 * 1024, uploadThroughput: 128 * 1024 });
-    await page.getByLabel('Choisir un fichier audio ou une image').setInputFiles({ name: 'progress.wav', mimeType: 'audio/wav', buffer: fixtures['progress.wav'] });
-    const sent = page.waitForResponse(response => new URL(response.url()).pathname === '/api/media/assets' && response.request().method() === 'POST');
-    await page.getByRole('button', { name: 'Envoyer le fichier', exact: true }).click();
-    await expect(page.getByRole('progressbar', { name: 'Progression de l’envoi' })).toBeVisible();
-    const percentages = new Set(); let complete = false; let validationObserved = false;
-    const done = sent.then(response => { complete = true; return response; });
-    while (!complete) {
-      const value = await page.getByRole('progressbar', { name: 'Progression de l’envoi' }).evaluateAll(nodes => nodes[0]?.getAttribute('value') ?? null);
-      if (value !== null && Number(value) > 0 && Number(value) < 100) percentages.add(Number(value));
-      validationObserved ||= await page.getByText('Envoi terminé. Validation et enregistrement sur le serveur…', {exact:true}).isVisible();
-      await new Promise(resolve => setTimeout(resolve, 50));
-    }
-    const response = await done; expect(response.status()).toBe(201); expect(percentages.size).toBeGreaterThan(1); expect(validationObserved).toBe(true);
-    const audio = await response.json(); uuid(audio.id);
-    await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
-    const audioRow = page.locator(`[data-file-id="${audio.id}"]`); await expect(audioRow).toBeVisible();
-    await audioRow.getByRole('button', { name: 'Ouvrir l’aperçu', exact: true }).click(); const player = audioRow.locator('audio');
-    await expect.poll(() => player.evaluate(audio => Number.isFinite(audio.duration) && audio.duration > 5 && audio.readyState >= 2)).toBe(true);
-    await player.click({ position: { x: 20, y: 25 } });
-    await expect.poll(() => player.evaluate(audio => audio.currentTime)).toBeGreaterThan(0.2);
-    await player.evaluate(audio => audio.pause());
-    await expect.poll(() => page.evaluate(() => Object.keys(localStorage).filter(key => /token|file/i.test(key)).length)).toBe(0);
-
-    await page.reload(); await login(page, a);
-    await expect(page.locator(`[data-file-id="${image.id}"]`)).toBeVisible(); await expect(page.locator(`[data-file-id="${audio.id}"]`)).toBeVisible();
-    const reference = randomUUID(); references.push(reference); await writeFile(path, JSON.stringify({ a,b,references }), { mode: 0o600 });
-    sql(`INSERT INTO catalog.tracks(id,title,audio_asset_id,duration_ms,status) VALUES ('${uuid(reference)}','Browser private reference fixture','${uuid(audio.id)}',6000,'draft');`);
-    const protectedRow = page.locator(`[data-file-id="${audio.id}"]`);
-    await protectedRow.getByRole('button', { name: 'Ouvrir l’aperçu', exact: true }).click();
-    await expect(protectedRow.locator('audio')).toBeVisible();
-    await protectedRow.getByRole('button', { name: 'Supprimer le fichier', exact: true }).click();
-    await expect(protectedRow.getByRole('alert')).toContainText('encore utilisé'); await expect(protectedRow.locator('audio')).toBeVisible();
-    sql(`DELETE FROM catalog.tracks WHERE id='${uuid(reference)}';`); references.length = 0;
-
-    await cdp.send('Network.emulateNetworkConditions', { offline: true, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
-    await protectedRow.getByRole('button', { name: 'Supprimer le fichier', exact: true }).click();
-    await expect(protectedRow.getByRole('alert')).toBeVisible(); await expect(protectedRow).toBeVisible();
-    await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
-    await protectedRow.getByRole('button', { name: 'Supprimer le fichier', exact: true }).click(); await expect(protectedRow).toHaveCount(0);
-    await page.reload(); await login(page, a); await expect(page.locator(`[data-file-id="${audio.id}"]`)).toHaveCount(0);
-    await expect(page.locator(`[data-file-id="${image.id}"]`)).toBeVisible();
-    await page.getByRole('button', { name: 'Log out', exact: true }).click(); await login(page, b);
-    await expect(page.locator('[data-file-id]')).toHaveCount(0); await expect(page.getByText('Aucun fichier sur cette page.')).toBeVisible();
-  } finally { await cleanup([a,b], references); }
-});
-
-test('real UI and server: local refusal, bypass refusal, cancellation and late owner response', async ({ page }) => {
-  const campaign = randomUUID().replaceAll('-', '').slice(0, 10); const a = await createAccount(campaign,'a'); const b = await createAccount(campaign,'b');
-  const fixtures = await createFixtures(`/tmp/transcendence-files-browser-negative-${campaign}`); const token = await apiLogin(a);
-  try {
-    await login(page,a); let uploads = 0;
-    page.on('request', request => { if (new URL(request.url()).pathname === '/api/media/assets' && request.method() === 'POST') uploads++; });
-    const tooLarge = Buffer.alloc(25_000_001); fixtures['image.png'].copy(tooLarge);
-    for (const [bytes,name,mime] of [[tooLarge,'large.png','image/png'],[fixtures['false.mp3'],'false.mp3','audio/mpeg'],[fixtures['truncated.wav'],'truncated.wav','audio/wav'],[fixtures['truncated.png'],'truncated.png','image/png']]) {
-      await page.getByLabel('Choisir un fichier audio ou une image').setInputFiles({ name, mimeType: mime, buffer: bytes });
-      await page.getByRole('button', { name: 'Envoyer le fichier', exact: true }).click(); await expect(page.getByRole('alert')).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Envoyer le fichier', exact: true })).toBeEnabled();
-    }
-    expect(uploads).toBe(0);
-    for (const [bytes,mime,expected] of [[tooLarge,'image/png',413],[fixtures['false.mp3'],'audio/mpeg',415]]) {
-      const response = await page.request.post('/api/media/assets', { headers: { Authorization: `Bearer ${token}` }, multipart: { file: { name:'bypass',mimeType:mime,buffer:bytes } } });
-      expect(response.status()).toBe(expected);
-    }
-    const cdp = await page.context().newCDPSession(page); await cdp.send('Network.enable');
-    await cdp.send('Network.emulateNetworkConditions', { offline:false,latency:40,downloadThroughput:1024*1024,uploadThroughput:64*1024 });
-    await page.getByLabel('Choisir un fichier audio ou une image').setInputFiles({ name:'cancel.wav',mimeType:'audio/wav',buffer:fixtures['progress.wav'] });
-    await page.getByRole('button',{name:'Envoyer le fichier',exact:true}).click(); await expect(page.getByRole('progressbar')).toBeVisible();
-    await page.getByRole('button',{name:'Annuler l’envoi',exact:true}).click(); await expect(page.getByRole('alert')).toContainText('annulé');
-    await cdp.send('Network.emulateNetworkConditions', { offline:false,latency:0,downloadThroughput:-1,uploadThroughput:-1 });
-    await expect(page.locator('[data-file-id]')).toHaveCount(0);
-
-    const privateFile = await upload(token,fixtures['image.png'],'image/png');
-    // Delay a real authorized A response; never manufacture successful data.
-    let release; let arrived; const arrival = new Promise(resolve => { arrived=resolve; }); const gate = new Promise(resolve => { release=resolve; });
-    await page.route('**/api/media/assets?page=1&pageSize=20', async route => {
-      const response = await route.fetch(); arrived(); await gate; await route.fulfill({ response }).catch(() => {});
-    }, { times:1 });
-    await page.getByRole('button',{name:'Actualiser les fichiers',exact:true}).click(); await arrival;
-    await page.getByRole('button',{name:'Log out',exact:true}).click(); await login(page,b); release();
-    await expect(page.locator(`[data-file-id="${privateFile.id}"]`)).toHaveCount(0); await expect(page.locator('[data-file-id]')).toHaveCount(0);
-    await expect(page.getByText('Aucun fichier sur cette page.')).toBeVisible();
-  } finally { await cleanup([a,b],[]); }
-});
-
-test('audio unsupported locally remains uploadable and receives a real playable MP3 preview', async ({ page }) => {
-  const campaign = randomUUID().replaceAll('-', '').slice(0,10); const account = await createAccount(campaign,'a');
-  const fixture = `/tmp/files-browser-${randomUUID()}.aiff`;
-  try {
-    compose(['exec','-T','media-service','ffmpeg','-v','error','-i','/data/audio/demo-1.wav','-f','aiff',fixture]);
-    const base64 = compose(['exec','-T','media-service','node','--input-type=module','-e','import {readFile} from "node:fs/promises"; process.stdout.write((await readFile(process.argv[1])).toString("base64"));',fixture]);
-    const bytes = Buffer.from(base64,'base64'); await login(page,account);
-    const local = await page.evaluate(base64 => new Promise(resolve => {
-      const audio = new Audio(); const url = URL.createObjectURL(new Blob([Uint8Array.from(atob(base64), char => char.charCodeAt(0))], {type:'audio/aiff'}));
-      /**
-       * Libère le mécanisme d’attente du scénario afin de terminer la réponse réseau volontairement
-       * retardée.
-       */
-      const finish = value => { clearTimeout(timer); audio.removeAttribute('src'); audio.load(); URL.revokeObjectURL(url); resolve(value); };
-      const timer = setTimeout(() => finish(false),5000); audio.onloadedmetadata=()=>finish(true); audio.onerror=()=>finish(false); audio.src=url;
-    }), base64);
-    expect(local).toBe(false);
-    const file = await submit(page,bytes,'audio.aiff','audio/aiff'); expect(file.mimeType).toBe('audio/aiff');
-    const row = page.locator(`[data-file-id="${file.id}"]`); await row.getByRole('button',{name:'Ouvrir l’aperçu',exact:true}).click();
-    await expect.poll(() => row.locator('audio').evaluate(audio => audio.readyState>=2 && audio.duration>5)).toBe(true);
-    await row.locator('audio').click({position:{x:20,y:25}});
-    await expect.poll(() => row.locator('audio').evaluate(audio => audio.currentTime)).toBeGreaterThan(.2);
-  } finally {
-    compose(['exec','-T','media-service','node','--input-type=module','-e','import {unlink} from "node:fs/promises"; await unlink(process.argv[1]);',fixture]);
-    await cleanup([account],[]);
-  }
-});

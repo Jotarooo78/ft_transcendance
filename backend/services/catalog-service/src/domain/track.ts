@@ -23,6 +23,10 @@ import { DomainError } from '@ft/service-kit'
  *   genre, calculés à partir d'autres tables.
  */
 export type TrackRow = {
+  /** Compte auteur ; absent pour les morceaux de démonstration historiques. */
+  artistUserId?: string | null
+  /** Présentation publique facultative. */
+  description?: string | null
   /** @brief UUID du morceau. */
   id: string
   /** @brief Titre du morceau. */
@@ -46,6 +50,14 @@ export type TrackRow = {
  *   schemas/tracks.schema.ts.
  */
 export type Track = {
+  /** Compte actuellement crédité. */
+  artistUserId?: string
+  /** Description publique facultative. */
+  description?: string | null
+  /** Pochette publique facultative, liée à l’audio. */
+  coverUrl?: string | null
+  /** Avatar actuel de l’artiste. */
+  artistAvatarUrl?: string | null
   /** @brief UUID du morceau. */
   id: string
   /** @brief Titre du morceau. */
@@ -111,6 +123,13 @@ function toDurationMs(value: bigint | null): number | null {
 export function toTrack(row: TrackRow): Track {
   const durationMs = toDurationMs(row.durationMs)
   return {
+    ...(row.artistUserId
+      ? {
+          artistUserId: row.artistUserId,
+          description: row.description ?? null,
+          coverUrl: row.audioAssetId ? `/api/media/assets/${row.audioAssetId}/artwork` : null,
+        }
+      : {}),
     id: row.id,
     title: row.title,
     artistName: row.artistName,

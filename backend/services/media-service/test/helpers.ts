@@ -94,8 +94,16 @@ type Overrides = Partial<Dependencies> & { storageDir?: string; secret?: string 
 export async function buildTestApp(overrides: Overrides = {}) {
   const { storageDir = '/unused', secret = jwtSecret, ...dependencies } = overrides
   const app = await buildApp(
-    { jwtSecret: secret, storageDir },
+    { jwtSecret: secret, storageDir, internalServiceToken: 'internal-test-token' },
     {
+      covers: {
+        replace: unused,
+        remove: unused,
+        hasStorageKey: unused,
+        retired: async () => [],
+        forgetRetired: unused,
+      },
+      publications: { reserve: unused, expired: async () => [] },
       assets: fakeAssets(),
       catalog: { isAssetPublished: unused, isAssetReferenced: unused },
       validate: unused,

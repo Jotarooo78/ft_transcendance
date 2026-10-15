@@ -70,6 +70,10 @@ export const TrackParamsSchema = Type.Object({ id: UuidSchema })
  *   peuvent valoir null.
  */
 export const TrackSchema = Type.Object({
+  artistUserId: Type.Optional(Type.String()),
+  description: Type.Optional(nullable(Type.String())),
+  coverUrl: Type.Optional(nullable(Type.String())),
+  artistAvatarUrl: Type.Optional(nullable(Type.String())),
   id: Type.String(),
   title: Type.String(),
   artistName: Type.String(),

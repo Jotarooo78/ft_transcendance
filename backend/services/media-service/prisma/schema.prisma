@@ -23,10 +23,14 @@ model Asset {
   id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   /// UUID du compte ayant envoyé l’original ; null pour les fichiers sans propriétaire utilisateur.
   uploaderUserId String?  @map("uploader_user_id") @db.Uuid
-  /// Usage interne Media ; audio et cover représentent les uploads gérés ici.
+  /// Usage interne Media ; la gestion privée reçoit audio et associe sa pochette comme variante.
   purpose        String
   /// État Media : pending, ready, deleting ou deleted selon le cycle de stockage.
   state          String   @default("pending")
+  /// Expiration des nouveaux uploads provisoires ; null pour les fichiers historiques.
+  expiresAt      DateTime? @map("expires_at") @db.Timestamptz(6)
+  /// Réservation durable avant publication : interdit la suppression même si Catalogue tarde à confirmer.
+  publicationTrackId String? @map("publication_track_id") @db.Uuid
   /// Nom interne du fichier sur le volume durable ; ne doit pas être exposé au client.
   storageKey     String   @unique @map("storage_key")
   /// Type MIME du contenu vérifié, utilisé pour servir les octets avec leur format.
@@ -50,13 +54,13 @@ model Asset {
   @@schema("media")
 }
 
-/// Représentation dérivée d’un original, par exemple private-preview en MP3, avec sa propre clé.
+/// Représentation associée à un original : aperçu MP3 ou pochette, chacun sous sa propre clé.
 model Variant {
   /// Identifiant de cette entité ; distinct des identifiants des objets liés.
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   /// UUID local de l’original auquel cette variante appartient.
   assetId      String   @map("asset_id") @db.Uuid
-  /// Nom de la représentation, unique par original ; private-preview désigne l’aperçu MP3.
+  /// Nom unique par original : private-preview pour le MP3, cover pour la pochette, retired-cover-* avant nettoyage.
   renditionKey String   @map("rendition_key")
   /// Nom interne du fichier sur le volume durable ; ne doit pas être exposé au client.
   storageKey   String   @unique @map("storage_key")

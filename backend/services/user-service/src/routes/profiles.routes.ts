@@ -31,6 +31,11 @@ export function registerProfilesRoutes(app: App, profiles: ProfilesController) {
   const onRequest = app.authenticate
   const response = { 200: ProfileSchema }
 
+  app.get(
+    '/profiles/:userId',
+    { schema: { params: UserIdParamsSchema, response } },
+    profiles.artist
+  )
   app.get('/me', { onRequest, schema: { response } }, profiles.me)
   app.put('/me/profile', { onRequest, schema: { response } }, profiles.update)
   app.get('/profiles', { onRequest }, profiles.directory)

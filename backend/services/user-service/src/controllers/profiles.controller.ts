@@ -29,6 +29,11 @@ export type ProfilesController = ReturnType<typeof createProfilesController>
  */
 export function createProfilesController(profiles: ProfilesService) {
   return {
+    /** Profil public d’artiste avec sa bio ; aucune donnée de connexion n’est renvoyée. */
+    artist(request: FastifyRequest<{ Params: { userId: string } }>) {
+      if (!isUuid(request.params.userId)) throw invalidUserId()
+      return profiles.me(request.params.userId.toLowerCase())
+    },
     /**
      * @brief Répond à `GET /me` : renvoie le profil complet de l'utilisateur connecté.
      * @param request Requête reçue, avec un jeton de connexion valide.
@@ -53,7 +58,14 @@ export function createProfilesController(profiles: ProfilesService) {
      * @returns Un objet `{ users }`.
      */
     async directory(request: FastifyRequest) {
-      return { users: await profiles.directory(request.userId) }
+      return {
+        /** Profil public d’artiste avec sa bio ; aucune donnée de connexion n’est renvoyée. */
+        artist(request: FastifyRequest<{ Params: { userId: string } }>) {
+          if (!isUuid(request.params.userId)) throw invalidUserId()
+          return profiles.me(request.params.userId.toLowerCase())
+        },
+        users: await profiles.directory(request.userId),
+      }
     },
 
     /**

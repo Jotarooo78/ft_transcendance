@@ -107,11 +107,18 @@ export function createFileDeletionService({ storageDir, assets, catalog }: Optio
       if (current?.state === 'deleted') {
         return
       }
+      if (current?.state === 'ready') throw fileInUse()
       if (current?.state !== 'deleting') {
         throw fileNotFound()
       }
     }
-    for (const key of [asset.storageKey, ...asset.variants.map((variant) => variant.storageKey)]) {
+    // Relit les variantes après le verrou de suppression : une pochette pouvait finir juste avant.
+    const locked = await assets.findOwnedWithAllVariants(owner, id)
+    if (!locked || locked.state === 'deleted') return
+    for (const key of [
+      locked.storageKey,
+      ...locked.variants.map((variant) => variant.storageKey),
+    ]) {
       await removeStoredFile(storageDir, key)
     }
     await syncDirectory(storageDir)

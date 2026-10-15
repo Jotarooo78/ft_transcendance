@@ -23,10 +23,10 @@ import {
  * @returns Le compteur ; il interrompt la réception avec `413 file_too_large` en cas de
  *   dépassement.
  */
-export function createByteLimiter(): Transform {
+export function createByteLimiter(maximum = audioByteLimit): Transform {
   let received = 0
   let header = Buffer.alloc(0)
-  let limit = audioByteLimit
+  let limit = maximum
 
   return new Transform({
     /**
@@ -43,7 +43,7 @@ export function createByteLimiter(): Transform {
         const missing = signatureLength - header.length
         header = Buffer.concat([header, chunk.subarray(0, missing)])
         if (header.length >= signatureLength && detectImageFormat(header)) {
-          limit = imageByteLimit
+          limit = Math.min(maximum, imageByteLimit)
         }
       }
       callback(received > limit ? fileError(413, 'file_too_large') : null, chunk)

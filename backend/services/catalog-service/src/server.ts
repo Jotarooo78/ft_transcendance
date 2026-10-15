@@ -16,6 +16,9 @@
  * jamais besoin de ce fichier.
  */
 
+import { createUsersClient } from './clients/users.client.js'
+import { createMediaClient } from './clients/media.client.js'
+import { createPublicationsRepository } from './repositories/publications.repository.js'
 import { buildApp } from './app.js'
 import { loadConfig } from './config/env.js'
 import { createAssetsRepository } from './repositories/assets.repository.js'
@@ -45,6 +48,9 @@ const prisma = createPrisma(config.databaseUrl)
  *   `close` est appelée quand le serveur s'arrête.
  */
 const app = await buildApp(config, {
+  users: createUsersClient(config.userUrl),
+  media: createMediaClient(config.mediaUrl, config.internalServiceToken),
+  publications: createPublicationsRepository(prisma),
   tracks: createTracksRepository(prisma),
   assets: createAssetsRepository(prisma),
   ready: () => prisma.$queryRaw`SELECT 1`,

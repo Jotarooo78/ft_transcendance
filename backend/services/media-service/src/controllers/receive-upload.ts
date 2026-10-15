@@ -52,17 +52,18 @@ async function syncFile(path: string): Promise<void> {
 export async function receiveSingleFile(
   request: FastifyRequest,
   path: string,
-  signal: AbortSignal
+  signal: AbortSignal,
+  byteLimit = audioByteLimit
 ): Promise<string> {
   let count = 0
   let declaredMime = ''
-  for await (const part of request.parts({ limits: partLimits })) {
+  for await (const part of request.parts({ limits: { ...partLimits, fileSize: byteLimit + 1 } })) {
     if (part.type !== 'file' || part.fieldname !== 'file' || ++count !== 1) {
       throw invalidMultipart()
     }
     declaredMime = part.mimetype
     const destination = createWriteStream(path, { flags: 'wx', mode: 0o600 })
-    await pipeline(part.file, createByteLimiter(), destination, { signal })
+    await pipeline(part.file, createByteLimiter(byteLimit), destination, { signal })
     await syncFile(path)
     if (part.file.truncated) {
       throw fileError(413, 'file_too_large')

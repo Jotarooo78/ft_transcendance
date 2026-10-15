@@ -16,7 +16,16 @@
  */
 
 import multipart from '@fastify/multipart'
-import { authPlugin, createApp, opsPlugin } from '@ft/service-kit'
+import type { CoverStore } from './domain/cover.js'
+import type { PublicationsRepository } from './repositories/publications.repository.js'
+import { createCoversService } from './services/covers.service.js'
+import { createCoversController } from './controllers/covers.controller.js'
+import { registerCoversRoutes } from './routes/covers.routes.js'
+import { createPublicationsService } from './services/publications.service.js'
+import { createPublicationsController } from './controllers/publications.controller.js'
+import { registerPublicationsRoutes } from './routes/publications.routes.js'
+import { createAudioUploadService } from './services/audio-upload.service.js'
+import { authPlugin, createApp, opsPlugin, internalTokenPlugin } from '@ft/service-kit'
 import type { CatalogClient } from './clients/catalog.client.js'
 import type { Config } from './config/env.js'
 import { createAudioController } from './controllers/audio.controller.js'
@@ -39,6 +48,10 @@ const service = 'media-service'
 
 /** @brief Tout ce que le serveur reçoit de l'extérieur pour fonctionner. */
 export type Dependencies = {
+  /** Remplacement atomique et nettoyage des pochettes. */
+  covers: CoverStore
+  /** Réservation durable et liste des audios abandonnés. */
+  publications: PublicationsRepository
   /**
    * @brief Objet qui lit et écrit en base les informations sur les fichiers (voir
    *   repositories/assets.repository.ts).
@@ -72,7 +85,7 @@ export type Dependencies = {
  * @throws {Error} Si le secret des jetons est vide : le service refuse de démarrer.
  */
 export async function buildApp(
-  config: Pick<Config, 'jwtSecret' | 'storageDir'>,
+  config: Pick<Config, 'jwtSecret' | 'storageDir' | 'internalServiceToken'>,
   dependencies: Dependencies
 ) {
   const { assets, catalog, validate } = dependencies
@@ -88,20 +101,45 @@ export async function buildApp(
   await app.register(opsPlugin, { service, ready: dependencies.ready })
   // Media refuse aussi un jeton sans date d'expiration.
   await app.register(authPlugin, { secret: config.jwtSecret, requireExpiry: true })
+  await app.register(internalTokenPlugin, { token: config.internalServiceToken })
   await app.register(multipart)
-  app.addHook('onClose', async () => {
-    await dependencies.close?.()
-  })
 
   const files = createFilesService({ storageDir, assets, catalog })
   const deletions = createFileDeletionService({ storageDir, assets, catalog })
   const uploads = createUploadService({ storageDir, assets, validate })
 
+  const gate = createUploadGate()
+  registerCoversRoutes(
+    app,
+    createCoversController(
+      createCoversService(storageDir, assets, dependencies.covers, catalog, validate),
+      gate
+    )
+  )
+  const publications = createPublicationsService(dependencies.publications, deletions)
+  registerPublicationsRoutes(app, createPublicationsController(publications))
+  // Une seule passe de nettoyage à la fois ; l’arrêt attend la passe active avant de fermer SQL.
+  let cleanup: Promise<unknown> | undefined
+  const timer = setInterval(() => {
+    if (!cleanup)
+      cleanup = publications
+        .expire()
+        .catch((error) => app.log.error(error, 'Expired upload cleanup failed'))
+        .finally(() => {
+          cleanup = undefined
+        })
+  }, 60_000)
+  timer.unref()
+  app.addHook('onClose', async () => {
+    clearInterval(timer)
+    await cleanup
+    await dependencies.close?.()
+  })
   registerAudioRoutes(app, createAudioController(files))
   registerFilesRoutes(
     app,
     createFilesController(files, deletions),
-    createUploadController(uploads, createUploadGate())
+    createUploadController(createAudioUploadService(storageDir, uploads, dependencies.covers), gate)
   )
 
   return app

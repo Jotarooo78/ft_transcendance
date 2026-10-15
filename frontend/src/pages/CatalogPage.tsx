@@ -7,6 +7,8 @@ import { getTracks, type CatalogList } from "../services/catalog";
 import type { PrivatePlaylist as Playlist, Track } from "../types/music";
 
 type CatalogPageProps = {
+  /** Morceau venant d’être publié, ouvert et recherché immédiatement. */
+  initialTrack?: Track | null;
   playlists: Playlist[];
   /** Ajoute une nouvelle occurrence de morceau à la playlist sélectionnée. */
   onAddItem: (playlist: Playlist, trackId: string) => Promise<Playlist>;
@@ -18,9 +20,9 @@ const TRACKS_PER_PAGE = 2;
  * Charge une page réelle du Catalogue avec recherche, genre et tri ; une clé de requête empêche
  * d’afficher une réponse périmée. Gère les ajouts confirmés aux playlists privées.
  */
-function CatalogPage({ playlists, onAddItem }: CatalogPageProps) {
+function CatalogPage({ playlists, onAddItem, initialTrack }: CatalogPageProps) {
   const [currentPage, setCurrentPage] = useState(1);
-  const [detailId, setDetailId] = useState<string | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(initialTrack?.id ?? null);
   const detailTrigger = useRef<HTMLButtonElement | null>(null);
 
   const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
@@ -29,7 +31,7 @@ function CatalogPage({ playlists, onAddItem }: CatalogPageProps) {
     playlists[0]?.id ?? "",
   );
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialTrack?.title ?? "");
 
   const [selectedGenre, setSelectedGenre] = useState("all");
 

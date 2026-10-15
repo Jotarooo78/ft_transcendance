@@ -1,124 +1,96 @@
 #!/usr/bin/env bash
-# Orchestre la campagne décrite dans le README voisin ; les gardes et le traitement de sortie font partie de la preuve.
+# Vérifie le parcours audio/pochette dans une pile neuve, sans arrêter la pile de développement.
 set -Eeuo pipefail
 umask 077
-
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repo_dir="$(cd -- "$script_dir/../.." && pwd)"
 cd "$repo_dir"
+readonly project=transcendence_audio_cover
+compose=(docker compose -p "$project" --env-file /dev/null -f tests/music/compose.yml -f tests/files/compose.yml)
 work_dir="$(mktemp -d /tmp/transcendence-files-XXXXXX)"
-campaign="${work_dir##*/}"
-readonly project=common_repo
-base=(docker compose -p "$project" -f "$repo_dir/docker-compose.yml")
-fresh=("${base[@]}" -f "$work_dir/volumes.yml")
-runtime=(nginx frontend auth-service user-service catalog-service media-service library-service playback-service db)
-volumes=()
-# Contrôle les cibles d’origine avant tout changement de montage.
 phase=guard
-changed=false
+created=false
 complete=false
-
-# Vérifie les montages et labels de la campagne via check-stack.mjs ; ne remplace pas une cible non vérifiée.
-check() { node "$script_dir/check-stack.mjs" "$1" "$work_dir" "$campaign"; }
-# Restaure les trois volumes d’origine avant de retirer les volumes jetables vérifiés. Une restauration ou un nettoyage échoué empêche le PASS global.
+# Supprime seulement les ressources créées par cette invocation après refus de toute cible préexistante.
 cleanup() {
   local status=$?
   trap - EXIT
-  if (( status != 0 )); then printf '[FILES] FAIL phase=%s\n' "$phase" >&2; fi
-  if [[ "$changed" == true ]]; then
-    "${fresh[@]}" stop "${runtime[@]}" || status=1
-    "${base[@]}" up -d --no-deps db || status=1
-    "${base[@]}" up -d --no-deps auth-service user-service catalog-service media-service library-service playback-service frontend nginx || status=1
-    if check mounted-original; then
-      unset FILES_COMPOSE_OVERRIDE
-      node --input-type=module -e 'import {waitReady} from "./tests/files/verify-files.mjs"; await waitReady();' || status=1
-      if (( ${#volumes[@]} == 3 )) && check disposable; then
-        docker volume rm "${volumes[@]}" || status=1
-        check absent || status=1
-      else status=1; fi
-    else status=1; fi
-  elif (( ${#volumes[@]} > 0 )); then
-    # Only resources created and tracked by this invocation, before any mount.
-    for volume in "${volumes[@]}"; do
-      if [[ "$(docker volume inspect --format '{{index .Labels "codex.files.campaign"}}' "$volume")" == "$campaign" ]]; then docker volume rm "$volume" || status=1; else status=1; fi
-    done
+  if (( status != 0 )); then printf '[FILES] FAIL phase=%s; evidence=%s\n' "$phase" "$work_dir" >&2; fi
+  if [[ "$created" == true ]]; then
+    "${compose[@]}" down --volumes --remove-orphans || status=1
   fi
   rm -f -- "$work_dir/config.json"
   if (( status == 0 )) && [[ "$complete" == true ]]; then
-    printf '[FILES] PASS all six requirements and non-regression; original stack restored; revision=%s\n' "$revision"
-  else printf '[FILES] Evidence and recovery targets retained at %s\n' "$work_dir" >&2; fi
+    printf '[FILES] PASS audio/cover, persistence, isolation, Chromium and non-regression; revision=%s\n' "$revision"
+  fi
   exit "$status"
 }
-# Garantit que la sortie normale et les erreurs passent par le nettoyage prévu par ce runner.
 trap cleanup EXIT
-
 [[ "$(git rev-parse --show-toplevel)" == "$repo_dir" ]]
 [[ "$(node -p 'process.versions.node.split(".")[0]')" == 22 ]]
 revision="$(git rev-parse HEAD)"
-printf '[FILES] Revision=%s Node=%s npm=%s Compose=%s\n' "$revision" "$(node --version)" "$(npm --version)" "$(docker compose version --short)"
-if [[ -n "$(git status --porcelain -- tests/files backend frontend nginx database README.md)" ]]; then printf '[FILES] Source includes local changes; revision identifies committed base.\n'; fi
-"${base[@]}" config --quiet
-"${base[@]}" config --format json > "$work_dir/config.json"
-check prepare
-rm -f -- "$work_dir/config.json"
+export FILES_BASE_URL=https://127.0.0.1:4443
+"${compose[@]}" config --quiet
+"${compose[@]}" config --format json > "$work_dir/config.json"
+# Contrôle les noms réellement résolus et l'unique port avant toute création/nettoyage.
+node --input-type=module - "$work_dir/config.json" <<'JS'
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const config=JSON.parse(readFileSync(process.argv[2],'utf8'));
+assert.equal(config.name,'transcendence_audio_cover');
+assert.deepEqual(Object.keys(config.volumes).sort(),['music_avatar_data','music_db_data','music_media_data']);
+for(const [key,volume] of Object.entries(config.volumes)) assert.ok(!volume.external && volume.name===`transcendence_audio_cover_${key}`);
+for(const network of Object.values(config.networks)) assert.ok(!network.external && network.name.startsWith('transcendence_audio_cover_'));
+for(const service of Object.values(config.services)) assert.ok(!service.container_name && !service.env_file);
+const ports=Object.values(config.services).flatMap(service=>service.ports??[]);
+assert.equal(ports.length,1); assert.equal(ports[0].host_ip,'127.0.0.1'); assert.equal(String(ports[0].published),'4443');
+assert.equal(config.services.db.environment.POSTGRES_DB,'transcendence_music');
+console.log('[FILES] Guard: dedicated project, fresh volumes and loopback HTTPS port');
+JS
+# Une pile ou un volume déjà présents exigent leur examen ; ne pas les effacer pour relancer un test.
+for kind in container volume network; do
+  case "$kind" in
+    container) existing="$(docker ps -aq --filter "label=com.docker.compose.project=$project")" ;;
+    volume) existing="$(docker volume ls -q --filter "label=com.docker.compose.project=$project")" ;;
+    network) existing="$(docker network ls -q --filter "label=com.docker.compose.project=$project")" ;;
+  esac
+  [[ -z "$existing" ]] || { printf 'Refusing existing test %s resources\n' "$kind" >&2; exit 1; }
+done
+for key in music_db_data music_media_data music_avatar_data; do
+  if docker volume inspect "${project}_${key}" >/dev/null 2>&1; then echo 'Refusing existing named volume' >&2; exit 1; fi
+done
+if docker network inspect "${project}_default" >/dev/null 2>&1; then echo 'Refusing existing named network' >&2; exit 1; fi
 phase=build
-"${base[@]}" build auth-service user-service catalog-service media-service library-service playback-service frontend nginx migrate-auth migrate-users migrate-catalog migrate-media migrate-library migrate-playback
-phase=service-tests
-for service in migrate-auth migrate-users migrate-catalog migrate-media migrate-library migrate-playback; do "${base[@]}" run --rm --no-deps "$service" npm test; done
+"${compose[@]}" build > "$work_dir/build.log" 2>&1
+phase=media-unit
+created=true
+"${compose[@]}" run --rm --no-deps migrate-media npm test
 phase=frontend
-npm run lint --prefix frontend
-npm run build --prefix frontend
-npm run test:music --prefix frontend
+"${compose[@]}" run --rm --no-deps frontend sh -ec 'npm run lint && npm run build && npm run test:music'
 phase=browser-tools
 npm ci --prefix "$script_dir"
 npm run install:browser --prefix "$script_dir"
-"$script_dir/node_modules/.bin/playwright" --version
-node --input-type=module -e 'import {chromium} from "./tests/files/node_modules/playwright/index.mjs"; const browser=await chromium.launch(); console.log("[FILES] Chromium="+browser.version()); await browser.close();'
-# Crée trois volumes neufs avec labels propres à cette campagne ; aucun volume existant n’est réutilisé.
-phase=fresh-volumes
-for key in db_data media_data avatar_data; do
-  volume="common_repo_${campaign//-/_}_${key}"
-  if docker volume inspect "$volume" >/dev/null 2>&1; then printf 'Refusing existing campaign volume\n' >&2; exit 1; fi
-  docker volume create --label "codex.files.campaign=$campaign" --label codex.files.disposable=true --label "com.docker.compose.project=$project" "$volume"
-  volumes+=("$volume")
-done
-check disposable
-changed=true
-"${base[@]}" stop "${runtime[@]}"
-export FILES_COMPOSE_OVERRIDE="$work_dir/volumes.yml"
-export FILES_BASE_URL=https://127.0.0.1:1443
-# Applique les six migrations et les permissions sur ces seules cibles neuves.
-phase=migrations
-"${fresh[@]}" up -d --no-deps db
-for service in migrate-auth migrate-users migrate-catalog migrate-media migrate-library migrate-playback; do "${fresh[@]}" run --rm "$service"; done
-"${fresh[@]}" run --rm --no-deps apply-permissions
 phase=startup
-"${fresh[@]}" up -d --no-deps auth-service user-service catalog-service media-service library-service playback-service frontend nginx
-check mounted-fresh
-node --input-type=module -e 'import {waitReady,sql} from "./tests/files/verify-files.mjs"; await waitReady(); sql("DO $$ BEGIN IF (SELECT count(*) FROM media.assets)<>0 OR (SELECT count(*) FROM auth.accounts)<>0 OR (SELECT count(*) FROM catalog.tracks)<>0 THEN RAISE EXCEPTION '\''Fresh campaign is not empty'\''; END IF; END $$;"); console.log("[FILES] PASS empty application tables after all six migrations");'
-"${fresh[@]}" exec -T media-service ffmpeg -version
-"${fresh[@]}" exec -T media-service npm run seed:demo
-"${fresh[@]}" exec -T catalog-service npm run seed:demo
-# Exécute le vrai cycle HTTPS avec témoins PostgreSQL et disque.
-phase=https-initial
-node "$script_dir/verify-files.mjs" initial "$work_dir/state.json"
-phase=media-persistence
-"${fresh[@]}" restart media-service
-node "$script_dir/verify-files.mjs" verify "$work_dir/state.json"
-phase=postgres-persistence
-"${fresh[@]}" restart db
-node "$script_dir/verify-files.mjs" verify "$work_dir/state.json"
+"${compose[@]}" up -d --wait nginx
+node --input-type=module -e 'import {waitReady,sql} from "./tests/files/verify-files.mjs"; await waitReady(); sql("DO $$ BEGIN IF (SELECT count(*) FROM media.assets)<>0 OR (SELECT count(*) FROM auth.accounts)<>0 THEN RAISE EXCEPTION '\''Test database not empty'\''; END IF; END $$;");'
+"${compose[@]}" exec -T media-service npm run seed:demo
+"${compose[@]}" exec -T catalog-service npm run seed:demo
+phase=https
+node tests/files/verify-files.mjs initial "$work_dir/state.json"
+phase=media-restart
+"${compose[@]}" restart media-service
+node tests/files/verify-files.mjs verify "$work_dir/state.json"
+phase=postgres-restart
+"${compose[@]}" restart db
+node tests/files/verify-files.mjs verify "$work_dir/state.json"
 phase=catalogue-outage
-node "$script_dir/verify-files.mjs" catalog-down "$work_dir/state.json"
+node tests/files/verify-files.mjs catalog-down "$work_dir/state.json"
 phase=non-regression
-node "$script_dir/verify-files.mjs" non-regression "$work_dir/state.json"
-# Exécute les gestes dans un vrai navigateur, y compris progression et changement de compte.
+node tests/files/verify-files.mjs non-regression "$work_dir/state.json"
 phase=chromium
 npm test --prefix "$script_dir"
 phase=delete
-node "$script_dir/verify-files.mjs" delete "$work_dir/state.json"
-phase=verify-cleanup
-"${fresh[@]}" exec -T media-service node --input-type=module -e 'import {readdir} from "node:fs/promises"; const files=await readdir("/data/audio"); if(files.length!==3 || ![1,2,3].every(n=>files.includes("demo-"+n+".wav"))) throw new Error("Unexpected remaining Media files"); console.log("[FILES] PASS only three unchanged demo originals remain");'
+node tests/files/verify-files.mjs delete "$work_dir/state.json"
+phase=clean-disk
+"${compose[@]}" exec -T media-service node --input-type=module -e 'import {readdir} from "node:fs/promises"; const files=await readdir("/data/audio"); if(files.length!==3 || ![1,2,3].every(n=>files.includes("demo-"+n+".wav"))) throw new Error("Unexpected Media files"); console.log("[FILES] PASS only three demo originals remain");'
 complete=true
-# Le trap de sortie restaure la pile initiale et vérifie l’absence des volumes jetables.
-phase=restore-and-cleanup

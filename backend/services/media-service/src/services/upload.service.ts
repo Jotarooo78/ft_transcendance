@@ -105,7 +105,12 @@ export function createUploadService({ storageDir, assets, validate }: Options) {
      *   upload_aborted` si l'envoi est annulé ; `503 file_storage_unavailable` si le disque ou la
      *   base échoue.
      */
-    async save(owner: string, receive: Receive, signal?: AbortSignal): Promise<StoredFile> {
+    async save(
+      owner: string,
+      receive: Receive,
+      signal?: AbortSignal,
+      expiresAt?: Date
+    ): Promise<StoredFile> {
       const id = randomUUID()
       const staging = stagingDirOf(storageDir, id)
       await mkdir(staging, { mode: 0o700 }).catch(() => {
@@ -124,6 +129,7 @@ export function createUploadService({ storageDir, assets, validate }: Options) {
           throw uploadAborted()
         }
 
+        if (file.purpose !== 'audio') throw fileError(415, 'audio_required')
         const previewKey = file.purpose === 'audio' ? previewKeyOf(id) : undefined
         await syncDirectory(staging)
         await link(original, join(storageDir, originalKeyOf(id)))
@@ -132,7 +138,7 @@ export function createUploadService({ storageDir, assets, validate }: Options) {
           await link(preview, join(storageDir, previewKey))
         }
         await syncDirectory(storageDir)
-        const asset = await assets.create(id, owner, file, originalKeyOf(id), previewKey)
+        const asset = await assets.create(id, owner, file, originalKeyOf(id), previewKey, expiresAt)
         // L'enregistrement est confirmé : un échec du nettoyage ne remet pas le fichier en cause.
         await rm(staging, { recursive: true }).catch(() => undefined)
         return asset

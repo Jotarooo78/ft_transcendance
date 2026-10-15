@@ -125,30 +125,33 @@ test('playback: real listening, pause, seek, SQL, history and account isolation'
 
 test('playback: lost response after SQL write, bounded retry and audible save failure',async({page})=>{
   await createAccount(page,'eco_retry');
-  let lost,confirmed,repeated=false,failed=0;
+  let lost,confirmed,repeated=false,failed=0,failProgress=false;
   const pattern='**/api/playback/sessions/*/progress';
+  // Un seul intercepteur reste installé : changer de phase ne libère pas une réponse en cours.
   await page.route(pattern,async route=>{
+    if(failProgress){failed++;await route.abort('failed');return;}
     const payload=route.request().postDataJSON();
     const response=await route.fetch(); expect(response.status()).toBe(200);
     const saved=await response.json();
     if(!lost){lost={payload,saved}; await route.abort('failed'); return;}
-    if(!repeated){expect(payload).toEqual(lost.payload);expect(saved).toEqual(lost.saved);confirmed=saved;repeated=true;}
+    const isRepeat=!repeated;
+    if(isRepeat){expect(payload).toEqual(lost.payload);expect(saved).toEqual(lost.saved);confirmed=saved;}
     await route.fulfill({response});
+    if(isRepeat)repeated=true;
   });
   const {audio,session}=await startPlayback(page);
   await expect.poll(()=>repeated).toBe(true);
   expect(confirmed.id).toBe(session.id);
   const witness=playbackSql(session.id);
   expect(witness.events.filter(e=>e.sequence===lost.payload.sequence)).toEqual([lost.payload]);
-  await page.unroute(pattern);
-  await page.route(pattern,route=>{failed++;return route.abort('failed');});
+  failProgress=true;
   await expect(page.locator('.listening-status')).toContainText('Listening progress could not be saved. Audio can continue.');
   expect(failed).toBe(3);
   const before=await audio.evaluate(a=>a.currentTime);
   await expect.poll(()=>audio.evaluate(a=>a.currentTime)).toBeGreaterThan(before+0.3);
   await audio.evaluate(a=>a.pause());
   await page.waitForTimeout(400); expect(failed).toBe(3);
-  await page.unroute(pattern);
+  failProgress=false;
   await page.getByRole('button',{name:'Retry saving',exact:true}).click();
   await expect(page.locator('.listening-status')).toContainText('Listening progress saved.');
   const closedResponse=page.waitForResponse(r=>r.url().endsWith(`/${session.id}/close`) && r.status()===200);

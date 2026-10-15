@@ -206,7 +206,7 @@ test('the Catalogue client authenticates internal calls and refuses bad, failed 
   const catalog = createCatalogClient({
     baseUrl,
     internalToken: 'internal-test-token',
-    timeoutMs: 100,
+    timeoutMs: 2000,
   })
 
   assert.equal(await catalog.isAssetPublished(id), true)

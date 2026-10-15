@@ -128,19 +128,16 @@ test('authenticated POST stores the real original and an MP3 preview; owner and 
     .png()
     .toBuffer()
   const image = await post(multipart(png, 'image/png'))
-  assert.equal(image.statusCode, 201, image.body)
-  assert.equal(image.json().usage, 'image')
-  assert.equal(image.json().durationMs, null)
-  const imageAsset = store.records.get(image.json().id)!
-  assert.deepEqual(await readFile(join(directory, imageAsset.storageKey)), png)
+  assert.equal(image.statusCode, 415, image.body)
+  assert.equal(image.json().error, 'audio_required')
 
   const tooLarge = Buffer.alloc(25_000_001)
   png.copy(tooLarge)
   const refused = await post(multipart(tooLarge, 'image/png'))
   assert.equal(refused.statusCode, 413)
   assert.equal(refused.json().error, 'file_too_large')
-  assert.equal(store.records.size, 2)
-  assert.equal((await readdir(directory)).length, 3)
+  assert.equal(store.records.size, 1)
+  assert.equal((await readdir(directory)).length, 2)
 })
 
 test('an SQL failure is compensated; an uncertain commit keeps its marker until recovery', async (t) => {
@@ -246,9 +243,14 @@ test('a real aborted HTTP upload closes the stream and removes its staging file'
 test('a second upload is refused while one is being received', async (t) => {
   const directory = await mkdtemp(join(tmpdir(), 'file-busy-'))
   let release = () => {}
+  let entered = () => {}
+  const validating = new Promise<void>((resolve) => {
+    entered = resolve
+  })
   const slowValidate = () =>
     new Promise<never>((_resolve, reject) => {
       release = () => reject(new Error('stopped'))
+      entered()
     })
   const { app, bearer } = await buildTestApp({
     storageDir: directory,
@@ -267,8 +269,8 @@ test('a second upload is refused while one is being received', async (t) => {
       payload: multipart(bytes),
     })
 
-  const first = post()
-  await waitForDirectory(directory, false)
+  const first = post().then((response) => response)
+  await validating
   const second = await post()
   assert.equal(second.statusCode, 503)
   assert.deepEqual(second.json(), {

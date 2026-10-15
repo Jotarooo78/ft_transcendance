@@ -57,7 +57,7 @@ export function createAssetsRepository(prisma: AssetStore) {
     }
     return prisma.asset.findFirst({
       where: { id: id.toLowerCase(), uploaderUserId: owner.toLowerCase() },
-      include: { variants: { where: { renditionKey: previewRendition } } },
+      include: { variants: { where: { renditionKey: { in: [previewRendition, 'cover'] } } } },
     })
   }
 
@@ -72,7 +72,10 @@ export function createAssetsRepository(prisma: AssetStore) {
      * @returns Le fichier, ou null.
      */
     find(id: string): Promise<StoredFile | null> {
-      return prisma.asset.findUnique({ where: { id } })
+      return prisma.asset.findUnique({
+        where: { id },
+        include: { variants: { where: { renditionKey: { in: [previewRendition, 'cover'] } } } },
+      })
     },
 
     /**
@@ -102,10 +105,11 @@ export function createAssetsRepository(prisma: AssetStore) {
      * @returns Les fichiers de la page et leur nombre total.
      */
     async list(owner: string, { page, pageSize }: Pagination) {
-      const where = { uploaderUserId: owner, state: 'ready', purpose: { in: ['audio', 'cover'] } }
+      const where = { uploaderUserId: owner, state: 'ready', purpose: 'audio' }
       const [items, total] = await Promise.all([
         prisma.asset.findMany({
           where,
+          include: { variants: { where: { renditionKey: 'cover' } } },
           orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
           take: pageSize,
           skip: (page - 1) * pageSize,
@@ -141,7 +145,8 @@ export function createAssetsRepository(prisma: AssetStore) {
       owner: string,
       file: ValidatedFile,
       storageKey: string,
-      previewKey?: string
+      previewKey?: string,
+      expiresAt?: Date
     ) {
       const preview = {
         renditionKey: previewRendition,
@@ -153,6 +158,7 @@ export function createAssetsRepository(prisma: AssetStore) {
       return prisma.asset.create({
         data: {
           id,
+          expiresAt: expiresAt ?? null,
           uploaderUserId: owner,
           purpose: file.purpose === 'audio' ? 'audio' : 'cover',
           state: 'ready',
@@ -174,7 +180,7 @@ export function createAssetsRepository(prisma: AssetStore) {
      *   déjà fait. Cela évite que deux suppressions simultanées travaillent sur le même fichier.
      */
     async markDeleting(id: string, owner: string): Promise<boolean> {
-      const where = { id, uploaderUserId: owner, state: 'ready' }
+      const where = { id, uploaderUserId: owner, state: 'ready', publicationTrackId: null }
       const updated = await prisma.asset.updateMany({ where, data: { state: 'deleting' } })
       return updated.count === 1
     },

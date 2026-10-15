@@ -50,7 +50,7 @@ const mimeTypes: Record<string, string[]> = {
 /** @brief Partie de la réponse de ffprobe que le code utilise. */
 type Probe = {
   /** @brief Flux du fichier, avec leur type et leur durée annoncée. */
-  streams?: { codec_type?: string; duration?: string }[]
+  streams?: { codec_type?: string; duration?: string; disposition?: { attached_pic?: number } }[]
   /** @brief Conteneur du fichier, avec son nom et sa durée annoncée. */
   format?: { format_name?: string; duration?: string }
 }
@@ -64,9 +64,30 @@ type Probe = {
  */
 async function probeFormat(path: string) {
   const probeArgs = ['-show_streams', '-show_format', '-of', 'json', 'fd:']
-  const probe: Probe = JSON.parse((await runDecoder(path, 'ffprobe', probeArgs)).text)
-  const stream = probe.streams?.length === 1 ? probe.streams[0] : undefined
-  if (!stream || stream.codec_type !== 'audio') {
+  let headers: Probe | undefined
+  try {
+    headers = JSON.parse(
+      (await runDecoder(path, 'ffprobe', ['-nofind_stream_info', ...probeArgs])).text
+    )
+  } catch (error) {
+    if (!(error instanceof DecodeFailure) || error.status !== 415) throw error
+  }
+  const attached =
+    headers?.streams?.some((s) => s.codec_type === 'video' && s.disposition?.attached_pic === 1) ??
+    false
+  const probe: Probe = attached
+    ? headers!
+    : JSON.parse((await runDecoder(path, 'ffprobe', probeArgs)).text)
+  const audio = probe.streams?.filter((s) => s.codec_type === 'audio') ?? []
+  const stream = audio[0]
+  if (
+    !stream ||
+    audio.length !== 1 ||
+    probe.streams?.some(
+      (s) =>
+        s.codec_type !== 'audio' && !(s.codec_type === 'video' && s.disposition?.attached_pic === 1)
+    )
+  ) {
     throw unsupportedType()
   }
   const format = String(probe.format?.format_name ?? '').split(',')[0]!
@@ -74,7 +95,7 @@ async function probeFormat(path: string) {
     throw unsupportedType()
   }
   const advertisedMs = Number(stream.duration ?? probe.format?.duration) * 1000
-  return { format, advertisedMs }
+  return { format, advertisedMs, attached }
 }
 
 /**
@@ -87,7 +108,12 @@ async function probeFormat(path: string) {
  * @param previewPath Où écrire l'aperçu MP3, s'il est demandé.
  * @returns La durée réelle en millisecondes.
  */
-async function measureDuration(path: string, format: string, previewPath?: string) {
+async function measureDuration(
+  path: string,
+  format: string,
+  previewPath?: string,
+  attached = false
+) {
   const decodeArgs = [
     ...[
       '-nostdin',
@@ -96,6 +122,7 @@ async function measureDuration(path: string, format: string, previewPath?: strin
       'explode',
       '-threads',
       '1',
+      ...(attached ? ['-nofind_stream_info'] : []),
       '-f',
       format,
       '-i',
@@ -141,13 +168,13 @@ export async function decodeAudio(path: string, declaredMime: string, previewPat
   if (!declaredMime.startsWith('audio/') && !isGeneric) {
     throw unsupportedType()
   }
-  const { format, advertisedMs } = await probeFormat(path)
+  const { format, advertisedMs, attached } = await probeFormat(path)
   const accepted = mimeTypes[format] ?? [`audio/x-${format}`]
   if (!isGeneric && !accepted.includes(declaredMime)) {
     throw new DecodeFailure(415, 'mime_mismatch')
   }
 
-  const durationMs = await measureDuration(path, format, previewPath)
+  const durationMs = await measureDuration(path, format, previewPath, attached)
   const tolerance = Math.max(250, advertisedMs * 0.02)
   const contradictsHeader =
     Number.isFinite(advertisedMs) && Math.abs(advertisedMs - durationMs) > tolerance

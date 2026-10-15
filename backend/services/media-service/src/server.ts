@@ -14,6 +14,9 @@
  */
 
 import { buildApp } from './app.js'
+import { createCoversRepository } from './repositories/covers.repository.js'
+import { createPublicationsRepository } from './repositories/publications.repository.js'
+import { recoverCoverUploads, cleanRetiredCovers } from './services/save-audio-cover.js'
 import { createCatalogClient } from './clients/catalog.client.js'
 import { loadConfig } from './config/env.js'
 import { createAssetsRepository } from './repositories/assets.repository.js'
@@ -39,6 +42,8 @@ const prisma = createPrisma(config.databaseUrl)
  *   leur type, leur taille...). Les fichiers eux-mêmes sont sur le disque.
  */
 const assets = createAssetsRepository(prisma)
+/** Associations de pochettes, utilisées aussi pour la reprise avant ouverture HTTP. */
+const covers = createCoversRepository(prisma)
 /** @brief Objet qui interroge catalog-service par HTTP. */
 const catalog = createCatalogClient({
   baseUrl: config.catalogUrl,
@@ -51,12 +56,16 @@ const catalog = createCatalogClient({
 const validate = createFileValidator()
 
 // Avant d'accepter des requêtes : termine les envois et suppressions qu'un arrêt a interrompus.
+await recoverCoverUploads(storageDir, covers)
+await cleanRetiredCovers(storageDir, covers)
 await createUploadService({ storageDir, assets, validate }).recover()
 await createFileDeletionService({ storageDir, assets, catalog }).recover()
 
 /** @brief Serveur web prêt à écouter, construit avec les dépendances réelles. */
 const app = await buildApp(config, {
   assets,
+  covers,
+  publications: createPublicationsRepository(prisma),
   catalog,
   validate,
   ready: () => prisma.$queryRaw`SELECT 1`,

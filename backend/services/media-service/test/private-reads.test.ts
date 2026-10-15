@@ -162,6 +162,7 @@ test('the private list queries owner and state, pages deterministically and expo
     items: [
       {
         id: fileId,
+        cover: null,
         usage: 'audio',
         state: 'ready',
         mimeType: 'audio/flac',
@@ -174,7 +175,8 @@ test('the private list queries owner and state, pages deterministically and expo
     pageSize: 1,
   })
   assert.deepEqual(calls[0], {
-    where: { uploaderUserId: owner, state: 'ready', purpose: { in: ['audio', 'cover'] } },
+    where: { uploaderUserId: owner, state: 'ready', purpose: 'audio' },
+    include: { variants: { where: { renditionKey: 'cover' } } },
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     take: 1,
     skip: 1,

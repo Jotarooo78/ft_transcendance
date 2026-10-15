@@ -126,7 +126,7 @@ async function decodeLocally(file: File, image: boolean, signal: AbortSignal) {
  * @param signal Annulation par changement de sélection, de session ou fermeture.
  * @throws Error avec message utilisable dans le formulaire pour une prévalidation refusée.
  */
-export async function validateFile(file: File, signal: AbortSignal) {
+export async function validateFile(file: File, signal: AbortSignal, expected: "audio" | "image" = "audio") {
   if (!file.size) throw new Error("The file is empty.");
   if (file.size > audioByteLimit)
     throw new Error("The audio file must not exceed 500 MB.");
@@ -142,6 +142,7 @@ export async function validateFile(file: File, signal: AbortSignal) {
           ? "webp"
           : null;
   if (format) {
+    if (expected === "audio") throw new Error("Choose an audio file. Images can only be added as covers.");
     if (file.size > imageByteLimit)
       throw new Error("The image must not exceed 25 MB.");
     if (
@@ -169,13 +170,14 @@ export async function validateFile(file: File, signal: AbortSignal) {
     await decodeLocally(file, true, signal);
     return;
   }
+  if (expected === "image") throw new Error("Choose a PNG, JPEG or WebP cover image.");
   if (
     file.type.startsWith("image/") ||
     (file.type &&
       !file.type.startsWith("audio/") &&
       file.type !== "application/octet-stream")
   )
-    throw new Error("Choose an audio file or a PNG, JPEG, or WebP image.");
+    throw new Error("Choose an audio file.");
   if (
     /^\s*(<|#EXTM3U|ffconcat)/i.test(text) ||
     (bytes.length > 0 &&

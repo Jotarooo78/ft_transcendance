@@ -13,6 +13,7 @@
  * modifie la requête.
  */
 
+import type { ArtistProfile } from '../domain/artist.js'
 import { Prisma } from '../generated/prisma/client.js'
 import type { TrackListQuery, TrackSort } from '../domain/track-list.js'
 
@@ -26,9 +27,9 @@ import type { TrackListQuery, TrackSort } from '../domain/track-list.js'
  *   Un morceau sans artiste, sans album ou sans genre reçoit une chaîne vide. Cette requête sert de
  *   point de départ à la lecture d'un morceau comme à la liste.
  */
-export const publishedTracks = Prisma.sql`
-  SELECT t.id, t.title, t.audio_asset_id AS "audioAssetId", t.duration_ms AS "durationMs",
-    COALESCE((
+export const publishedTracks = (profiles: ArtistProfile[] = []) => Prisma.sql`
+  SELECT t.id, t.title, t.description, t.created_by_user_id AS "artistUserId", t.audio_asset_id AS "audioAssetId", t.duration_ms AS "durationMs",
+    COALESCE((SELECT p."displayName" FROM jsonb_to_recordset(${JSON.stringify(profiles)}::jsonb) AS p("userId" text, "displayName" text) WHERE p."userId"=t.created_by_user_id::text), (
       SELECT string_agg(a.name, ', ' ORDER BY CASE c.role WHEN 'primary' THEN 0 ELSE 1 END, c.credit_order, a.id)
       FROM catalog.track_artists c JOIN catalog.artists a ON a.id = c.artist_id
       WHERE c.track_id = t.id AND c.role IN ('primary', 'featured')
@@ -71,10 +72,10 @@ function toLikePattern(text: string): string {
  * @param query Critères de recherche validés.
  * @returns Le début de requête SQL définissant `filtered`.
  */
-export function filteredTracks(query: TrackListQuery) {
+export function filteredTracks(query: TrackListQuery, profiles: ArtistProfile[] = []) {
   const pattern = toLikePattern(query.q)
   return Prisma.sql`
-    WITH visible AS (${publishedTracks}), filtered AS (
+    WITH visible AS (${publishedTracks(profiles)}), filtered AS (
       SELECT v.* FROM visible v
       WHERE (${query.genre} = '' OR EXISTS (
           SELECT 1 FROM catalog.track_genres tg JOIN catalog.genres g ON g.id = tg.genre_id

@@ -2,6 +2,14 @@ export type Track = {
   id: string;
   title: string;
   artistName: string;
+  /** Compte artiste stable ; absent sur les morceaux historiques de démonstration. */
+  artistUserId?: string | null;
+  /** Avatar actuel du compte. */
+  artistAvatarUrl?: string | null;
+  /** Présentation libre enregistrée avec le morceau. */
+  description?: string | null;
+  /** Route de la pochette publique ; son absence utilise le visuel par défaut. */
+  coverUrl?: string | null;
   albumTitle: string;
   genre: string;
   /** Durée en secondes pour l’affichage ; null représente une durée inconnue. */

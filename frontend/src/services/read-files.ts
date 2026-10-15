@@ -52,17 +52,28 @@ export async function readFiles(
 }
 
 /**
- * Télécharge l’image originale ou l’aperçu MP3 privé avec Authorization. Contrôle MIME, taille
+ * Télécharge l’aperçu MP3 privé avec Authorization. Contrôle MIME, taille
  * annoncée et octets réellement reçus avant de construire le Blob ; annule et libère le lecteur à la
  * sortie.
  */
 export async function readFilePreview(
-  file: ReadyFile,
+  file: Pick<ReadyFile, "id">,
   signal: AbortSignal,
 ): Promise<Blob> {
+  return readPrivateBlob(`/api/media/assets/${encodeURIComponent(file.id)}/private-content`, "audio/mpeg", audioByteLimit, signal);
+}
+
+/** Charge les octets de la pochette actuelle par la route privée de son audio, sans JWT dans l’URL. */
+export async function readAudioCover(file: ReadyFile, signal: AbortSignal): Promise<Blob> {
+  if (!file.cover) throw new Error("This audio has no cover.");
+  return readPrivateBlob(`/api/media/assets/${encodeURIComponent(file.id)}/cover`, file.cover.mimeType, imageByteLimit, signal);
+}
+
+/** Lit un contenu privé borné, vérifie ses en-têtes et annule toute réponse d’un ancien compte. */
+async function readPrivateBlob(path: string, expected: string, maximum: number, signal: AbortSignal): Promise<Blob> {
   const token = getAccessToken();
   const response = await authenticatedFetch(
-    `/api/media/assets/${encodeURIComponent(file.id)}/private-content`,
+    path,
     { signal },
   );
   if (!response.ok || !response.body)
@@ -72,8 +83,6 @@ export async function readFilePreview(
         : "Unable to load the preview.",
     );
   const mime = response.headers.get("Content-Type")?.split(";", 1)[0];
-  const expected = file.usage === "audio" ? "audio/mpeg" : file.mimeType;
-  const maximum = file.usage === "audio" ? audioByteLimit : imageByteLimit;
   const length = Number(response.headers.get("Content-Length"));
   if (
     mime !== expected ||

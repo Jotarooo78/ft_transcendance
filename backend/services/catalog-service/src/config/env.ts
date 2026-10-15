@@ -19,6 +19,8 @@ import { Type } from 'typebox'
  *   `INTERNAL_SERVICE_TOKEN` sont obligatoires et ne peuvent pas être vides.
  */
 const EnvSchema = Type.Object({
+  USER_SERVICE_URL: Type.Optional(Type.String({ minLength: 1 })),
+  MEDIA_SERVICE_URL: Type.Optional(Type.String({ minLength: 1 })),
   PORT: Type.Optional(Type.String({ pattern: '^[0-9]+$' })),
   CATALOG_DATABASE_URL: Type.String({ minLength: 1 }),
   INTERNAL_SERVICE_TOKEN: Type.String({ minLength: 1 }),
@@ -31,7 +33,13 @@ const EnvSchema = Type.Object({
  *   le schéma `catalog`. `internalServiceToken` : secret qu'un autre service doit présenter pour
  *   appeler une route `/internal/...`.
  */
-export type Config = { port: number; databaseUrl: string; internalServiceToken: string }
+export type Config = {
+  userUrl: string
+  mediaUrl: string
+  port: number
+  databaseUrl: string
+  internalServiceToken: string
+}
 
 /**
  * @brief Port utilisé quand la variable `PORT` n'est pas définie.
@@ -52,6 +60,8 @@ const defaultPort = 4002
 export function loadConfig(source: NodeJS.ProcessEnv = process.env): Config {
   const env = readEnv(EnvSchema, source)
   return {
+    userUrl: env.USER_SERVICE_URL ?? 'http://user-service:4001',
+    mediaUrl: env.MEDIA_SERVICE_URL ?? 'http://media-service:4003',
     port: Number(env.PORT ?? defaultPort),
     databaseUrl: env.CATALOG_DATABASE_URL,
     internalServiceToken: env.INTERNAL_SERVICE_TOKEN,

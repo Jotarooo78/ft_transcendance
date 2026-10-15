@@ -193,3 +193,25 @@ test('the public profile hides the bio and validates the identifier', async (t) 
   assert.match((await app.inject('/metrics')).body, /user_service_/)
   assert.equal((await app.inject('/ready')).statusCode, 200)
 })
+
+test('public artist profile includes bio but never credentials, while the main route keeps its contract', async (t) => {
+  const userId = newUserId()
+  const stores = memoryStores([
+    {
+      ...profileOf(userId, 'artist'),
+      bio: 'Public bio',
+      email: 'private@example.invalid',
+      passwordHash: 'private',
+    },
+  ])
+  const { app } = await buildTestApp({ profiles: stores.profilesRepository })
+  t.after(() => app.close())
+  const artist = await app.inject(`/profiles/${userId}`)
+  assert.equal(artist.statusCode, 200)
+  assert.equal(artist.json().bio, 'Public bio')
+  assert.equal(artist.json().email, undefined)
+  assert.equal(artist.json().passwordHash, undefined)
+  assert.equal((await app.inject(`/profile/${userId}`)).json().bio, undefined)
+  assert.equal((await app.inject('/profiles/not-a-uuid')).statusCode, 400)
+  assert.equal((await app.inject(`/profiles/${newUserId()}`)).statusCode, 404)
+})

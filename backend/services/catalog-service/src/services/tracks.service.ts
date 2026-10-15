@@ -8,6 +8,9 @@
  *   morceaux publiés sont visibles, et un morceau introuvable est une erreur.
  */
 
+import type { ArtistProfile } from '../domain/artist.js'
+import type { UsersClient } from '../clients/users.client.js'
+import type { PublicationsRepository } from '../repositories/publications.repository.js'
 import { toTotal, type TrackListQuery, type TrackPage } from '../domain/track-list.js'
 import { toTrack, trackNotFound, type Track } from '../domain/track.js'
 import type { TracksRepository } from '../repositories/tracks.repository.js'
@@ -27,7 +30,11 @@ export type TracksService = ReturnType<typeof createTracksService>
  * @param tracks Repository qui lit les morceaux.
  * @returns Un objet offrant les opérations `get` et `list`.
  */
-export function createTracksService(tracks: TracksRepository) {
+export function createTracksService(
+  tracks: TracksRepository,
+  users: UsersClient,
+  publications: PublicationsRepository
+) {
   return {
     /**
      * @brief Renvoie un morceau publié à partir de son identifiant.
@@ -43,7 +50,12 @@ export function createTracksService(tracks: TracksRepository) {
       if (!row) {
         throw trackNotFound()
       }
-      return toTrack(row)
+      if (!row.artistUserId) return toTrack(row)
+      const profile = await users.read(row.artistUserId)
+      return {
+        ...toTrack({ ...row, artistName: profile.displayName }),
+        artistAvatarUrl: profile.avatarUrl,
+      }
     },
 
     /**
@@ -54,9 +66,21 @@ export function createTracksService(tracks: TracksRepository) {
      * @returns La page de morceaux, le total et les genres disponibles.
      */
     async list(query: TrackListQuery): Promise<TrackPage> {
-      const { rows, total, genres } = await tracks.list(query)
+      const owners = await publications.owners()
+      const profiles: ArtistProfile[] = []
+      for (let i = 0; i < owners.length; i += 8)
+        profiles.push(...(await Promise.all(owners.slice(i, i + 8).map((id) => users.read(id)))))
+      const { rows, total, genres } = await tracks.list(query, profiles)
       return {
-        items: rows.map(toTrack),
+        items: rows.map((row) => ({
+          ...toTrack(row),
+          ...(row.artistUserId
+            ? {
+                artistAvatarUrl:
+                  profiles.find((p) => p.userId === row.artistUserId)?.avatarUrl ?? null,
+              }
+            : {}),
+        })),
         total: toTotal(total),
         page: query.page,
         pageSize: query.pageSize,

@@ -14,6 +14,12 @@
  * routes sans base de données.
  */
 
+import type { UsersClient } from './clients/users.client.js'
+import type { MediaClient } from './clients/media.client.js'
+import type { PublicationsRepository } from './repositories/publications.repository.js'
+import { createPublicationsService } from './services/publications.service.js'
+import { createPublicationsController } from './controllers/publications.controller.js'
+import { registerPublicationsRoutes } from './routes/publications.routes.js'
 import { createApp, internalTokenPlugin, opsPlugin } from '@ft/service-kit'
 import type { Config } from './config/env.js'
 import { createAssetsController } from './controllers/assets.controller.js'
@@ -40,6 +46,12 @@ const service = 'catalog-service'
  *   comportement d'une route quand la base renvoie tel résultat, ou quand elle tombe en panne.
  */
 export type Dependencies = {
+  /** Identité actuelle fournie par Users. */
+  users: UsersClient
+  /** Réservation durable des audios. */
+  media: MediaClient
+  /** Écriture idempotente et comptes crédités. */
+  publications: PublicationsRepository
   /** @brief Objet qui sait lire les morceaux en base (voir repositories/tracks.repository.ts). */
   tracks: TracksRepository
   /**
@@ -79,7 +91,10 @@ export type Dependencies = {
  * @throws {Error} Si le jeton interne est vide : le service refuse de démarrer plutôt que de
  *   laisser une route interne sans protection.
  */
-export async function buildApp(config: Config, dependencies: Dependencies) {
+export async function buildApp(
+  config: Pick<Config, 'internalServiceToken'>,
+  dependencies: Dependencies
+) {
   const app = createApp({
     service,
     logger: dependencies.logger,
@@ -92,7 +107,23 @@ export async function buildApp(config: Config, dependencies: Dependencies) {
     await dependencies.close?.()
   })
 
-  registerTracksRoutes(app, createTracksController(createTracksService(dependencies.tracks)))
+  const tracks = createTracksService(
+    dependencies.tracks,
+    dependencies.users,
+    dependencies.publications
+  )
+  registerTracksRoutes(app, createTracksController(tracks))
+  registerPublicationsRoutes(
+    app,
+    createPublicationsController(
+      createPublicationsService(
+        dependencies.users,
+        dependencies.media,
+        dependencies.publications,
+        tracks
+      )
+    )
+  )
   registerAssetsRoutes(app, createAssetsController(createAssetsService(dependencies.assets)))
 
   return app

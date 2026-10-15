@@ -9,9 +9,8 @@
 
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { uploadBusy } from '../domain/errors.js'
-import { toPublicFile } from '../domain/file.js'
 import type { UploadGate } from '../services/upload-gate.js'
-import type { UploadService } from '../services/upload.service.js'
+import type { AudioUploadService } from '../services/audio-upload.service.js'
 import { receiveSingleFile } from './receive-upload.js'
 
 /** @brief Type de l'objet renvoyé par `createUploadController`. */
@@ -23,7 +22,7 @@ export type UploadController = ReturnType<typeof createUploadController>
  * @param gate Garde-fou « un seul envoi à la fois ».
  * @returns Un objet contenant la fonction de la route.
  */
-export function createUploadController(uploads: UploadService, gate: UploadGate) {
+export function createUploadController(uploads: AudioUploadService, gate: UploadGate) {
   return {
     /**
      * @brief Répond à `POST /assets` : reçoit un fichier envoyé par l'utilisateur connecté.
@@ -34,7 +33,10 @@ export function createUploadController(uploads: UploadService, gate: UploadGate)
      * @param reply Réponse.
      * @throws {DomainError} `503 upload_busy` si un autre envoi est déjà en cours.
      */
-    async upload(request: FastifyRequest, reply: FastifyReply) {
+    async upload(
+      request: FastifyRequest<{ Querystring: { temporary?: string } }>,
+      reply: FastifyReply
+    ) {
       if (!gate.tryEnter()) {
         throw uploadBusy()
       }
@@ -56,8 +58,13 @@ export function createUploadController(uploads: UploadService, gate: UploadGate)
       try {
         /** @brief Écrit le fichier reçu à l'endroit que le service d'envoi a choisi. */
         const receive = (path: string) => receiveSingleFile(request, path, controller.signal)
-        const asset = await uploads.save(request.userId, receive, controller.signal)
-        return reply.code(201).send(toPublicFile(asset))
+        const asset = await uploads.save(
+          request.userId,
+          receive,
+          controller.signal,
+          request.query.temporary === '1'
+        )
+        return reply.code(201).send(asset)
       } finally {
         gate.leave()
         request.raw.off('aborted', abort)

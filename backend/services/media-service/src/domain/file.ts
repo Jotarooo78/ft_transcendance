@@ -38,6 +38,8 @@ export type ValidatedFile = {
 
 /** @brief Un fichier tel qu'il est décrit en base de données. */
 export type StoredFile = {
+  /** Représentations chargées par les lectures de fichiers ; absentes des anciennes fixtures. */
+  variants?: FileVariant[]
   /** @brief UUID du fichier. */
   id: string
   /** @brief null pour un fichier de démonstration, sans propriétaire. */
@@ -59,7 +61,20 @@ export type StoredFile = {
 }
 
 /** @brief Une copie dérivée d'un original, par exemple l'aperçu MP3 d'un fichier audio. */
-export type FileVariant = { storageKey: string; mimeType: string; byteSize: bigint }
+export type FileVariant = {
+  /** Identifiant et rôle de la représentation ; les anciennes doublures peuvent les omettre. */
+  id?: string
+  renditionKey?: string
+  storageKey: string
+  mimeType: string
+  byteSize: bigint
+}
+/** Pochette réellement persistée, dont l’identifiant accompagne toujours la réponse publique. */
+export type CoverVariant = FileVariant & { id: string; renditionKey: string }
+/** Métadonnées publiques d’une pochette, sans chemin disque. */
+export function toPublicCover(cover: FileVariant) {
+  return { id: cover.id, mimeType: cover.mimeType, byteSize: Number(cover.byteSize) }
+}
 
 /** @brief Un fichier accompagné de la liste de ses copies dérivées. */
 export type StoredFileWithVariants = StoredFile & { variants: FileVariant[] }
@@ -100,8 +115,11 @@ export const isSafeStorageKey = (key: string) => storageKeyPattern.test(key)
  * @param file Fichier lu en base.
  * @returns Identifiant, nature (`audio` ou `image`), état, type, taille et durée.
  */
-export function toPublicFile(file: StoredFile) {
+export function toPublicFile(file: StoredFile & { variants?: FileVariant[] }) {
   return {
+    cover: file.variants?.find((v) => v.renditionKey === 'cover')
+      ? toPublicCover(file.variants.find((v) => v.renditionKey === 'cover')!)
+      : null,
     id: file.id,
     usage: file.purpose === 'audio' ? 'audio' : 'image',
     state: file.state,

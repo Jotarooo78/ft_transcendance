@@ -97,7 +97,17 @@ export function createFilesService({ storageDir, assets, catalog }: Options) {
      *   audio, absent du disque, morceau non publié) : la réponse ne révèle pas lequel.
      */
     async openPublicAudio(id: string): Promise<ReadableFile> {
-      const asset = await assets.find(id)
+      const original = await assets.find(id)
+      const preview = original?.variants?.find((v) => v.renditionKey === 'private-preview')
+      const asset =
+        original && preview
+          ? {
+              ...original,
+              storageKey: preview.storageKey,
+              mimeType: preview.mimeType,
+              byteSize: preview.byteSize,
+            }
+          : original
       if (!asset || !isPublicAudio(asset)) {
         throw mediaNotFound()
       }
@@ -133,7 +143,11 @@ export function createFilesService({ storageDir, assets, catalog }: Options) {
         throw fileNotFound()
       }
       const isAudio = asset.purpose === 'audio'
-      const content = isAudio ? asset.variants[0] : asset
+      const content = isAudio
+        ? asset.variants.find(
+            (v) => v.renditionKey === 'private-preview' || v.renditionKey === undefined
+          )
+        : asset
       const hasExpectedType = isAudio
         ? content?.mimeType === 'audio/mpeg'
         : previewImageTypes.includes(content?.mimeType ?? '')

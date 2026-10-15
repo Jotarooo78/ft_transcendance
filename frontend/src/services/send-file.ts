@@ -19,12 +19,13 @@ export function sendFile(
   file: File,
   progress: (value: UploadProgress) => void,
   signal: AbortSignal,
+  temporary = false,
 ): Promise<ReadyFile> {
   const token = getAccessToken();
   if (!token) return Promise.reject(new Error("Sign in to upload a file."));
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/api/media/assets");
+    xhr.open("POST", temporary ? "/api/media/assets?temporary=1" : "/api/media/assets");
     xhr.setRequestHeader("Authorization", `Bearer ${token}`);
     xhr.timeout = 900_000;
     /** Interrompt la requête XHR active lors d’une annulation ou d’une perte de session. */
@@ -40,12 +41,14 @@ export function sendFile(
         abort();
         return;
       }
+      // La fin réelle du transfert ouvre l’attente serveur ; l’arrondi ne doit jamais afficher 100 % avant cela.
+      const transferred = event.lengthComputable && event.total > 0 && event.loaded >= event.total;
       progress({
-        phase: "sending",
+        phase: transferred ? "validating" : "sending",
         loaded: event.loaded,
         total: event.lengthComputable ? event.total : null,
         percent: event.lengthComputable
-          ? Math.min(100, Math.round((100 * event.loaded) / event.total))
+          ? transferred ? 100 : Math.min(99, Math.floor((100 * event.loaded) / event.total))
           : null,
       });
     };
@@ -83,13 +86,15 @@ export function sendFile(
           400: "Invalid upload or empty file.",
           409: "This file is currently in use.",
           413: "The file exceeds the allowed size.",
-          415: "Invalid or corrupted content, or unsupported format.",
+          415: "This audio format is not supported.",
           422: "Image dimensions or processing limits exceeded.",
           503: "The service is busy or unavailable. Please try again.",
         };
         return reject(
           new Error(
-            messages[xhr.status] ??
+            ((data as { error?: string })?.error === "audio_required" ? "Choose an audio file. Images are only covers." :
+              ["invalid_file", "invalid_duration"].includes((data as { error?: string })?.error ?? "") ? "The audio is corrupted or cannot be decoded." :
+              (data as { error?: string })?.error === "mime_mismatch" ? "The declared audio type does not match its content." : messages[xhr.status]) ??
               "The file was not confirmed as ready. Refresh the list before trying again.",
           ),
         );
