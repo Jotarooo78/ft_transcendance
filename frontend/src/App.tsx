@@ -86,17 +86,19 @@ function App() {
   const ownerId = currentUser?.id ?? null;
   const userDataVisible =
     !!ownerId && !musicRoute && ["profile", "users"].includes(privatePage);
+  /** Le répertoire complet ne sert qu’à Users ; Profil utilise uniquement les amis. */
+  const directoryVisible = !!ownerId && !musicRoute && privatePage === "users";
   const userData = useResource(
     useCallback(
       async (signal) => {
         if (!ownerId) return { users: [], friends: [] };
         const [users, friends] = await Promise.all([
-          getUsers(signal),
+          directoryVisible ? getUsers(signal) : Promise.resolve([]),
           getFriends(signal),
         ]);
         return { users, friends };
       },
-      [ownerId],
+      [ownerId, directoryVisible],
     ),
     userDataVisible,
   );

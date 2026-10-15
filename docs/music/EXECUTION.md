@@ -957,3 +957,28 @@ volumes et réseaux a été vérifiée. Les fichiers préexistants de `docs/musi
 et `services/` sont préservés. Le frontend de développement n’a pas été redéployé ;
 pour utiliser les changements : `docker compose up -d --build --no-deps frontend`.
 La validation au trackpad physique et la compréhension utilisateur restent ouvertes.
+# Bibliothèque et playlists — salve du 15 octobre 2026
+
+Branche : `feat/library-playlists-refresh`, base `91cfbc2`. Le plan validé reste dans la conversation.
+Les modifications locales de `docs/music-plan/` et `services/` restent hors périmètre.
+
+- [x] Profil : retrait des deux filtres de flou ; le répertoire Users n’est plus chargé sur Profil.
+- [ ] Opérations serveur et données des playlists.
+- [ ] Pochettes de playlist.
+- [ ] Navigation bibliothèque et historique.
+- [ ] Listes et page dédiée.
+- [ ] Ajout partagé, multiple et par projet.
+- [ ] Tri, recherche, déplacement et ordre de lecture.
+- [ ] Annulation du retrait et duplication.
+- [ ] Vérifications finales et publication.
+
+Mesures Profil dans Chromium/Vite, 1440×800, amis simulés (0, 24 et 120), trois secondes
+par scénario. Avant : p95 16,8 ms sauf édition avec 120 amis (33,4 ms, trois tâches >50 ms).
+Diagnostic sans flou : édition avec 120 amis à 16,8 ms, aucune tâche >50 ms.
+Après : p95 16,7–16,8 ms sur les six scénarios, aucune tâche >50 ms, aucun déplacement
+de mise en page mesuré ; des images isolées restent lentes (maximum 150 ms).
+Ces premiers relevés partagent la machine avec les validations et ne suffisent pas à attribuer
+tous les écarts au code ; la validation finale doit répéter la comparaison sans charge concurrente,
+avec audio et distribution compilée. Aucun test ne remplace le ressenti au trackpad réel.
+Lint et compilation frontend réussis ; socle projets/publication/bibliothèque existant vérifié
+sur la pile jetable `transcendence_projects`, HTTPS 5445.
