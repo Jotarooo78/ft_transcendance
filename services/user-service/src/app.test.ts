@@ -776,3 +776,19 @@ test("avatar returns 404 for an absent authorized filename", async () => {
     assert.equal(response.statusCode, 404);
   } finally { await app.close(); }
 });
+
+/** La consultation d’artiste expose seulement les champs publics et reflète une modification de profil. */
+test("GET /profiles/:id returns current public fields without authentication or extra data", async () => {
+  const id = randomUUID();
+  const profile = { userId: id, displayName: "First name", username: "artist", bio: "Music", avatarUrl: null, privateField: "never expose" };
+  const app = buildApp({ jwtSecret, logger: false, readProfile: async requested => requested === id ? profile : null, profileUpdater: unexpectedProfileUpdate });
+  try {
+    const response = await app.inject(`/profiles/${id}`);
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(Object.keys(response.json()).sort(), ["userId", "displayName", "username", "bio", "avatarUrl"].sort());
+    profile.displayName = "Current name";
+    assert.equal((await app.inject(`/profiles/${id}`)).json().displayName, "Current name");
+    assert.equal((await app.inject(`/profiles/${randomUUID()}`)).statusCode, 404);
+    assert.equal((await app.inject('/profiles/invalid')).statusCode, 400);
+  } finally { await app.close(); }
+});

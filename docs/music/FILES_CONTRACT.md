@@ -1,4 +1,4 @@
-# Contrat des fichiers personnels
+# Contrat des fichiers et de la publication
 
 Choix initiaux validés le 12 octobre 2026, puis parcours audio/pochette validé
 le 14 octobre 2026. La rectification est implémentée et sa campagne complète
@@ -9,16 +9,13 @@ dans [le guide des fichiers](../../tests/files/README.md).
 
 ## Périmètre
 
-Le catalogue commun reste initialisé par des scripts. Un utilisateur connecté
-dispose séparément de « Mes audios » : envoi, liste, aperçu et suppression
-de ses audios avec une pochette facultative. Une image seule ne peut pas être
-ajoutée dans cet espace. Les fichiers restent sur le serveur et sont
-accessibles depuis plusieurs appareils avec le même compte.
-
-Un envoi personnel ne crée ni morceau, ni artiste, ni album dans Catalogue.
-Les fichiers du catalogue créés par script ne sont pas gérables depuis cet
-espace. La lecture publique existante reste définie par [MEDIA_CONTRACT.md](MEDIA_CONTRACT.md).
-Une éventuelle association future au catalogue demandera un nouveau contrat.
+L’écran Upload reçoit un audio et permet de publier son titre, sa description et
+sa pochette dans le catalogue, sous le compte connecté. Le transfert prépare
+un fichier provisoire ; seul Publish track rend le morceau public. Une image
+seule est refusée. Les fichiers historiques et les API privées restent
+compatibles ; les nouveaux uploads provisoires suivent le cycle décrit dans
+« Publication depuis un compte » ci-dessous. La lecture publique est définie
+par [MEDIA_CONTRACT.md](MEDIA_CONTRACT.md).
 
 ## Formats et tailles
 
@@ -165,13 +162,10 @@ déjà deleted du même propriétaire comme succès idempotent, tant que la lign
 de suivi est conservée. Les nouvelles lectures sont refusées après le retrait ;
 un flux déjà autorisé n’est pas une copie que le serveur peut récupérer.
 
-Les envois personnels ne sont pas associés au catalogue dans le périmètre
-retenu. Par défense, si une référence Catalogue existe malgré cette séparation,
-refuser l’effacement : audio de morceau, pochette ou image d’artiste, y compris
-brouillons. Media demande ce contrôle par HTTP interne protégé, jamais par
-lecture SQL interservice. Une panne du contrôle empêche la suppression. Ce
-contrôle ne garantit pas une transaction avec une future association concurrente ;
-aucune écriture de publication utilisateur n’est ajoutée ici.
+Une référence Catalogue ou une réservation de publication interdit l’effacement.
+Media contrôle les références par HTTP interne et arbitre la réservation contre
+la suppression sur la même ligne SQL. Une panne du contrôle conserve le fichier.
+Les références historiques de sortie et d’artiste restent également protégées.
 
 ## Interface HTTP produite
 

@@ -67,16 +67,13 @@ reprise d’un résultat SQL incertain. Une vraie vidéo reste refusée.
   existe ou que son contrôle est indisponible. Après nettoyage, seuls les trois
   originaux WAV de démonstration restent sur le volume.
 - Non-régression des avatars, du catalogue, des playlists privées et du suivi
-  d’écoute. Un audio personnel ne devient pas un morceau du catalogue.
+  d’écoute. Un upload seul ne devient pas public ; la publication exige une opération Catalogue distincte.
 
-`browser.spec.mjs` utilise Chromium avec quatre parcours réels : pochette
-intégrée, progression, écoute et suppression ; pochette manuelle prioritaire
-et refus facultatifs sans perte audio ; prévalidation, refus serveur,
-annulation et réponse tardive d’un ancien compte ; audio AIFF non lisible
-localement mais écoutable grâce à son aperçu MP3.
-Les réponses réussies proviennent de la pile réelle. Un scénario retarde une
-réponse authentique pour vérifier le changement de compte ; aucun succès
-serveur n’est inventé.
+`browser.spec.mjs` vérifie le nouveau formulaire avant publication : pochette
+intégrée et annulation, image optionnelle invalide sans perte audio, refus des
+images seules et audios corrompus, puis changement de session pendant l’envoi.
+Le parcours public complet est couvert par `tests/publication/run.sh` : vrais
+comptes, publication, artiste actuel, pochettes, lecture et playlists.
 
 Pour relire un témoin pendant une campagne en cours, les phases disponibles
 sont `initial`, `verify`, `catalog-down`, `non-regression` et `delete`. Elles
@@ -98,8 +95,8 @@ variantes `retired-cover-*`. `delete-file.ts` relit les variantes après passage
 à `deleting`, lorsque toute nouvelle association est interdite.
 
 Le frontend confirme l’audio avant de transférer la pochette manuelle. Il
-présente une erreur de pochette séparée et permet de réessayer depuis la carte
-audio. `AudioCover.tsx` et `FilePreview.tsx` téléchargent des octets authentifiés,
+présente une erreur de pochette séparée et permet de la remplacer ou de
+continuer sans image avant publication. `AudioCover.tsx` et `FilePreview.tsx` téléchargent des octets authentifiés,
 révoquent leurs URL Blob locales et refusent les réponses d’un ancien compte.
 
 ## Portée des résultats

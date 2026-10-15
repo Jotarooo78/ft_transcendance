@@ -59,18 +59,18 @@ qualification R15, statistique commerciale ou reprise automatique n'est activée
 
 ### File upload and management system — Minor, 1 point
 
-The private **My audio** screen lets an authenticated user upload audio with
-an optional PNG/JPEG/WebP cover, inspect real transfer progress, listen to
-saved audio and delete unused files. Embedded artwork is extracted automatically;
-users can add, replace or remove a cover. Media checks decoded contents, size, ownership and
-processing limits; Catalogue protects track, release-cover and artist-image
-references, including drafts. Files remain available after service/database
-restarts and from another device signed in to the same account.
+The **Upload** screen starts audio transfer immediately and lets the signed-in
+user edit a title, description and optional artwork before choosing **Publish
+track**. The artist is always the publishing account. Published tracks appear
+in the catalogue with public playback, artwork and a link to the current artist
+profile, and can be added to private playlists. Embedded artwork is extracted
+automatically; a manual replacement or explicit removal takes precedence.
 
 Audio originals are preserved, up to 500,000,000 bytes, with a separate MP3
 preview. Images are limited to 25,000,000 bytes, 25 million pixels and 8,192
 pixels per side. A failed cover leaves valid audio saved and reports an optional
-image error. Personal uploads stay separate from catalogue publishing.
+image error. Temporary uploads expire after 24 hours unless reserved for
+publication; retries use the same audio and cannot create duplicate tracks.
 The [file contract](docs/music/FILES_CONTRACT.md) records exact limits,
 errors and the scope of deletion protection.
 
@@ -80,6 +80,8 @@ screens, and reproducible service/HTTPS/PostgreSQL/disc/Chromium tests.
 `tests/files/run.sh` verifies all six requirements on a dedicated Compose
 project with fresh disposable volumes and HTTPS port 4443, then removes its
 own resources. The development stack keeps running throughout the campaign.
+`tests/publication/run.sh` verifies publication with real accounts, HTTPS, SQL
+and Chromium on a separate disposable project at port 4445.
 Commands, safeguards, observed results and compatibility limits are in the
 [file test guide](tests/files/README.md). The Minor is worth one point only
 when every required phase and cleanup passes; personal learning and the

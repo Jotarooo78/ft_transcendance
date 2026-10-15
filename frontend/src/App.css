@@ -927,11 +927,13 @@ form > p[id$="-help"],
 }
 
 /* Parcours de publication : panneau clair, pochette latérale et actions orange proches du formulaire SoundCloud. */
-.publish-page { max-width: 1040px; margin: 0 auto; padding: 46px 24px 80px; color: #242424; }
+:root:has(.publish-page) { background: #f5f5f5; }
+.publish-page { width: min(100% - 32px, 1040px); max-width: 1040px; margin: 0 auto; padding: 46px 24px 80px; color: #242424; }
 .publish-page > header { margin-bottom: 28px; }
-.publish-page > header h1 { color: #f7f7f7; font-size: clamp(28px, 4vw, 38px); margin: 6px 0 10px; }
-.publish-page > header p { color: #b8bac4; }
+.publish-page > header h1 { color: #262626; font-size: clamp(28px, 4vw, 38px); margin: 6px 0 10px; }
+.publish-page > header p { color: #707070; }
 .publish-page .publish-eyebrow { font-size: 11px; letter-spacing: .18em; color: #ff8152; font-weight: 700; }
+.publish-form { display: block; }
 .publish-form, .publish-success { background: #fff; border: 1px solid #e6e6e6; border-radius: 6px; box-shadow: 0 8px 35px #0002; overflow: hidden; }
 .publish-form button, .publish-success button { font: inherit; letter-spacing: normal; text-transform: none; border-radius: 4px; }
 .audio-dropzone { min-height: 350px; margin: 26px; padding: 50px 20px; border: 2px dashed #d6d6d6; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: background .15s, border-color .15s; }
@@ -954,7 +956,7 @@ form > p[id$="-help"],
 .publish-artwork-placeholder, .publish-artwork-preview .audio-cover-placeholder { width: 100%; height: 100%; display: grid; place-items: center; font-size: 70px; color: #b2b2b2; background: linear-gradient(135deg, #e8e8e8, #f4f4f4); border-radius: 0; }
 .publish-page .cover-select { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); white-space: nowrap; background: #fffe; color: #333; border: 1px solid #bbb; padding: 8px 14px; font-size: 13px; }
 .publish-fields { display: flex; flex-direction: column; gap: 9px; }
-.publish-fields label, .publish-label { color: #333; font-size: 14px; font-weight: 600; margin-top: 4px; }
+.publish-fields label, .publish-label { display: block; color: #333; font-size: 14px; font-weight: 600; margin-top: 4px; }
 .publish-fields input, .publish-fields textarea { box-sizing: border-box; width: 100%; border: 1px solid #ccc; border-radius: 3px; background: #fff; color: #222; padding: 11px 12px; font: inherit; font-size: 14px; }
 .publish-fields input:focus, .publish-fields textarea:focus { outline: 2px solid #ffb18a; outline-offset: 1px; }
 .publish-fields textarea { resize: vertical; min-height: 135px; }
@@ -963,7 +965,7 @@ form > p[id$="-help"],
 .publish-optional, .publish-counter { color: #888; font-size: 12px; font-weight: 400; }
 .publish-counter { text-align: right; }
 .publishing-artist { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; }
-.publishing-artist img, .artist-avatar-placeholder { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+.publishing-artist img, .artist-avatar-placeholder { flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
 .artist-avatar-placeholder { display: grid; place-items: center; background: #eee; color: #777; }
 .publishing-artist strong { font-size: 14px; }
 .publishing-artist div > span { display: block; color: #888; font-size: 12px; }
@@ -978,8 +980,8 @@ form > p[id$="-help"],
 .publish-success-icon { font-size: 38px; color: #f50; }
 .track-artwork { width: 100%; max-width: 240px; height: 200px; object-fit: contain; border-radius: 8px; background: #272936; margin-bottom: 12px; }
 .track-artwork-placeholder { display: grid; place-items: center; color: #989aa9; font-size: 50px; }
-.artist-link { border: 0; padding: 0; background: transparent; color: #ffae89; text-decoration: underline; text-underline-offset: 3px; text-transform: none; letter-spacing: normal; }
-.artist-dialog { max-width: 460px; width: calc(100% - 48px); padding: 28px; border-radius: 12px; border: 1px solid #555; background: #20222c; color: #eee; }
+.artist-link { border: 0; padding: 0; background: transparent; color: #93421a; text-decoration: underline; text-underline-offset: 3px; text-transform: none; letter-spacing: normal; }
+.artist-dialog { max-width: 460px; width: calc(100% - 48px); padding: 28px; border-radius: 12px; border: 1px solid #555; background: #fff; color: #333; }
 .artist-dialog::backdrop { background: #0009; }
 .artist-dialog img { width: 88px; height: 88px; border-radius: 50%; object-fit: cover; }
 .track-description { white-space: pre-wrap; overflow-wrap: anywhere; }

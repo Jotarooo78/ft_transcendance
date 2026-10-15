@@ -57,6 +57,7 @@ export default function FileUploadForm({ user, onPublished }: Props) {
       await validateFile(selected, controller.signal);
       if (controller.signal.aborted) return;
       setChecking(false);
+      setProgress({ phase: "sending", percent: 0, loaded: 0, total: null });
       const saved = await sendFile(selected, setProgress, controller.signal, true);
       if (!controller.signal.aborted) setAsset(saved);
     } catch (failure) {

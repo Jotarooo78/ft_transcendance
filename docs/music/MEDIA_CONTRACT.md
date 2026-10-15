@@ -3,8 +3,8 @@
 Catalogue fournit un assetId et une URL ; Media relie cet identifiant aux
 métadonnées puis aux octets. Une ligne ready ne garantit pas qu'un fichier
 existe : les deux sont contrôlés avant de commencer une réponse de succès.
-Ce document décrit les routes à produire dans MED-3 à MED-5, pas des routes
-déjà disponibles à MED-1.
+Ces routes sont implémentées. Les uploads publiés utilisent leur aperçu MP3
+validé ; les fixtures historiques sans aperçu conservent leur original.
 
 ## Chemin et publication
 
