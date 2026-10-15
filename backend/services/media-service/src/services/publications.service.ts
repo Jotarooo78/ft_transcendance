@@ -1,13 +1,21 @@
 /** Réservation avant publication et nettoyage borné des audios abandonnés. */
 import { DomainError } from '@ft/service-kit'
+import type { CatalogClient } from '../clients/catalog.client.js'
 import type { PublicationsRepository } from '../repositories/publications.repository.js'
 import type { FileDeletionService } from './file-deletion.service.js'
 /** Vérifie la réservation Media et garde la suppression commune comme seul chemin de nettoyage. */
 export function createPublicationsService(
   store: PublicationsRepository,
-  deletions: FileDeletionService
+  deletions: FileDeletionService,
+  catalog: CatalogClient
 ) {
   return {
+    /** Refuse de libérer un fichier encore utilisé ; Catalogue conserve un tombstone non republiable. */
+    async release(id: string, owner: string) {
+      if (await catalog.isAssetReferenced(id)) throw new DomainError(409, 'file_in_use')
+      await store.release(id, owner)
+      await deletions.remove(owner, id)
+    },
     /** Confirme un audio du propriétaire, avec aperçu utilisable, avant l’écriture Catalogue. */
     async reserve(id: string, owner: string) {
       const audio = await store.reserve(id, owner)

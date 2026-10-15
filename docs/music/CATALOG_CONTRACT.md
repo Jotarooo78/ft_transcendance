@@ -135,3 +135,27 @@ de titre, description, pochette et ordre conservent les identifiants des objets.
 Le remplacement des octets d’un audio publié n’est pas inclus dans cette étape.
 Ces paragraphes définissent la cible ; ils ne constituent pas une preuve
 d’implémentation ou de tests réussis.
+
+## Responsabilités des projets réalisés
+
+`domain/project.ts` nettoie les textes et contrôle les références de pochette et
+les doublons. `schemas/projects.schema.ts` borne les requêtes à cent pistes.
+`repositories/projects.repository.ts` conserve l’ordre, prend les verrous de
+projet et d’audio, vérifie les versions et écrit les transitions atomiquement.
+`services/projects.service.ts` authentifie auprès de Users, réserve dans Media
+puis transforme les données privées ou publiques. Le contrôleur adapte HTTP ;
+les routes appliquent les schémas et interdisent le cache. `server.ts` injecte
+le stockage réel ; les tests injectent seulement les dépendances nécessaires.
+
+Le nettoyage des pistes retirées est une liste `pending_cleanup` durable sur le
+projet. Une piste abandonnée garde un identifiant retiré, sans référence audio,
+pour interdire sa republication par l’ancien endpoint. Media vérifie encore
+l’absence de référence avant libération et suppression. Un échec de nettoyage
+renvoie une erreur ; reprendre la même sauvegarde ou suppression traite la file
+restante sans perdre le projet déjà enregistré. Un fichier réservé avant une
+écriture au résultat incertain reste protégé plutôt que supprimé prématurément.
+
+`test/projects.integration.ts` exerce de vraies transactions PostgreSQL avec
+Users/Media simulés : ces preuves couvrent le stockage, pas le transport audio.
+Sa variable PROJECT_TEST_DATABASE_URL exige une cible jetable explicite ; la
+campagne HTTP complète reste nécessaire pour vérifier le parcours interservices.

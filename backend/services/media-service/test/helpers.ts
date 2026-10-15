@@ -103,7 +103,7 @@ export async function buildTestApp(overrides: Overrides = {}) {
         retired: async () => [],
         forgetRetired: unused,
       },
-      publications: { reserve: unused, expired: async () => [] },
+      publications: { release: unused, reserve: unused, expired: async () => [] },
       assets: fakeAssets(),
       catalog: { isAssetPublished: unused, isAssetReferenced: unused },
       validate: unused,

@@ -1,4 +1,5 @@
 /** Écriture idempotente des publications et lecture des comptes crédités. */
+import { DomainError } from '@ft/service-kit'
 import type { Database } from './prisma.js'
 import type { TrackPublication } from '../domain/publication.js'
 /** Centralise les seuls accès SQL ajoutés pour publier depuis un compte. */
@@ -15,20 +16,29 @@ export function createPublicationsRepository(prisma: Database) {
     },
     /** L’UUID de l’audio rend doubles clics et reprises convergents. */
     async publish(data: TrackPublication, ownerId: string, durationMs: number) {
-      return prisma.track.upsert({
-        where: { id: data.audioAssetId },
-        update: {},
-        create: {
-          id: data.audioAssetId,
-          audioAssetId: data.audioAssetId,
-          title: data.title,
-          description: data.description || null,
-          createdByUserId: ownerId,
-          durationMs: BigInt(durationMs),
-          status: 'published',
-          publishedAt: new Date(),
-        },
-        select: { id: true, createdByUserId: true, audioAssetId: true },
+      return prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${data.audioAssetId}, 17))::text`
+        const existing = await tx.track.findUnique({
+          where: { id: data.audioAssetId },
+          include: { releaseTracks: true },
+        })
+        if (existing && (existing.status === 'withdrawn' || existing.releaseTracks.length > 0))
+          throw new DomainError(409, 'audio_already_used')
+        return tx.track.upsert({
+          where: { id: data.audioAssetId },
+          update: {},
+          create: {
+            id: data.audioAssetId,
+            audioAssetId: data.audioAssetId,
+            title: data.title,
+            description: data.description || null,
+            createdByUserId: ownerId,
+            durationMs: BigInt(durationMs),
+            status: 'published',
+            publishedAt: new Date(),
+          },
+          select: { id: true, createdByUserId: true, audioAssetId: true },
+        })
       })
     },
   }

@@ -7,6 +7,17 @@ export function registerPublicationsRoutes(
   app: App,
   controller: ReturnType<typeof createPublicationsController>
 ) {
+  app.delete(
+    '/internal/assets/:id/publication',
+    {
+      onRequest: app.requireInternalToken,
+      schema: {
+        params: Type.Object({ id: UuidSchema }),
+        body: Type.Object({ ownerId: UuidSchema }, { additionalProperties: false }),
+      },
+    },
+    controller.release
+  )
   app.put(
     '/internal/assets/:id/publication',
     {

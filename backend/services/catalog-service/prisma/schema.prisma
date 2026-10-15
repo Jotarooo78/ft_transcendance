@@ -131,6 +131,8 @@ model TrackArtist {
 
 /// Sortie musicale et ses métadonnées ; coverAssetId est une référence logique vers Media.
 model Release {
+  /// Fichiers retirés à nettoyer ; liste durable permettant de reprendre après panne Media.
+  pendingCleanup String[] @default([]) @map("pending_cleanup") @db.Uuid
   /// Compte propriétaire ; null pour les sorties historiques créées par le seed.
   ownerUserId  String?   @map("owner_user_id") @db.Uuid
   /// Présentation facultative du projet, limitée à 5 000 caractères.

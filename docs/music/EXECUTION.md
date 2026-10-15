@@ -716,3 +716,22 @@ Prisma validate/generate réussis. Une base PostgreSQL 16 jetable a reçu la
 baseline, un album témoin, puis la migration : album conservé, version 1 et
 insertion d’une mixtape vérifiés par assertion SQL. Aucun schéma de développement
 n’a été modifié. Les fonctions de brouillon et publication restent à produire.
+
+## Projets musicaux — brouillons et publication
+
+Les routes personnelles et publiques des projets sont produites. La sauvegarde,
+la publication et l’abandon partagent le verrou du projet ; la publication
+historique d’un titre prend aussi le verrou audio et refuse les pistes déjà
+rattachées à un projet. Le nettoyage d’un abandon est durable et répétable.
+Typecheck Catalogue et Media réussi. Les quatre fichiers de tests Catalogue
+passent avec `node --import tsx --test test/*.test.ts` (le CLI tsx est empêché
+par le sandbox de créer son socket). PostgreSQL réel confirme droits A/B,
+rejeu de création, conflit concurrent, publication complète, date conservée,
+ordre modifié et abandon. Les tests Media sont exécutés dans Docker avec FFmpeg.
+Les copies documentaires restent locales : aucun connecteur Notion n’est
+accessible dans cette session. Aucun statut Notion n’est déclaré mis à jour.
+Les 26 tests Media passent dans l’image isolée. Le scénario PostgreSQL confirme
+également qu’une panne Media laisse la file de nettoyage en base et qu’une
+nouvelle suppression la termine. L’image de test utilise une copie temporaire
+du Dockerfile sans cache BuildKit, indisponible sur le moteur local ; les
+instructions de production du dépôt ne sont pas modifiées.

@@ -5,6 +5,13 @@ export type PublicationsRepository = ReturnType<typeof createPublicationsReposit
 /** Construit les opérations atomiques de réservation ; aucun accès aux octets du disque. */
 export function createPublicationsRepository(database: Database) {
   return {
+    /** Retire la réservation après abandon confirmé ; le nettoyage pourra reprendre après panne. */
+    async release(id: string, owner: string) {
+      await database.asset.updateMany({
+        where: { id, uploaderUserId: owner, state: 'ready', publicationTrackId: id },
+        data: { publicationTrackId: null, expiresAt: new Date() },
+      })
+    },
     /** Une réservation répétée conserve le même morceau ; une suppression gagnante interdit la publication. */
     reserve(id: string, owner: string) {
       return database.$transaction(async (tx) => {

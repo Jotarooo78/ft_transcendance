@@ -116,7 +116,7 @@ export async function buildApp(
       gate
     )
   )
-  const publications = createPublicationsService(dependencies.publications, deletions)
+  const publications = createPublicationsService(dependencies.publications, deletions, catalog)
   registerPublicationsRoutes(app, createPublicationsController(publications))
   // Une seule passe de nettoyage à la fois ; l’arrêt attend la passe active avant de fermer SQL.
   let cleanup: Promise<unknown> | undefined
