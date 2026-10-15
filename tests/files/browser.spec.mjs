@@ -67,7 +67,9 @@ test('session change aborts an active upload and hides the previous form',async(
 });
 
 /** Contrôle les événements XHR sans envoyer de fichier : distingue transfert, attente et confirmation serveur. */
-test('upload progress becomes animated preparation until the server confirms readiness', async ({ page }) => {
+for (const width of [1280, 390, 320]) {
+test(`upload progress becomes animated preparation until the server confirms readiness (${width}px)`, async ({ page }) => {
+ await page.setViewportSize({ width, height: 960 });
  await page.clock.install();
  // Cette identité reste dans le navigateur ; aucune requête ne touche les comptes ou fichiers réels.
  await page.route('**/api/**', async route => {
@@ -107,7 +109,29 @@ test('upload progress becomes animated preparation until the server confirms rea
  await expect.poll(() => page.evaluate(() => Boolean(window.controlledUpload))).toBe(true);
  await page.evaluate(() => window.controlledUpload.upload.dispatchEvent(new ProgressEvent('progress', { lengthComputable: true, loaded: 9999, total: 10000 })));
  await expect(page.getByText('Uploading audio — 99%', { exact: true })).toBeVisible();
+ // Mesure les repères visibles avant le changement de phase, sans dépendre des classes d’animation.
+ /** Mesure dans la page, indépendamment du défilement automatique vers les champs sur mobile. */
+ async function documentBounds(selector) {
+  return page.locator(selector).evaluate(element => {
+   const rect = element.getBoundingClientRect();
+   return { x: rect.x + scrollX, y: rect.y + scrollY, width: rect.width, height: rect.height };
+  });
+ }
+ const statusBefore = await documentBounds('.upload-status-content');
+ const formBefore = await documentBounds('.publish-layout');
+ const filename = await documentBounds('.upload-filename');
+ if (width > 640) expect(statusBefore.x).toBeGreaterThan(filename.x + filename.width);
+ else expect(statusBefore.y).toBeGreaterThanOrEqual(filename.y + filename.height);
+ /** Vérifie que les étapes et le message prolongé ne déplacent aucun des deux repères. */
+ async function expectStablePosition() {
+  const statusNow = await documentBounds('.upload-status-content');
+  const formNow = await documentBounds('.publish-layout');
+  expect(statusNow).toEqual(statusBefore);
+  expect(formNow.y).toBe(formBefore.y);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+ }
  await page.evaluate(() => window.controlledUpload.upload.dispatchEvent(new ProgressEvent('progress', { lengthComputable: true, loaded: 10000, total: 10000 })));
+ await expectStablePosition();
  await expect(page.locator('.audio-preparation')).toContainText('Preparing audio');
  await expect(page.getByRole('progressbar')).toHaveCount(0);
  await expect(page.locator('.upload-status')).not.toContainText('100%');
@@ -115,12 +139,14 @@ test('upload progress becomes animated preparation until the server confirms rea
  await page.getByLabel('Title', { exact: false }).fill('Edited during preparation');
  await page.getByLabel('Description', { exact: false }).fill('Still editable');
  await expect(page.getByRole('button', { name: 'Choose artwork', exact: true })).toBeEnabled();
- await expect(page.locator('.preparation-dots')).toHaveCSS('animation-name', 'preparation-dots');
+ await expect(page.locator('.audio-preparation-title')).toHaveCSS('animation-name', 'preparation-shimmer');
  await page.emulateMedia({ reducedMotion: 'reduce' });
- await expect(page.locator('.preparation-dots')).toHaveCSS('animation-name', 'none');
+ await expect(page.locator('.audio-preparation-title')).toHaveCSS('animation-name', 'none');
  await expect(page.getByText(/This is taking a little longer/)).toHaveCount(0);
  await page.clock.fastForward(8000);
  await expect(page.getByText(/This is taking a little longer/)).toBeVisible();
+ await expectStablePosition();
+ await page.screenshot({ path: test.info().outputPath('preparing.png'), fullPage: true });
  // Une confirmation valide, et elle seule, rend l’audio publiable.
  await page.evaluate(() => {
   const xhr = window.controlledUpload;
@@ -129,6 +155,7 @@ test('upload progress becomes animated preparation until the server confirms rea
   xhr.dispatchEvent(new Event('load'));
  });
  await expect(page.getByText('✓ Audio ready', { exact: true })).toBeVisible();
+ await expectStablePosition();
  await expect(page.locator('.audio-preparation')).toHaveCount(0);
  await expect(page.getByRole('button', { name: 'Publish track', exact: true })).toBeEnabled();
  // Un nouvel envoi utilise aussi upload.onload si le total n’était pas mesurable, puis reste annulable.
@@ -145,3 +172,4 @@ test('upload progress becomes animated preparation until the server confirms rea
  await expect(page.locator('.audio-preparation')).toHaveCount(0);
  await expect(page.getByRole('button', { name: 'Choose a file', exact: true })).toBeVisible();
 });
+}

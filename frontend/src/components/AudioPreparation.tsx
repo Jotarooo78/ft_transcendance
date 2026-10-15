@@ -1,7 +1,7 @@
 /** Attente de la confirmation Media après le transfert, sans pourcentage de traitement inventé. */
 import { useEffect, useState } from "react";
 
-/** Affiche les points animés et un conseil après huit secondes ; le démontage annule le délai. */
+/** Anime un reflet sur le texte et remplace le conseil après huit secondes, dans un espace réservé. */
 export default function AudioPreparation() {
   const [takingLonger, setTakingLonger] = useState(false);
   useEffect(() => {
@@ -9,9 +9,10 @@ export default function AudioPreparation() {
     return () => window.clearTimeout(timeout);
   }, []);
 
-  return <div className="audio-preparation">
-    <span className="audio-preparation-title">Preparing audio<span className="preparation-dots" aria-hidden="true">...</span></span>
-    <p>Checking the file and preparing playback.</p>
-    {takingLonger && <p>This is taking a little longer. Larger files can take more time.</p>}
+  return <div className="audio-preparation upload-state">
+    <span className="audio-preparation-title">Preparing audio</span>
+    <p className="upload-status-hint" key={takingLonger ? "long" : "initial"}>
+      {takingLonger ? "This is taking a little longer. Larger files can take more time." : "Checking the file and preparing playback."}
+    </p>
   </div>;
 }

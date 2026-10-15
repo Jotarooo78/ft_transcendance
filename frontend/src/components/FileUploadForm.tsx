@@ -140,10 +140,13 @@ export default function FileUploadForm({ user, onPublished }: Props) {
     </div> : <>
       <div className="upload-status" aria-live="polite">
         <span className="upload-filename">{file.name}</span>
-        {progress?.phase === "sending" && <><progress aria-label="Upload progress" max={100} {...(progress.percent === null ? {} : { value: progress.percent })} /><span>{progress.percent === null ? "Uploading audio…" : `Uploading audio — ${progress.percent}%`}</span></>}
-        {checking && <span>Checking audio…</span>}
-        {progress?.phase === "validating" && <AudioPreparation />}
-        {!uploading && asset && <span className="upload-ready">✓ Audio ready</span>}
+        {/* Même emplacement et même espace réservé à chaque phase, y compris avant la confirmation. */}
+        <div className="upload-status-content">
+          {progress?.phase === "sending" && <div className="upload-state" key="sending"><div className="upload-transfer-line"><progress aria-label="Upload progress" max={100} {...(progress.percent === null ? {} : { value: progress.percent })} /><span>{progress.percent === null ? "Uploading audio…" : `Uploading audio — ${progress.percent}%`}</span></div></div>}
+          {checking && <div className="upload-state" key="checking"><span>Checking audio…</span></div>}
+          {progress?.phase === "validating" && <AudioPreparation />}
+          {!uploading && asset && <div className="upload-state" key="ready"><span className="upload-ready">✓ Audio ready</span></div>}
+        </div>
       </div>
       <div className="publish-layout">
         <div className="publish-artwork">

@@ -945,23 +945,30 @@ form > p[id$="-help"],
 .publish-page .publish-primary:disabled { opacity: .5; cursor: not-allowed; }
 .publish-page .publish-help { color: var(--text); font-size: 12px; line-height: 1.6; margin: 14px 0 0; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); border: 0; }
-.upload-status { background: var(--surface-soft); border-bottom: 1px solid var(--border); padding: 16px 28px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: 13px; }
-.upload-filename { flex: 1 1 200px; overflow-wrap: anywhere; }
-.upload-status progress { accent-color: var(--accent); height: 6px; width: 160px; }
+.upload-status { background: var(--surface-soft); border-bottom: 1px solid var(--border); padding: 16px 28px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 340px); align-items: start; gap: 12px 24px; font-size: 13px; }
+.upload-filename { min-width: 0; overflow-wrap: anywhere; line-height: 24px; }
+/* Le statut garde sa colonne et réserve trois lignes d’aide, même lorsqu’elles sont vides. */
+.upload-status-content { min-width: 0; min-height: 82px; text-align: right; line-height: 24px; }
+.upload-state { display: grid; grid-template-rows: 24px minmax(54px, auto); row-gap: 4px; animation: upload-status-enter .24s ease-out; }
+.upload-transfer-line { display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
+.upload-transfer-line > span { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.upload-status progress { accent-color: var(--accent); height: 6px; width: 96px; min-width: 20px; flex: 0 1 96px; }
 .upload-ready { color: var(--success); }
-/* Points purement visuels : le texte annoncé reste stable et la largeur ne saute pas. */
-.audio-preparation { flex-basis: 100%; }
-.audio-preparation-title { color: var(--accent); font-weight: 600; }
-.audio-preparation p { color: var(--text); font-size: 12px; margin-top: 4px; }
-.preparation-dots { display: inline-block; width: 3ch; font-family: var(--mono); animation: preparation-dots 1.5s step-end infinite; }
-@keyframes preparation-dots {
-  0%, 100% { clip-path: inset(0 66.666% 0 0); }
-  33.333% { clip-path: inset(0 33.333% 0 0); }
-  66.666% { clip-path: inset(0); }
+/* Le reflet traverse le texte sans changer ses dimensions ni son contenu accessible. */
+.audio-preparation-title { justify-self: end; font-weight: 600; color: var(--accent); background: linear-gradient(110deg, var(--accent) 35%, var(--accent-border) 50%, var(--accent) 65%); background-size: 250% 100%; background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: preparation-shimmer 2.4s linear infinite; }
+.upload-status-hint { color: var(--text); font-size: 12px; line-height: 18px; margin: 0; animation: upload-status-enter .24s ease-out; }
+@keyframes preparation-shimmer {
+  from { background-position: 150% 0; }
+  to { background-position: -150% 0; }
 }
-/* Respecte le choix système de limiter les animations, en gardant les trois points visibles. */
+@keyframes upload-status-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+/* Sans mouvement demandé, les changements restent immédiats et le texte uni. */
 @media (prefers-reduced-motion: reduce) {
-  .preparation-dots { animation: none; }
+  .upload-state, .upload-status-hint, .audio-preparation-title { animation: none; }
+  .audio-preparation-title { background: none; -webkit-text-fill-color: currentColor; }
 }
 .publish-layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 34px; padding: 32px; }
 .publish-artwork-preview { position: relative; aspect-ratio: 1; background: var(--surface-soft); overflow: hidden; }
@@ -999,6 +1006,11 @@ form > p[id$="-help"],
 .artist-dialog img { width: 88px; height: 88px; border-radius: 50%; object-fit: cover; }
 .track-description { white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 640px) {
+  /* Toutes les étapes passent ensemble sous le nom, sans déplacement pendant l’envoi. */
+  .upload-status { grid-template-columns: minmax(0, 1fr); padding: 16px 20px; }
+  .upload-status-content { text-align: left; }
+  .upload-transfer-line { flex-direction: row-reverse; justify-content: flex-end; }
+  .audio-preparation-title { justify-self: start; }
   .publish-page { padding: 24px 12px 50px; }
   .publish-layout { grid-template-columns: 1fr; gap: 24px; padding: 20px; }
   .publish-artwork { max-width: 260px; width: 100%; margin: 0 auto; }
