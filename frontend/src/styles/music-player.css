@@ -445,3 +445,39 @@ body.has-music-player {
   color: var(--text-h);
   font-size: 13px;
 }
+
+/* La couleur répond immédiatement ; seul un chargement dépassant 200 ms montre l’anneau.
+   Le retrait du span annule ses animations, même pendant un changement rapide de titre. */
+.player-main-toggle.is-loading,
+.player-main-toggle.is-loading:hover {
+  background: var(--lavender);
+  color: var(--lavender-ink);
+}
+.player-loading-ring {
+  position: absolute;
+  inset: -4px;
+  border: 2px solid transparent;
+  border-top-color: var(--lavender-ink);
+  border-right-color: var(--lavender-ink);
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  animation:
+    player-loading-reveal 1ms 200ms forwards,
+    player-loading-turn 800ms 200ms linear infinite;
+}
+@keyframes player-loading-reveal {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes player-loading-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .player-loading-ring {
+    animation: player-loading-reveal 1ms 200ms forwards;
+  }
+}

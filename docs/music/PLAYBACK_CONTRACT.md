@@ -193,3 +193,11 @@ Les 127 références de titres aimés et leurs détails sont simulés pour véri
 les deux niveaux de pagination ; les octets audio restent réels. Les pannes
 HTTP et réseau sont injectées explicitement dans le navigateur de test. Ces
 preuves ne constituent pas un test de charge ni une synchronisation multiappareil.
+
+### Chargement sans déplacement
+
+Le bouton central passe en lavande pendant le chargement. Un anneau décoratif
+apparaît après 200 ms, sans changer la taille du bouton ni de la barre. Son animation
+est supprimée avec son élément au changement de titre ou à la fin de l’attente ;
+la préférence de réduction des mouvements conserve seulement l’anneau fixe.
+Le statut reste annoncé aux lecteurs d’écran. Les erreurs et leur reprise restent visibles.

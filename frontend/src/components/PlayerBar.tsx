@@ -11,7 +11,7 @@ function time(seconds: number) {
   const value = Math.max(0, Math.floor(seconds || 0));
   return `${Math.floor(value / 60)}:${String(value % 60).padStart(2, "0")}`;
 }
-/** Présente l’état confirmé par le moteur et réserve sa hauteur dans la page. */
+/** Présente l’état du moteur ; le chargement reste dans le bouton sans déplacer la page. */
 export default function PlayerBar({
   children,
 }: {
@@ -108,12 +108,20 @@ export default function PlayerBar({
               <PlayerIcon name="previous" />
             </button>
             <button
-              className="player-icon-button player-main-toggle"
+              className={`player-icon-button player-main-toggle${player.loading ? " is-loading" : ""}`}
+              aria-busy={player.loading}
               aria-label={player.playing ? "Pause" : "Play"}
               title={player.playing ? "Pause" : "Play"}
               onClick={player.toggle}
             >
               <PlayerIcon name={player.playing ? "pause" : "play"} />
+              {player.loading && (
+                <span
+                  key={player.current.key}
+                  className="player-loading-ring"
+                  aria-hidden="true"
+                />
+              )}
             </button>
             <button
               className="player-icon-button"
@@ -193,9 +201,12 @@ export default function PlayerBar({
           </button>
         </div>
         <div className="player-engine">{children}</div>
-        {(player.loading || player.notice) && (
+        <span className="visually-hidden" role="status">
+          {player.loading ? "Loading audio…" : ""}
+        </span>
+        {player.notice && (
           <div className="player-notice" role="status">
-            <span>{player.loading ? "Loading audio…" : player.notice}</span>
+            <span>{player.notice}</span>
             {!player.loading &&
               /retry|resume|playable/i.test(player.notice) && (
                 <button onClick={player.retry}>Retry playback</button>

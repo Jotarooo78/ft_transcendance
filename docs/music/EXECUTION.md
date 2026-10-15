@@ -886,3 +886,18 @@ piles jetables ne subsiste. Les changements préexistants dans `docs/music-plan`
 et le dossier local `services/` restent hors des commits. Les synchronisations
 intermédiaires n’ont intégré aucun nouveau commit distant et n’ont rencontré
 aucun conflit.
+
+### Fluidité et actualisation — exécution du plan validé dans la conversation
+
+- Mesure initiale sur Chromium automatisé, 1440 × 800 : catalogue 24 titres,
+  bibliothèque 48 références (24 affichées), historique 20 écoutes, données de
+  listes simulées et services de test isolés. Sur trois secondes de défilement
+  natif piloté par requestAnimationFrame : p95 16,7–16,8 ms, aucune image >25 ms,
+  aucune tâche longue >50 ms. Login/profil courts servent de témoins sans défilement.
+  Cette mesure ne reproduit pas le ressenti au trackpad physique.
+- [x] Chargement audio : couleur lavande, anneau retardé de 200 ms et statut accessible
+  sans ligne visible supplémentaire. Lint/build et test navigateur de hauteur stable.
+- [ ] Pochettes vectorielles communes.
+- [ ] Actualisation commune et intégration des écrans.
+- [ ] Comparaison finale du rendu, parcours globaux et publication.
+- Compréhension utilisateur et ressenti physique au trackpad : non validés à sa place.
