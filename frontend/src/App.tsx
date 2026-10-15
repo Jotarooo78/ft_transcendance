@@ -1,4 +1,5 @@
 import { useResource } from "./hooks/useResource";
+import LanguageSelector from "./components/LanguageSelector";
 import RefreshNotice from "./components/RefreshNotice";
 import CollectionsProvider from "./components/CollectionsProvider";
 import LibraryPage from "./pages/LibraryPage";
@@ -270,6 +271,7 @@ function App() {
         <CollectionsProvider active={musicVisible}>
           <header className="site-header">
             <strong className="site-title">FT Music</strong>
+            <LanguageSelector />
 
             <nav className="main-navigation" aria-label="User navigation">
               <button
@@ -465,6 +467,7 @@ function App() {
       <MusicPlayerProvider>
         <header className="site-header">
           <strong className="site-title">FT Music</strong>
+          <LanguageSelector />
           <button
             onClick={() => {
               window.location.hash = "";
@@ -488,6 +491,7 @@ function App() {
     <>
       <header className="site-header">
         <strong className="site-title">FT Music</strong>
+        <LanguageSelector />
 
         <nav className="main-navigation" aria-label="Authentication">
           <button

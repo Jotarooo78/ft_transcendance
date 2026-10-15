@@ -1818,3 +1818,16 @@ form > p[id$="-help"],
   max-width: none;
   padding: 1rem 0;
 }
+/* Le choix de langue reste lisible lorsque l'en-tête revient sur plusieurs lignes. */
+.language-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+  font-size: 0.85rem;
+}
+.language-selector select {
+  width: auto;
+  min-width: 7rem;
+  padding: 0.45rem 0.6rem;
+}
