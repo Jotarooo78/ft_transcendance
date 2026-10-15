@@ -82,6 +82,21 @@ SQL ownership/grant updates run through the existing Compose migration chain.
 
 ## 📝 Repartition des modules
 
+### Support de trois langues — Minor, 1 point
+
+L’interface propose le français, l’anglais et l’espagnol sur tous les parcours,
+y compris les erreurs, validations, confirmations et textes accessibles.
+Un sélecteur est disponible avant et après connexion. Le choix mémorisé dans le
+navigateur prime sur ses préférences linguistiques ; l’anglais sert de repli.
+Le changement conserve les saisies, les transferts et la lecture en cours.
+
+`npm run test:languages --prefix frontend` vérifie les dictionnaires, les règles
+de langue et les textes statiques des 42 fichiers visuels.
+`bash tests/projects/run.sh languages` vérifie les trois langues avec de vrais
+comptes et fichiers sur la pile HTTPS jetable, puis nettoie ses ressources.
+Les règles, les limites des contrôles, la méthode d’ajout d’une traduction et
+les résultats observés sont décrits dans le [guide frontend](frontend/README.md).
+
 ### File upload and management system — Minor, 1 point
 
 The **Upload** screen starts audio transfer immediately and lets the signed-in
