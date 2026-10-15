@@ -1,3 +1,5 @@
+import { useResource } from "./hooks/useResource";
+import RefreshNotice from "./components/RefreshNotice";
 import CollectionsProvider from "./components/CollectionsProvider";
 import LibraryPage from "./pages/LibraryPage";
 import PublicPlaylistPage from "./pages/PublicPlaylistPage";
@@ -5,7 +7,7 @@ import MusicPlayerProvider from "./components/MusicPlayerProvider";
 import ProjectPage from "./pages/ProjectPage";
 import ArtistPage from "./pages/ArtistPage";
 import { useMusicRoute } from "./hooks/useMusicRoute";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import LoginPage from "./pages/LoginPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -16,7 +18,7 @@ import UsersPage from "./pages/UsersPage";
 import HistoryPage from "./pages/HistoryPage";
 import FilesPage from "./pages/FilesPage";
 
-import type { AuthenticatedUser, PublicUser } from "./types/auth";
+import type { AuthenticatedUser } from "./types/auth";
 import { useLibrary } from "./hooks/useLibrary";
 
 import { clearAccessToken, onSessionCleared } from "./services/session";
@@ -58,7 +60,7 @@ function getErrorMessage(error: unknown, fallbackMessage: string): string {
   return fallbackMessage;
 }
 
-/** Coordonne la session et les pages ; l’espace My audio regroupe les audios privés et leurs pochettes. */
+/** Assemble les pages et limite les relectures aux données utilisées par l’écran courant. */
 function App() {
   const musicRoute = useMusicRoute();
   const [currentPage, setCurrentPage] = useState<PublicPage>("register");
@@ -66,8 +68,6 @@ function App() {
   const [currentUser, setCurrentUser] = useState<AuthenticatedUser | null>(
     null,
   );
-
-  const [users, setUsers] = useState<PublicUser[]>([]);
 
   const [privatePage, setPrivatePage] = useState<PrivatePage>("profile");
 
@@ -78,9 +78,30 @@ function App() {
   }
 
   /** Playlists persistantes du compte ; un changement de compte invalide les réponses précédentes. */
-  const library = useLibrary(currentUser?.id ?? null);
+  const musicVisible =
+    !!musicRoute ||
+    ["catalog", "library", "playlists", "history"].includes(privatePage);
+  const library = useLibrary(currentUser?.id ?? null, musicVisible);
 
-  const [friends, setFriends] = useState<PublicUser[]>([]);
+  const ownerId = currentUser?.id ?? null;
+  const userDataVisible =
+    !!ownerId && !musicRoute && ["profile", "users"].includes(privatePage);
+  const userData = useResource(
+    useCallback(
+      async (signal) => {
+        if (!ownerId) return { users: [], friends: [] };
+        const [users, friends] = await Promise.all([
+          getUsers(signal),
+          getFriends(signal),
+        ]);
+        return { users, friends };
+      },
+      [ownerId],
+    ),
+    userDataVisible,
+  );
+  const users = userData.data?.users ?? [],
+    friends = userData.data?.friends ?? [];
 
   const friendIds = friends.map((friend) => friend.id);
 
@@ -89,8 +110,6 @@ function App() {
   useEffect(() => {
     const unsubscribe = onSessionCleared(() => {
       setCurrentUser(null);
-      setUsers([]);
-      setFriends([]);
       setCurrentPage("login");
       navigate("profile");
       setErrorMessage("");
@@ -98,41 +117,6 @@ function App() {
 
     return unsubscribe;
   }, []);
-
-  useEffect(() => {
-    if (currentUser === null) {
-      return;
-    }
-
-    let isCancelled = false;
-
-    async function loadUserData() {
-      try {
-        const [loadedUsers, loadedFriends] = await Promise.all([
-          getUsers(),
-          getFriends(),
-        ]);
-
-        if (!isCancelled) {
-          setUsers(loadedUsers);
-          setFriends(loadedFriends);
-          setErrorMessage("");
-        }
-      } catch (error) {
-        if (!isCancelled) {
-          setErrorMessage(
-            getErrorMessage(error, "Unable to load users and friends."),
-          );
-        }
-      }
-    }
-
-    void loadUserData();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [currentUser]);
 
   useEffect(() => {
     if (currentUser === null) {
@@ -161,37 +145,6 @@ function App() {
     };
   }, [currentUser]);
 
-  useEffect(() => {
-    if (currentUser === null) {
-      return;
-    }
-
-    async function refreshUserData() {
-      try {
-        const [loadedUsers, loadedFriends] = await Promise.all([
-          getUsers(),
-          getFriends(),
-        ]);
-
-        setUsers(loadedUsers);
-        setFriends(loadedFriends);
-        setErrorMessage("");
-      } catch (error) {
-        setErrorMessage(
-          getErrorMessage(error, "Unable to refresh users and friends."),
-        );
-      }
-    }
-
-    const intervalId = window.setInterval(() => {
-      void refreshUserData();
-    }, 30_000);
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, [currentUser]);
-
   function handleLoginSuccess(user: AuthenticatedUser) {
     setErrorMessage("");
     setCurrentUser(user);
@@ -209,6 +162,7 @@ function App() {
     }
   }
 
+  /** Enregistre le profil puis actualise le répertoire après chaque confirmation, y compris l’avatar. */
   async function handleUpdateProfile(
     displayName: string,
     username: string,
@@ -238,6 +192,8 @@ function App() {
       };
     });
 
+    userData.reload();
+
     // Le texte a déjà été confirmé. L’avatar est une seconde opération : son échec conserve le texte sauvegardé.
     if (avatarFile !== null) {
       try {
@@ -253,6 +209,7 @@ function App() {
                 avatarUrl: avatarProfile.avatarUrl,
               },
         );
+        userData.reload();
       } catch {
         throw new Error(
           "Profile saved, but the avatar was not uploaded. Please try uploading it again.",
@@ -270,6 +227,7 @@ function App() {
                 avatarUrl: avatarProfile.avatarUrl,
               },
         );
+        userData.reload();
       } catch {
         throw new Error(
           "Profile saved, but the avatar was not removed. Please try again.",
@@ -278,37 +236,38 @@ function App() {
     }
   }
 
-  async function refreshFriends(): Promise<void> {
-    const loadedFriends = await getFriends();
-    setFriends(loadedFriends);
-  }
-
+  /** Modifie la relation puis relit sans laisser un ancien GET écraser la confirmation. */
   async function handleAddFriend(userId: string): Promise<void> {
     setErrorMessage("");
 
+    const resume = userData.pause();
     try {
       await addFriend(userId);
-      await refreshFriends();
     } catch (error) {
       setErrorMessage(getErrorMessage(error, "Unable to add this friend."));
+    } finally {
+      resume();
     }
   }
 
+  /** Retire la relation et reprend la lecture des amis après la mutation. */
   async function handleRemoveFriend(userId: string): Promise<void> {
     setErrorMessage("");
 
+    const resume = userData.pause();
     try {
       await removeFriend(userId);
-      await refreshFriends();
     } catch (error) {
       setErrorMessage(getErrorMessage(error, "Unable to remove this friend."));
+    } finally {
+      resume();
     }
   }
 
   if (currentUser !== null) {
     return (
       <MusicPlayerProvider key={currentUser.id} accountId={currentUser.id}>
-        <CollectionsProvider>
+        <CollectionsProvider active={musicVisible}>
           <header className="site-header">
             <strong className="site-title">FT Music</strong>
 
@@ -420,6 +379,13 @@ function App() {
             </nav>
           </header>
 
+          {userDataVisible && (
+            <RefreshNotice
+              retained={!!userData.data}
+              error={userData.error ?? userData.refreshError}
+              retry={userData.reload}
+            />
+          )}
           {!musicRoute && privatePage === "library" && (
             <LibraryPage
               library={library}
@@ -464,6 +430,7 @@ function App() {
               playlists={library.playlists}
               loading={library.loading}
               error={library.error}
+              refreshError={library.refreshError}
               onRetry={library.reload}
               onCreate={library.create}
               onRemoveItem={library.removeItem}

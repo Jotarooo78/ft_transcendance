@@ -30,3 +30,7 @@ node tests/projects/verify-projects.mjs
 
 # Vérifie les commandes du lecteur avec les publications réelles créées juste avant.
 node tests/projects/verify-player.mjs
+
+# Vérifie les états sans déplacement, puis les rafraîchissements et leurs courses réseau.
+node tests/projects/verify-interface.mjs
+node tests/projects/verify-refresh.mjs

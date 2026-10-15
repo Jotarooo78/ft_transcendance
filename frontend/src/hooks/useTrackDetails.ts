@@ -8,7 +8,7 @@ export function useTrackDetails(trackIds: string[]) {
     useCallback(
       async (signal) => {
         const unique: string[] = JSON.parse(ids);
-        return readTrackDetails(unique, signal);
+        return readTrackDetails(unique, signal, true);
       },
       [ids],
     ),

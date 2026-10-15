@@ -203,3 +203,16 @@ les mesures d’écoute et les reprises d’envoi avec témoins SQL.
 La barre ne montre plus les confirmations ordinaires de sauvegarde. Les tests
 attendent leurs réponses HTTP et vérifient l’absence d’erreur visible après
 confirmation. Un fichier audio indisponible passe désormais au suivant.
+
+## Actualisation automatique et stabilité visuelle
+
+`tests/projects/run.sh` exécute aussi `verify-interface.mjs` et `verify-refresh.mjs`
+sur la pile isolée 5445. Ils vérifient la hauteur du lecteur sous audio retardé,
+les pochettes de 1024 à 1440 px, la conservation des listes sous panne, les recherches
+concurrentes, les formulaires non enregistrés, l’annulation d’un GET avant mutation,
+l’ancre d’historique et la révocation d’une playlist publique.
+
+La cadence de 30 secondes et la visibilité masquée sont testées avec l’horloge
+et la propriété de visibilité simulées du navigateur ; elles ne constituent pas
+une mesure au trackpad physique. Les scénarios historiques utilisent désormais
+un retour sur l’onglet au lieu de cliquer sur les boutons Refresh supprimés.

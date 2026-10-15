@@ -10,6 +10,7 @@ export default function ProjectCard({
 }) {
   return (
     <button
+      data-scroll-anchor={project.id}
       className="music-card"
       onClick={() => openMusic("projects", project.id)}
     >

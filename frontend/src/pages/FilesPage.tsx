@@ -1,3 +1,4 @@
+import RefreshNotice from "../components/RefreshNotice";
 /** Espace de création et de reprise des projets personnels, persistants dans Catalogue. */
 import { useCallback, useState } from "react";
 import { openMusic } from "../services/music-navigation";
@@ -58,9 +59,6 @@ export default function FilesPage({
       <section className="project-drafts">
         <div className="music-section-heading">
           <h2>My uploads</h2>
-          <button disabled={projects.loading} onClick={projects.reload}>
-            Refresh uploads
-          </button>
           <button
             onClick={() => {
               setSelected(null);
@@ -129,6 +127,7 @@ export default function FilesPage({
           openMusic("projects", project.id);
         }}
       />
+      <RefreshNotice error={projects.refreshError} retry={projects.reload} />
     </main>
   );
 }

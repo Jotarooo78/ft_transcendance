@@ -10,6 +10,8 @@ export type CollectionState = {
   busy: boolean;
   /** Erreur commune de lecture à rendre visible. */
   error?: string;
+  /** Panne transitoire conservant les références confirmées. */
+  refreshError?: string;
   /** Relit toutes les sections après une modification ou une panne. */
   reload: () => void;
   /** Enregistre ou retire une référence, puis demande sa relecture. */

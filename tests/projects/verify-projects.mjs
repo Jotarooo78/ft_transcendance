@@ -157,15 +157,13 @@ try {
   await page
     .getByLabel("Project title", { exact: true })
     .fill("Evening windows");
-  await page
-    .getByLabel("Audio files", { exact: true })
-    .setInputFiles(
-      ["First light", "Soft steps", "Last train"].map((title) => ({
-        name: title + ".wav",
-        mimeType: "audio/wav",
-        buffer: wav,
-      })),
-    );
+  await page.getByLabel("Audio files", { exact: true }).setInputFiles(
+    ["First light", "Soft steps", "Last train"].map((title) => ({
+      name: title + ".wav",
+      mimeType: "audio/wav",
+      buffer: wav,
+    })),
+  );
   await page.getByRole("button", { name: "Save draft", exact: true }).waitFor();
   await until(
     async () =>
@@ -327,9 +325,8 @@ try {
     data: { trackId: track.id, expectedVersion: playlist.version },
   });
   await api(`/api/library/public/playlists/${playlist.id}`, { status: 404 });
-  await page
-    .getByRole("button", { name: "Refresh playlists", exact: true })
-    .click();
+  await returnToTab(page);
+  await page.locator(`[data-item-id="${playlist.items[0].id}"]`).waitFor();
   await page
     .getByRole("button", { name: "Edit playlist", exact: true })
     .click();
@@ -525,4 +522,10 @@ try {
 } finally {
   await context.close();
   await browser.close();
+}
+
+/** Simule le retour sur l’onglet après la fenêtre de fusion focus/visibility. */
+async function returnToTab(page) {
+  await page.waitForTimeout(550);
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
 }

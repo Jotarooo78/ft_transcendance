@@ -1,17 +1,31 @@
-import { useCallback, useState } from "react";
+import RefreshNotice from "../components/RefreshNotice";
+import { useCallback, useEffect, useState } from "react";
 import { useResource } from "../hooks/useResource";
-import { useTrackDetails } from "../hooks/useTrackDetails";
+import { readTrackDetails } from "../services/track-details";
 import { getPlaybackHistory } from "../services/playback";
 import MusicTrackRow from "../components/MusicTrackRow";
 /** Historique chronologique : chaque écoute reste une ligne, même pour un titre répété. */
 export default function HistoryPage() {
   const [page, setPage] = useState(1);
   const history = useResource(
-    useCallback((signal) => getPlaybackHistory(page, signal), [page]),
+    useCallback(
+      async (signal) => {
+        const data = await getPlaybackHistory(page, signal);
+        const tracks = await readTrackDetails(
+          data.items.map((item) => item.trackId),
+          signal,
+          true,
+        );
+        return { ...data, tracks };
+      },
+      [page],
+    ),
   );
-  const details = useTrackDetails(
-    history.data?.items.map((item) => item.trackId) ?? [],
-  );
+  const { reload } = history;
+  useEffect(() => {
+    window.addEventListener("music-history-changed", reload);
+    return () => window.removeEventListener("music-history-changed", reload);
+  }, [reload]);
   const pages = Math.max(1, Math.ceil((history.data?.total ?? 0) / 20));
   return (
     <main className="music-page history-page">
@@ -20,13 +34,13 @@ export default function HistoryPage() {
         <h1>Recently played</h1>
         <p>Every listen, from newest to oldest.</p>
       </header>
-      <button disabled={history.loading} onClick={history.reload}>
-        Refresh history
-      </button>
       {history.loading ? (
         <p role="status">Loading listening history…</p>
       ) : history.error ? (
-        <p role="alert">{history.error}</p>
+        <p role="alert">
+          {history.error}
+          <button onClick={history.reload}>Retry history</button>
+        </p>
       ) : (
         <>
           {!history.data?.items.length && (
@@ -34,14 +48,18 @@ export default function HistoryPage() {
           )}
           <ol className="music-occurrences">
             {history.data?.items.map((session) => {
-              const track = details.data?.[session.trackId];
+              const track = history.data?.tracks[session.trackId];
               const date = (
                 <time dateTime={session.startedAt}>
                   {new Date(session.startedAt).toLocaleString()}
                 </time>
               );
               return (
-                <li key={session.id} data-session-id={session.id}>
+                <li
+                  key={session.id}
+                  data-session-id={session.id}
+                  data-scroll-anchor={session.id}
+                >
                   {track ? (
                     <MusicTrackRow
                       track={track}
@@ -50,11 +68,7 @@ export default function HistoryPage() {
                     />
                   ) : (
                     <div className="music-unavailable">
-                      <span>
-                        {details.loading
-                          ? "Loading track…"
-                          : "Track unavailable"}
-                      </span>
+                      <span>Track unavailable</span>
                       {date}
                     </div>
                   )}
@@ -62,9 +76,9 @@ export default function HistoryPage() {
               );
             })}
           </ol>
-          {details.data &&
-            Object.values(details.data).some((track) => !track) && (
-              <button onClick={details.reload}>Retry track details</button>
+          {history.data &&
+            Object.values(history.data.tracks).some((track) => !track) && (
+              <button onClick={history.reload}>Retry track details</button>
             )}
           <nav className="music-pagination" aria-label="History pagination">
             <button disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
@@ -82,6 +96,7 @@ export default function HistoryPage() {
           </nav>
         </>
       )}
+      <RefreshNotice error={history.refreshError} retry={history.reload} />
     </main>
   );
 }

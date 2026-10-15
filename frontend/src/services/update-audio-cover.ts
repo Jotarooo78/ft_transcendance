@@ -14,7 +14,7 @@ export async function replaceAudioCover(id: string, image: File, signal: AbortSi
   }
   const result = await response.json();
   if (signal.aborted || token !== getAccessToken()) throw new Error("Cover update cancelled after an account change.");
-  if (!isAudioCover(result?.cover)) throw new Error("Invalid cover response. Refresh your audio list.");
+  if (!isAudioCover(result?.cover)) throw new Error("Invalid cover response. Check the automatically updated list before trying again.");
   return result.cover;
 }
 
@@ -23,5 +23,5 @@ export async function removeAudioCover(id: string, signal: AbortSignal): Promise
   const token = getAccessToken();
   const response = await authenticatedFetch(`/api/media/assets/${encodeURIComponent(id)}/cover`, { method: "DELETE", signal });
   if (signal.aborted || token !== getAccessToken()) throw new Error("Cover removal cancelled after an account change.");
-  if (response.status !== 204) throw new Error("Unable to remove the cover. Refresh and retry.");
+  if (response.status !== 204) throw new Error("Unable to remove the cover. Please retry.");
 }

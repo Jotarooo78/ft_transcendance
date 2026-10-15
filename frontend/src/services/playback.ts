@@ -92,7 +92,7 @@ async function writeSession(
 }
 /**
  * Ouvre une session neuve pour trackId et exige la bonne identité avec séquence zéro, temps crédité
- * nul et aucune date de fin.
+ * nul et aucune date de fin. Notifie ensuite l’historique visible.
  */
 export async function openPlayback(trackId: string) {
   const session = await writeSession("", "POST", { trackId });
@@ -104,6 +104,7 @@ export async function openPlayback(trackId: string) {
   ) {
     throw new PlaybackRequestError(false, "Invalid listening session opening.");
   }
+  window.dispatchEvent(new Event("music-history-changed"));
   return session;
 }
 /**
@@ -114,10 +115,17 @@ export const savePlaybackProgress = (id: string, payload: ProgressPayload) =>
   writeSession(`/${encodeURIComponent(id)}/progress`, "PUT", payload);
 /**
  * Demande la clôture de la session identifiée ; la route serveur confirme aussi une clôture déjà
- * enregistrée.
+ * enregistrée. Notifie l’historique seulement après confirmation.
  */
-export const closePlayback = (id: string) =>
-  writeSession(`/${encodeURIComponent(id)}/close`, "POST", {});
+export const closePlayback = async (id: string) => {
+  const session = await writeSession(
+    `/${encodeURIComponent(id)}/close`,
+    "POST",
+    {},
+  );
+  window.dispatchEvent(new Event("music-history-changed"));
+  return session;
+};
 
 /** Page privée de sessions avec taille et total confirmés. */
 export type PlaybackHistory = {

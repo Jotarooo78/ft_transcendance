@@ -1,3 +1,4 @@
+import RefreshNotice from "../components/RefreshNotice";
 import CollectionButton from "../components/CollectionButton";
 /** Présentation publique d’un album, EP, mixtape ou titre seul. */
 import { useCallback } from "react";
@@ -91,6 +92,7 @@ export default function ProjectPage({
           />
         ))}
       </div>
+      <RefreshNotice error={resource.refreshError} retry={resource.reload} />
     </main>
   );
 }

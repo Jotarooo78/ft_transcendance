@@ -1,3 +1,4 @@
+import RefreshNotice from "../components/RefreshNotice";
 /** Hub musical : une recherche et trois familles de résultats indépendantes. */
 import { useCallback, useState } from "react";
 import { useResource } from "../hooks/useResource";
@@ -231,6 +232,7 @@ export default function CatalogPage({
         </>
       )}
       {message && <p role="status">{message}</p>}
+      <RefreshNotice error={resource.refreshError} retry={resource.reload} />
     </main>
   );
 }

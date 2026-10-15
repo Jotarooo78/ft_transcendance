@@ -1,3 +1,4 @@
+import RefreshNotice from "../components/RefreshNotice";
 import CollectionButton from "../components/CollectionButton";
 /** Profil musical d’un compte et ses projets publiés. */
 import { useCallback, useState } from "react";
@@ -88,6 +89,7 @@ export default function ArtistPage({
           </div>
         </>
       )}
+      <RefreshNotice error={resource.refreshError} retry={resource.reload} />
     </main>
   );
 }

@@ -1,3 +1,4 @@
+import RefreshNotice from "./RefreshNotice";
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import { useResource } from "../hooks/useResource";
 import { getCollection, setCollected } from "../services/collections";
@@ -6,7 +7,9 @@ import type { CollectionKind, Collections } from "../types/collections";
 /** Partage les lectures et sérialise les actions, avec réinitialisation au changement de compte. */
 export default function CollectionsProvider({
   children,
+  active = true,
 }: {
+  /** Pages où les boutons de collection ou la bibliothèque sont visibles. */ active?: boolean;
   children: ReactNode;
 }) {
   const resource = useResource(
@@ -22,6 +25,7 @@ export default function CollectionsProvider({
       );
       return Object.fromEntries(pairs) as Collections;
     }, []),
+    active,
   );
   const locked = useRef(false),
     [busy, setBusy] = useState(false);
@@ -30,10 +34,11 @@ export default function CollectionsProvider({
     if (locked.current) return;
     locked.current = true;
     setBusy(true);
+    const resume = resource.pause();
     try {
       await setCollected(kind, id, saved);
-      resource.reload();
     } finally {
+      resume();
       locked.current = false;
       setBusy(false);
     }
@@ -41,6 +46,9 @@ export default function CollectionsProvider({
   return (
     <CollectionsContext.Provider value={{ ...resource, busy, change }}>
       {children}
+      {active && (
+        <RefreshNotice error={resource.refreshError} retry={resource.reload} />
+      )}
     </CollectionsContext.Provider>
   );
 }

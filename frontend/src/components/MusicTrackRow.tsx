@@ -38,6 +38,7 @@ export default function MusicTrackRow({
   const seconds = Math.floor(track.durationSeconds ?? 0);
   return (
     <div
+      data-scroll-anchor={track.id}
       className={`music-track-row${active ? " is-current" : ""}${active && player.playing ? " is-playing" : ""}`}
       tabIndex={track.audioUrl ? 0 : undefined}
       role="group"

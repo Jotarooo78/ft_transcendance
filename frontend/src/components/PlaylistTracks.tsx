@@ -1,3 +1,4 @@
+import RefreshNotice from "./RefreshNotice";
 import { useState } from "react";
 import { useTrackDetails } from "../hooks/useTrackDetails";
 import type { MusicPlaylist } from "../types/music";
@@ -41,6 +42,11 @@ export default function PlaylistTracks({
   }
   return (
     <>
+      <RefreshNotice
+        retained={!!details.data}
+        error={details.error ?? details.refreshError}
+        retry={details.reload}
+      />
       {error && <p role="alert">{error}</p>}
       {!playlist.items.length && (
         <p>This playlist does not contain any tracks yet.</p>

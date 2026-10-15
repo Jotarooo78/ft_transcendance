@@ -1,4 +1,4 @@
-import { requestJson } from "./request-json";
+import { RequestError, requestJson } from "./request-json";
 /** Client JWT des playlists persistantes ; les mutations incluent la version connue et ne confirment que la réponse serveur. */
 import { authenticatedFetch } from "./api";
 import { getAccessToken } from "./session";
@@ -51,7 +51,10 @@ export async function getPlaylists(
       { signal },
     );
     if (!response.ok)
-      throw new Error("Unable to load playlists. Please try again.");
+      throw new RequestError(
+        response.status,
+        "Unable to load playlists. Please try again.",
+      );
     const data = await response.json();
     if (
       !Array.isArray(data.items) ||
@@ -83,7 +86,8 @@ export async function getPlaylist(
     { signal },
   );
   if (!response.ok)
-    throw new Error(
+    throw new RequestError(
+      response.status,
       response.status === 404
         ? "This playlist is no longer available."
         : "Unable to load playlist.",
@@ -125,10 +129,13 @@ export async function createPlaylist(
 export class LibraryMutationError extends Error {
   /** Statut HTTP du refus conservé pour que la route ou le client le traite. */
   readonly status: number;
-  /** Conserve le statut HTTP et le message utiles à l’écran. */
-  constructor(status: number, message: string) {
+  /** Dernière version relue après un conflit ; absente pour les autres refus. */
+  readonly playlist?: MusicPlaylist;
+  /** Conserve le statut HTTP, le message et la confirmation relue après conflit. */
+  constructor(status: number, message: string, playlist?: MusicPlaylist) {
     super(message);
     this.status = status;
+    this.playlist = playlist;
   }
 }
 
@@ -151,11 +158,13 @@ async function mutatePlaylist(
       response.status,
       response.status === 404
         ? "The playlist, track or occurrence is no longer available."
-        : "Unable to change playlist. Refresh its contents before trying again.",
+        : "Unable to change playlist. Check the automatically updated list before trying again.",
     );
   const playlist: unknown = await response.json();
   if (!isPlaylist(playlist))
-    throw new Error("Invalid playlist response. Refresh before trying again.");
+    throw new Error(
+      "Invalid playlist response. Please retry after the automatic update.",
+    );
   return playlist;
 }
 
@@ -210,7 +219,7 @@ export async function deletePlaylist(playlist: MusicPlaylist): Promise<void> {
   if (response.status !== 204)
     throw new LibraryMutationError(
       response.status,
-      "Unable to delete playlist. Refresh its contents before trying again.",
+      "Unable to delete playlist. Check the automatically updated list before trying again.",
     );
 }
 
@@ -225,6 +234,6 @@ export async function getPublicPlaylist(
     false,
   );
   if (!isPlaylist(data) || data.visibility !== "public")
-    throw new Error("This playlist is no longer available.");
+    throw new RequestError(404, "This playlist is no longer available.");
   return data;
 }

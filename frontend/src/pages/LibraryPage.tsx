@@ -1,3 +1,5 @@
+import { RequestError } from "../services/request-json";
+import RefreshNotice from "../components/RefreshNotice";
 import EmptyArtwork from "../components/EmptyArtwork";
 import { useCallback, useState } from "react";
 import { useCollections } from "../contexts/collections";
@@ -44,38 +46,65 @@ function SavedSection({ kind }: { kind: CollectionKind }) {
       async (signal) => {
         const selected: string[] = JSON.parse(ids);
         if (kind === "track") {
-          const tracks = await readTrackDetails(selected, signal);
+          const tracks = await readTrackDetails(selected, signal, true);
           return selected.map((id) => ({
             id,
+            error: undefined as string | undefined,
             data: tracks[id]
               ? { kind: "track" as const, value: tracks[id]! }
               : null,
           }));
         }
-        return Promise.all(
+        const results = await Promise.all(
           selected.map(async (id) => {
             try {
-              return { id, data: await loadReference(kind, id, signal) };
-            } catch {
-              return { id, data: null };
+              return {
+                id,
+                data: await loadReference(kind, id, signal),
+                failure: undefined as unknown,
+              };
+            } catch (error) {
+              return {
+                id,
+                data: null,
+                failure:
+                  error instanceof RequestError &&
+                  [403, 404].includes(error.status)
+                    ? undefined
+                    : error,
+              };
             }
           }),
         );
+        const failure = results.find((item) => item.failure)?.failure;
+        if (failure && !results.some((item) => !item.data && !item.failure))
+          throw failure;
+        // En cas de panne mêlée à une révocation, aucune ancienne carte privée n’est conservée.
+        return results.map(({ id, data, failure }) => ({
+          id,
+          data,
+          error: failure ? "Temporarily unavailable" : undefined,
+        }));
       },
       [ids, kind],
     ),
+    true,
+    `${kind}:${kind === "track" ? "all" : page}`,
   );
   return (
     <>
-      <button
-        onClick={() => {
-          collection.reload();
-          resource.reload();
-        }}
-      >
-        Refresh library
-      </button>
-      {collection.error && <p role="alert">{collection.error}</p>}
+      {collection.error && (
+        <p role="alert">
+          {collection.error}
+          <button onClick={collection.reload}>Retry library</button>
+        </p>
+      )}
+      {resource.error && (
+        <p role="alert">
+          {resource.error}
+          <button onClick={resource.reload}>Retry details</button>
+        </p>
+      )}
       {collection.loading || resource.loading ? (
         <p role="status">Loading library…</p>
       ) : (
@@ -90,11 +119,14 @@ function SavedSection({ kind }: { kind: CollectionKind }) {
             {(kind === "track"
               ? resource.data?.slice((page - 1) * 24, page * 24)
               : resource.data
-            )?.map(({ id, data }) => {
+            )?.map(({ id, data, error }) => {
               if (!data)
                 return (
                   <div className="music-unavailable" key={id}>
-                    <span>Item unavailable</span>
+                    <span>{error ?? "Item unavailable"}</span>
+                    {error && (
+                      <button onClick={resource.reload}>Retry details</button>
+                    )}
                     <CollectionButton kind={kind} id={id} />
                   </div>
                 );
@@ -134,6 +166,7 @@ function SavedSection({ kind }: { kind: CollectionKind }) {
           </div>
         </>
       )}
+      <RefreshNotice error={resource.refreshError} retry={resource.reload} />
       <nav className="music-pagination" aria-label="Library pagination">
         <button disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
           Previous
@@ -234,6 +267,7 @@ export default function LibraryPage({
           playlists={library.playlists}
           loading={library.loading}
           error={library.error}
+          refreshError={library.refreshError}
           onRetry={library.reload}
           onCreate={library.create}
           onRemoveItem={library.removeItem}

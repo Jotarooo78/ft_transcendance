@@ -89,8 +89,7 @@ export function uploadMyAvatar(
 
       try {
         data = JSON.parse(request.responseText) as
-          | AvatarUploadResponse
-          | { error?: string };
+          AvatarUploadResponse | { error?: string };
       } catch {
         reject(new Error("The server returned an invalid response."));
         return;
@@ -147,12 +146,12 @@ export async function deleteMyAvatar(): Promise<ProfileResponse> {
   return data as ProfileResponse;
 }
 
-export async function getUsers(): Promise<PublicUser[]> {
-  const response = await authenticatedFetch("/api/users/profiles");
+/** Lit le répertoire avec annulation lorsque le compte ou l’écran change. */
+export async function getUsers(signal?: AbortSignal): Promise<PublicUser[]> {
+  const response = await authenticatedFetch("/api/users/profiles", { signal });
 
   const data = (await response.json()) as
-    | UserDirectoryResponse
-    | { error?: string };
+    UserDirectoryResponse | { error?: string };
 
   if (!response.ok) {
     throw new Error(
@@ -172,8 +171,9 @@ export async function getUsers(): Promise<PublicUser[]> {
   }));
 }
 
-export async function getFriends(): Promise<PublicUser[]> {
-  const response = await authenticatedFetch("/api/users/friends");
+/** Lit les amis avec annulation pour ignorer les réponses périmées. */
+export async function getFriends(signal?: AbortSignal): Promise<PublicUser[]> {
+  const response = await authenticatedFetch("/api/users/friends", { signal });
 
   const data = (await response.json()) as FriendsResponse | { error?: string };
 

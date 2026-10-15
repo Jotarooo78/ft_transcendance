@@ -93,14 +93,15 @@ test('playback: real listening, pause, seek, SQL, history and account isolation'
   await page.unroute(tracks);
   const lists='**/api/playback/sessions?*';
   await page.route(lists,route=>route.abort());
-  await page.getByRole('button',{name:'Refresh history',exact:true}).click();
-  await expect(page.getByRole('alert')).toBeVisible();
+  await returnToTab(page);
+  await expect(page.getByText(/The update failed/)).toBeVisible();
+  await expect(row).toBeVisible();
   await expect(page.getByText('No listening sessions on this page.',{exact:true})).toHaveCount(0);
-  await page.unroute(lists); await page.getByRole('button',{name:'Refresh history',exact:true}).click();
+  await page.unroute(lists); await returnToTab(page);
   await expect(row).toBeVisible();
   // Real open sessions exercise the 20-row boundary and honest Open state.
   for(let n=0;n<20;n++)expect((await page.request.post('/api/playback/sessions',{headers,data:{trackId:session.trackId}})).status()).toBe(201);
-  await page.getByRole('button',{name:'Refresh history',exact:true}).click();
+  await returnToTab(page);
   await expect(page.locator('[data-session-id]')).toHaveCount(20);
   await expect(page.locator('[data-session-id]').first().locator('time')).toBeVisible();
   await page.getByRole('button',{name:'Next',exact:true}).click();
@@ -113,7 +114,7 @@ test('playback: real listening, pause, seek, SQL, history and account isolation'
     const response=await route.fetch(); arrived(); await gate;
     try{await route.fulfill({response});}catch{/* A's cancelled read may have no consumer. */}finally{finished();}
   });
-  await page.getByRole('button',{name:'Refresh history',exact:true}).click(); await captured;
+  await returnToTab(page); await captured;
   await page.getByRole('button',{name:'Log out',exact:true}).click();
   await page.getByRole('button',{name:'Register',exact:true}).click();
   await createAccount(page,'eco_other');
@@ -242,7 +243,7 @@ test('library: confirmed gestures, failures, persistence and account isolation',
     if (!first) return route.continue(); first = false;
     const response = await route.fetch(); received(); await held; await route.fulfill({ response });
   });
-  await page.getByRole('button', { name: 'Refresh playlists', exact: true }).click(); await captured;
+  await returnToTab(page); await captured;
   await page.getByRole('button', { name: 'Log out', exact: true }).click();
   await page.getByRole('button', { name: 'Register', exact: true }).click();
   const userB = await createAccount(page, 'library_b');
@@ -377,3 +378,9 @@ test('catalog: three categories, search cancellation and controlled failures',as
   await page.getByRole('button',{name:'Retry',exact:true}).click();
   await expect(rows.getByText('Clair — demo',{exact:true})).toBeVisible();
 });
+
+/** Simule le retour sur l’onglet après la fenêtre de fusion focus/visibility. */
+async function returnToTab(page) {
+  await page.waitForTimeout(550);
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+}

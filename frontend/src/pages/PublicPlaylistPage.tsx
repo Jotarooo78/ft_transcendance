@@ -1,5 +1,6 @@
+import RefreshNotice from "../components/RefreshNotice";
 import EmptyArtwork from "../components/EmptyArtwork";
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { useResource } from "../hooks/useResource";
 import { getPublicPlaylist } from "../services/library";
 import CollectionButton from "../components/CollectionButton";
@@ -10,15 +11,6 @@ export default function PublicPlaylistPage({ id }: { id: string }) {
     useCallback((signal) => getPublicPlaylist(id, signal), [id]),
   );
   const { reload } = resource;
-  useEffect(() => {
-    const refresh = () => reload();
-    window.addEventListener("focus", refresh);
-    const timer = window.setInterval(refresh, 30000);
-    return () => {
-      window.removeEventListener("focus", refresh);
-      window.clearInterval(timer);
-    };
-  }, [reload]);
   const playlist = resource.data;
   return (
     <main className="music-page">
@@ -44,6 +36,7 @@ export default function PublicPlaylistPage({ id }: { id: string }) {
           {resource.error && <button onClick={reload}>Retry playlist</button>}
         </>
       )}
+      <RefreshNotice error={resource.refreshError} retry={resource.reload} />
     </main>
   );
 }

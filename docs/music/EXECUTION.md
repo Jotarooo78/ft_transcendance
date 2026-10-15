@@ -898,6 +898,13 @@ aucun conflit.
 - [x] Chargement audio : couleur lavande, anneau retardé de 200 ms et statut accessible
   sans ligne visible supplémentaire. Lint/build et test navigateur de hauteur stable.
 - [x] Pochettes vectorielles communes : centre et limites vérifiés en Chromium à 1024, 1280 et 1440 px, y compris après refus des images.
-- [ ] Actualisation commune et intégration des écrans.
+- [x] Actualisation commune et intégration des écrans : livrées ensemble pour vérifier
+  les règles de conservation et d’invalidation chez tous les consommateurs.
+  `verify-refresh.mjs` valide les erreurs transitoires, réponses concurrentes,
+  cadence/visibilité simulées, références de bibliothèque changeantes, ancre visible,
+  formulaires et révocations seules ou mêlées à une panne.
+  Les parcours `verify-projects`, `verify-player`, `verify-interface` passent ;
+  les cinq scénarios Chromium historiques de `tests/music` passent aussi (1,7 min).
+  Lint, compilation et trois fichiers de tests unitaires musicaux passent.
 - [ ] Comparaison finale du rendu, parcours globaux et publication.
 - Compréhension utilisateur et ressenti physique au trackpad : non validés à sa place.

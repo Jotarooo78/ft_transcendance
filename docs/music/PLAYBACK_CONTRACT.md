@@ -209,3 +209,34 @@ formulaires et lecteur. Le contexte fixe la taille et la couleur ; l’icône oc
 la moitié centrale de la boîte, sans métrique de police ni marge sous la vignette.
 Les images privées passent toujours par une lecture authentifiée ; une image
 absente, en attente ou illisible conserve la boîte de remplacement.
+
+### Actualisation des écrans
+
+Les fonctions `reload` restent disponibles dans le code ; les boutons Refresh
+ont disparu. `useVisibleRefresh` relit au retour sur l’onglet et toutes les
+30 secondes lorsqu’il est visible. Focus et visibilité rapprochés sont fusionnés.
+`useResource` effectue la lecture initiale, conserve la dernière confirmation
+pendant une relecture, annule les demandes remplacées et sépare erreur initiale
+et erreur d’actualisation. Un refus 401/403/404 retire les données. Une panne
+transitoire conserve la liste et propose une reprise discrète sous son contenu.
+
+La fonction de chargement identifie normalement compte, recherche, page et objet.
+Une portée explicite, limitée à une section de bibliothèque et sa page dans un
+composant isolé par compte, permet de changer ses références sans vider la liste.
+Les lignes/cartes portent une ancre : une insertion avant l’élément visible conserve
+sa position, sauf si l’utilisateur a défilé entre-temps. La file audio reste
+indépendante de ces lectures.
+
+Les mutations des playlists et collections suspendent les GET en cours, appliquent
+les confirmations puis reprennent une lecture. Le formulaire de playlist conserve
+sa version de départ et ses champs ; une version plus récente exige une nouvelle
+validation explicite après un message de conflit. Une suppression distante conserve
+les saisies ouvertes mais le serveur refuse leur sauvegarde sur l’objet supprimé.
+L’historique recharge ensemble les sessions et leurs détails, après une ouverture
+ou clôture d’écoute et lors des déclencheurs communs. Une révocation publique est
+également appliquée lorsqu’une autre carte enregistrée rencontre une panne.
+
+Les lectures de répertoire/amis ne sont périodiques que sur Profil/Users ; les
+collections et playlists ne le sont que sur les écrans musicaux qui les utilisent.
+Les battements de présence restent séparés. Aucun gestionnaire de roue ni
+bibliothèque de défilement artificiel n’est ajouté.

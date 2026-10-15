@@ -366,12 +366,10 @@ try {
     );
     return route.fulfill({
       json: {
-        items: references
-          .slice((page - 1) * 100, page * 100)
-          .map((track) => ({
-            id: track.id,
-            createdAt: new Date().toISOString(),
-          })),
+        items: references.slice((page - 1) * 100, page * 100).map((track) => ({
+          id: track.id,
+          createdAt: new Date().toISOString(),
+        })),
         total: references.length,
         page,
         pageSize: 100,
@@ -384,9 +382,7 @@ try {
     return track ? route.fulfill({ json: track }) : route.continue();
   });
   await page.getByRole("button", { name: "Library", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Refresh library", exact: true })
-    .click();
+  await returnToTab(page);
   await page.getByText("Liked fixture 00", { exact: true }).waitFor();
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await page.getByText("Liked fixture 25", { exact: true }).click();
@@ -516,4 +512,10 @@ try {
 } finally {
   await context.close();
   await browser.close();
+}
+
+/** Simule le retour sur l’onglet après la fenêtre de fusion focus/visibility. */
+async function returnToTab(page) {
+  await page.waitForTimeout(550);
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
 }

@@ -9,6 +9,7 @@ export default function ArtistCard({
 }) {
   return (
     <button
+      data-scroll-anchor={artist.userId}
       className="music-card artist-card"
       onClick={() => openMusic("artists", artist.userId)}
     >

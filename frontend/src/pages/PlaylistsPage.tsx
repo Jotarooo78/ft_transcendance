@@ -1,3 +1,5 @@
+import { LibraryMutationError } from "../services/library";
+import RefreshNotice from "../components/RefreshNotice";
 import { openMusic } from "../services/music-navigation";
 import { useState, type SubmitEvent } from "react";
 import type { MusicPlaylist } from "../types/music";
@@ -17,6 +19,8 @@ type Props = {
    * enregistrée.
    */
   error?: string;
+  /** Panne de relecture : conserve les listes et le formulaire ouvert. */
+  refreshError?: string;
   /** Demande une nouvelle lecture après une erreur ou une actualisation. */
   onRetry: () => void;
   /** Crée côté serveur et renvoie la playlist confirmée. */
@@ -57,6 +61,7 @@ function PlaylistEditor({
   /** Demande la fermeture de l’écran ou du composant concerné. */
   onClose: () => void;
 }) {
+  const [base, setBase] = useState(playlist);
   const [visibility, setVisibility] = useState(playlist.visibility);
   const [name, setName] = useState(playlist.name);
   const [description, setDescription] = useState(playlist.description);
@@ -69,8 +74,15 @@ function PlaylistEditor({
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (saving || name.trim() === "") return;
+    if (base.version !== playlist.version) {
+      setBase(playlist);
+      setError(
+        "The playlist changed. Your inputs are preserved. Review them before saving again.",
+      );
+      return;
+    }
     if (
-      visibility !== playlist.visibility &&
+      visibility !== base.visibility &&
       !window.confirm(
         `Make this playlist ${visibility}? ${visibility === "public" ? "Anyone with its link can view it." : "Its public link will no longer show its contents."}`,
       )
@@ -79,9 +91,11 @@ function PlaylistEditor({
     setSaving(true);
     setError("");
     try {
-      await onUpdate(playlist, name.trim(), description.trim(), visibility);
+      await onUpdate(base, name.trim(), description.trim(), visibility);
       onClose();
     } catch (error) {
+      if (error instanceof LibraryMutationError && error.playlist)
+        setBase(error.playlist);
       setError(
         error instanceof Error ? error.message : "Unable to save playlist.",
       );
@@ -145,6 +159,7 @@ export default function PlaylistsPage({
   playlists,
   loading,
   error,
+  refreshError,
   onRetry,
   onCreate,
   onRemoveItem,
@@ -152,7 +167,7 @@ export default function PlaylistsPage({
   onDelete,
 }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editing, setEditing] = useState<MusicPlaylist | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<{
     /** Identifiant de cette entité ; distinct des identifiants des objets liés. */
@@ -181,7 +196,7 @@ export default function PlaylistsPage({
     try {
       await onDelete(playlist);
       setSelectedId((id) => (id === playlist.id ? null : id));
-      setEditingId((id) => (id === playlist.id ? null : id));
+      setEditing((item) => (item?.id === playlist.id ? null : item));
     } catch (error) {
       setDeleteError({
         id: playlist.id,
@@ -281,9 +296,6 @@ export default function PlaylistsPage({
         aria-labelledby="my-playlists-title"
       >
         <h2 id="my-playlists-title">My playlists</h2>
-        <button type="button" onClick={onRetry} disabled={loading}>
-          Refresh playlists
-        </button>
         {loading ? (
           <p role="status">Loading playlists…</p>
         ) : error ? (
@@ -308,7 +320,7 @@ export default function PlaylistsPage({
                   }
                   onClick={() => {
                     setSelectedId(playlist.id);
-                    setEditingId(null);
+                    setEditing(null);
                   }}
                 >
                   <strong>{playlist.name}</strong>
@@ -337,8 +349,8 @@ export default function PlaylistsPage({
               )}
               <button
                 type="button"
-                onClick={() => setEditingId(selected.id)}
-                disabled={editingId === selected.id || deleting}
+                onClick={() => setEditing(selected)}
+                disabled={editing?.id === selected.id || deleting}
               >
                 Edit playlist
               </button>
@@ -356,18 +368,6 @@ export default function PlaylistsPage({
           {deleteError?.id === selected.id && (
             <p role="alert">{deleteError.message}</p>
           )}
-          {editingId === selected.id && (
-            <PlaylistEditor
-              key={`editor:${selected.id}`}
-              playlist={selected}
-              onUpdate={async (...args) => {
-                const confirmed = await onUpdate(...args);
-                setNotice(`Playlist saved · ${confirmed.visibility}.`);
-                return confirmed;
-              }}
-              onClose={() => setEditingId(null)}
-            />
-          )}
           <PlaylistTracks
             key={`tracks:${selected.id}`}
             playlist={selected}
@@ -375,6 +375,19 @@ export default function PlaylistsPage({
           />
         </section>
       )}
+      {editing && (
+        <PlaylistEditor
+          key={`editor:${editing.id}`}
+          playlist={playlists.find((item) => item.id === editing.id) ?? editing}
+          onUpdate={async (...args) => {
+            const confirmed = await onUpdate(...args);
+            setNotice(`Playlist saved · ${confirmed.visibility}.`);
+            return confirmed;
+          }}
+          onClose={() => setEditing(null)}
+        />
+      )}
+      <RefreshNotice error={refreshError} retry={onRetry} />
     </main>
   );
 }
