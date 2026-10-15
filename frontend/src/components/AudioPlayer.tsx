@@ -186,7 +186,6 @@ export default function AudioPlayer({
       <audio
         ref={audioRef}
         src={track.audioUrl ?? undefined}
-        controls
         preload="metadata"
         onLoadStart={() => onState(false, true)}
         onLoadedMetadata={() => {

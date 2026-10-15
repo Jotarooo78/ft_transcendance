@@ -6,6 +6,7 @@ import {
   type PlayOptions,
 } from "../contexts/music-player";
 import AudioPlayer from "./AudioPlayer";
+import PlayerBar from "./PlayerBar";
 import type { Track } from "../types/music";
 import {
   emptyQueue,
@@ -261,8 +262,7 @@ export default function MusicPlayerProvider({
     <MusicPlayerContext.Provider value={value}>
       {children}
       {current && (
-        <aside className="audio-player" aria-label="Audio player">
-          <strong>{current.track.title}</strong>
+        <PlayerBar>
           <AudioPlayer
             key={cycle}
             track={current.track}
@@ -286,14 +286,7 @@ export default function MusicPlayerProvider({
               setNotice("Press play to resume audio.");
             }}
           />
-          <button onClick={previous}>Previous track</button>
-          <button onClick={value.toggle}>{playing ? "Pause" : "Play"}</button>
-          <button onClick={value.next}>Next track</button>
-          <button onClick={value.close} aria-label="Close audio player">
-            Close
-          </button>
-          {notice && <p role="status">{notice}</p>}
-        </aside>
+        </PlayerBar>
       )}
     </MusicPlayerContext.Provider>
   );
