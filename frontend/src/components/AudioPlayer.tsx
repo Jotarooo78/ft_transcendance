@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import type { Track } from "../types/music";
 import { ListeningClock } from "../services/listening-clock";
 import { PlaybackQueue, type TrackingStatus } from "../services/playback-queue";
@@ -9,11 +9,27 @@ import {
 } from "../services/playback";
 import { getAccessToken } from "../services/session";
 
+/** Contrat du moteur audio ; chaque montage représente une nouvelle écoute. */
 type AudioPlayerProps = {
-  track: Track;
-  onClose: () => void;
-  /** Passe au morceau suivant après la clôture de la session courante. */
-  onEnded?: () => void;
+  /** Morceau de l’occurrence courante. */ track: Track;
+  /** Accès partagé au seul élément audio de l’application. */ audioRef: RefObject<HTMLAudioElement | null>;
+  /** Démarrage demandé à la sélection, faux lors d’une restauration. */ autoPlay: boolean;
+  /** Volume entre zéro et un. */ volume: number;
+  /** Coupe le son sans perdre le volume. */ muted: boolean;
+  /** Position initiale en secondes, appliquée après chargement des métadonnées. */ initialPosition: number;
+  /** État réel destiné aux commandes communes. */ onState: (
+    playing: boolean,
+    loading: boolean,
+  ) => void;
+  /** Position et durée en secondes. */ onProgress: (
+    position: number,
+    duration: number,
+  ) => void;
+  /** Fin naturelle ; clôture le suivi avant de changer d’occurrence. */ onEnded: () => void;
+  /** Code MediaError, distinct d’un refus de lecture automatique. */ onError: (
+    code: number,
+  ) => void;
+  /** Le navigateur attend une nouvelle action explicite de l’utilisateur. */ onBlocked: () => void;
 };
 
 /**
@@ -21,12 +37,47 @@ type AudioPlayerProps = {
  * événements pause, attente et déplacement interrompent le crédit ; un échec de suivi ne bloque pas
  * l’audio.
  */
-function AudioPlayerContent({ track, onClose, onEnded }: AudioPlayerProps) {
-  const [status, setStatus] = useState<"loading" | "ready" | "error">(
-    "loading",
-  );
+export default function AudioPlayer({
+  track,
+  audioRef,
+  autoPlay,
+  volume,
+  muted,
+  initialPosition,
+  onState,
+  onProgress,
+  onEnded,
+  onError,
+  onBlocked,
+}: AudioPlayerProps) {
   const [tracking, setTracking] = useState<TrackingStatus | null>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.volume = volume;
+      audio.muted = muted;
+    }
+  }, [audioRef, volume, muted]);
+  // Une promesse d’un audio démonté ne doit plus modifier le nouveau lecteur.
+  useEffect(() => {
+    const audio = audioRef.current;
+    let live = true;
+    if (audio && autoPlay)
+      void audio.play().catch((error: unknown) => {
+        if (
+          live &&
+          error instanceof DOMException &&
+          error.name === "NotAllowedError"
+        )
+          onBlocked();
+      });
+    return () => {
+      live = false;
+      audio?.pause();
+    };
+    // Les commandes suivantes passent par audioRef ; le démarrage concerne uniquement ce montage.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const active = useRef<{
     /** Horloge mesurant le temps de lecture effective, distincte de la position. */
     clock: ListeningClock;
@@ -102,7 +153,7 @@ function AudioPlayerContent({ track, onClose, onEnded }: AudioPlayerProps) {
       active.current = null;
       createTracker.current = null;
     };
-  }, [track.id]);
+  }, [track.id, audioRef]);
   /**
    * Échantillonne l’événement du lecteur, distingue rupture de position et lecture active, démarre le
    * suivi à la première lecture et le ferme à la fin.
@@ -131,28 +182,49 @@ function AudioPlayerContent({ track, onClose, onEnded }: AudioPlayerProps) {
     } else current.queue.offer(snapshot);
   }
   return (
-    <aside className="audio-player" aria-label="Audio player">
-      <div className="audio-player-information">
-        <strong>{track.title}</strong>
-
-        <span>{track.artistName}</span>
-      </div>
-
+    <>
       <audio
         ref={audioRef}
         src={track.audioUrl ?? undefined}
         controls
-        autoPlay
         preload="metadata"
-        onLoadStart={() => setStatus("loading")}
-        onCanPlay={() => setStatus("ready")}
-        onError={() => {
-          setStatus("error");
-          observe(false, false, false, true);
+        onLoadStart={() => onState(false, true)}
+        onLoadedMetadata={() => {
+          const audio = audioRef.current!;
+          if (Number.isFinite(audio.duration))
+            audio.currentTime = Math.min(
+              initialPosition,
+              Math.max(0, audio.duration - 0.1),
+            );
+          onProgress(
+            audio.currentTime,
+            Number.isFinite(audio.duration) ? audio.duration : 0,
+          );
         }}
-        onPlaying={() => observe(true, false, true)}
-        onPause={() => observe(false)}
-        onWaiting={() => observe(false)}
+        onTimeUpdate={() => {
+          const audio = audioRef.current!;
+          onProgress(
+            audio.currentTime,
+            Number.isFinite(audio.duration) ? audio.duration : 0,
+          );
+        }}
+        onCanPlay={() => onState(!audioRef.current!.paused, false)}
+        onError={() => {
+          observe(false, false, false, true);
+          onError(audioRef.current?.error?.code ?? 4);
+        }}
+        onPlaying={() => {
+          observe(true, false, true);
+          onState(true, false);
+        }}
+        onPause={() => {
+          observe(false);
+          onState(false, false);
+        }}
+        onWaiting={() => {
+          observe(false);
+          onState(false, true);
+        }}
         onSeeking={() => observe(false, true)}
         onSeeked={() =>
           observe(
@@ -164,27 +236,13 @@ function AudioPlayerContent({ track, onClose, onEnded }: AudioPlayerProps) {
         }
         onEnded={() => {
           observe(false, false, false, true);
-          onEnded?.();
+          onState(false, false);
+          onEnded();
         }}
-      >
-        Your browser does not support audio playback.
-      </audio>
-
-      {status === "loading" && <p role="status">Loading audio…</p>}
-      {status === "error" && (
-        <p role="alert">
-          Audio is unavailable. Close the player and try again.
-        </p>
-      )}
-      {status === "ready" && (
-        <p>Use the audio controls to play, pause or seek.</p>
-      )}
-      {tracking && (
-        <div
-          className="listening-status"
-          role={tracking.state === "error" ? "alert" : "status"}
-        >
-          <p>{tracking.message}</p>
+      />
+      {tracking?.state === "error" && (
+        <div className="listening-status" role="status">
+          <span>{tracking.message}</span>
           {tracking.canRetry && (
             <button type="button" onClick={() => active.current?.queue.retry()}>
               Retry saving
@@ -192,23 +250,6 @@ function AudioPlayerContent({ track, onClose, onEnded }: AudioPlayerProps) {
           )}
         </div>
       )}
-
-      <button
-        type="button"
-        className="close-player-button"
-        onClick={() => {
-          observe(false, false, false, true);
-          onClose();
-        }}
-        aria-label="Close audio player"
-      >
-        Close
-      </button>
-    </aside>
+    </>
   );
-}
-
-/** Remonte le contenu avec une clé par morceau afin de séparer ses observations et son cycle de suivi. */
-export default function AudioPlayer(props: AudioPlayerProps) {
-  return <AudioPlayerContent key={props.track.id} {...props} />;
 }
