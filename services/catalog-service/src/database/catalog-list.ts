@@ -1,6 +1,7 @@
 /** Lecture SQL paramétrée du catalogue ; liste et total partagent le même filtre et le même instantané de base. */
 import { Prisma } from "../generated/prisma/client.js";
 import { toTrackDto, type TrackList, type TrackQuery, type TrackRow } from "../catalog.js";
+import { readArtistProfile, type ArtistProfile } from "../read-artist-profile.js";
 import { prisma } from "./prisma.js";
 
 // Fixed SQL fragments only; all request values are bound through Prisma.sql.
@@ -8,9 +9,9 @@ import { prisma } from "./prisma.js";
  * Fragment SQL fixe des morceaux published et de leurs crédits, sortie et genre ; les valeurs
  * utilisateur sont liées séparément.
  */
-const projection = Prisma.sql`
-  SELECT t.id, t.title, t.audio_asset_id AS "audioAssetId", t.duration_ms AS "durationMs",
-    COALESCE((SELECT string_agg(a.name, ', ' ORDER BY CASE c.role WHEN 'primary' THEN 0 ELSE 1 END, c.credit_order, a.id)
+const projection = (profiles: ArtistProfile[]) => Prisma.sql`
+  SELECT t.id, t.title, t.description, t.created_by_user_id AS "artistUserId", t.audio_asset_id AS "audioAssetId", t.duration_ms AS "durationMs",
+    COALESCE((SELECT p."displayName" FROM jsonb_to_recordset(${JSON.stringify(profiles)}::jsonb) AS p("userId" text, "displayName" text) WHERE p."userId"=t.created_by_user_id::text), (SELECT string_agg(a.name, ', ' ORDER BY CASE c.role WHEN 'primary' THEN 0 ELSE 1 END, c.credit_order, a.id)
       FROM catalog.track_artists c JOIN catalog.artists a ON a.id=c.artist_id
       WHERE c.track_id=t.id AND c.role IN ('primary','featured')), '') AS "artistName",
     COALESCE((SELECT r.title FROM catalog.release_tracks rt JOIN catalog.releases r ON r.id=rt.release_id
@@ -26,9 +27,13 @@ const projection = Prisma.sql`
  * @returns Page publique, total filtré et genres des morceaux publiés.
  */
 export async function listTracks(query: TrackQuery): Promise<TrackList> {
+  /** Identités actuelles chargées par groupes de huit avant recherche et tri SQL, sans accès au schéma Users. */
+  const owners = await prisma.track.findMany({ where: { status: "published", createdByUserId: { not: null } }, distinct: ["createdByUserId"], select: { createdByUserId: true } });
+  const profiles: ArtistProfile[] = [];
+  for (let i = 0; i < owners.length; i += 8) profiles.push(...await Promise.all(owners.slice(i, i + 8).map(owner => readArtistProfile(owner.createdByUserId!))));
   // Escape LIKE metacharacters so q remains a literal substring.
   const pattern = `%${query.q.replace(/[\\%_]/g, "\\$&")}%`;
-  const filtered = Prisma.sql`WITH visible AS (${projection}), filtered AS (
+  const filtered = Prisma.sql`WITH visible AS (${projection(profiles)}), filtered AS (
     SELECT v.* FROM visible v WHERE
       (${query.genre} = '' OR EXISTS (SELECT 1 FROM catalog.track_genres tg JOIN catalog.genres g ON g.id=tg.genre_id
         WHERE tg.track_id=v.id AND g.name=${query.genre}))
@@ -54,7 +59,7 @@ export async function listTracks(query: TrackQuery): Promise<TrackList> {
       WHERE t.status='published' ORDER BY name`;
     const total = Number(counts[0]?.total ?? 0n);
     if (!Number.isSafeInteger(total)) throw new Error("Unrepresentable total");
-    return { items: rows.map(toTrackDto), total, page: query.page, pageSize: query.pageSize,
+    return { items: rows.map(row => ({ ...toTrackDto(row), ...(row.artistUserId ? { artistAvatarUrl: profiles.find(p => p.userId === row.artistUserId)?.avatarUrl ?? null } : {}) })), total, page: query.page, pageSize: query.pageSize,
       genres: genres.map(g => g.name) };
   }, { isolationLevel: "RepeatableRead" });
 }

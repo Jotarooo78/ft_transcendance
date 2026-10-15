@@ -13,7 +13,7 @@ export function fileDeletion(database: Pick<PrismaClient, "asset" | "variant">, 
       return asset ? { ...asset, variants: await database.variant.findMany({ where: { assetId: asset.id } }) } : null;
     },
     /** Passe ready à deleting pour ce propriétaire ; renvoie si une ligne a effectivement changé. */
-    markDeleting: async (id, uploaderUserId) => (await database.asset.updateMany({ where: { id, uploaderUserId, state: "ready" }, data: { state: "deleting" } })).count === 1,
+    markDeleting: async (id, uploaderUserId) => (await database.asset.updateMany({ where: { id, uploaderUserId, state: "ready", publicationTrackId: null }, data: { state: "deleting" } })).count === 1,
     /** Confirme deleted seulement pour le fichier deleting du propriétaire. */
     markDeleted: async (id, uploaderUserId) => { await database.asset.updateMany({ where: { id, uploaderUserId, state: "deleting" }, data: { state: "deleted" } }); },
     /**

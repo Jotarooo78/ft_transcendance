@@ -45,7 +45,7 @@ export type FileVariant = {
  */
 export type FileStore = {
   /** Création atomique des métadonnées de l’original et de son aperçu. */
-  create: (id: string, owner: string, file: ValidatedFile, storageKey: string, previewKey?: string) => Promise<StoredFile>;
+  create: (id: string, owner: string, file: ValidatedFile, storageKey: string, previewKey?: string, expiresAt?: Date) => Promise<StoredFile>;
   /** Contrôle d’une confirmation SQL avant nettoyage des fichiers temporaires. */
   hasStorageKey: (key: string) => Promise<boolean>;
 };

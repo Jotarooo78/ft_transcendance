@@ -10,6 +10,10 @@ export type TrackDto = {
   title: string;
   /** Nom affiché des artistes crédités, issu de la projection Catalogue. */
   artistName: string;
+  /** Compte artiste pour les morceaux publiés par un utilisateur ; absent des anciennes fixtures. */
+  artistUserId?: string | null;
+  /** Présentation facultative du morceau. */
+  description?: string | null;
   /** Titre de la sortie publiée retenue ; peut être vide si aucune ne convient. */
   albumTitle: string;
   /** Genre affiché ou filtre exact du Catalogue ; une chaîne vide n’impose pas de filtre. */
@@ -22,6 +26,10 @@ export type TrackDto = {
   audioAssetId: string | null;
   /** Route relative de lecture Media ; null si le morceau ne possède pas d’audio. */
   audioUrl: string | null;
+  /** Pochette publique facultative ; un 404 signifie que le visuel par défaut doit être utilisé. */
+  coverUrl?: string | null;
+  /** Avatar actuel du compte artiste. */
+  artistAvatarUrl?: string | null;
 };
 
 /**
@@ -35,6 +43,10 @@ export type TrackRow = {
   title: string;
   /** Nom affiché des artistes crédités, issu de la projection Catalogue. */
   artistName: string;
+  /** Compte artiste pour les morceaux publiés par un utilisateur ; absent des anciennes fixtures. */
+  artistUserId?: string | null;
+  /** Présentation facultative du morceau. */
+  description?: string | null;
   /** Titre de la sortie publiée retenue ; peut être vide si aucune ne convient. */
   albumTitle: string;
   /** Genre affiché ou filtre exact du Catalogue ; une chaîne vide n’impose pas de filtre. */
@@ -58,6 +70,7 @@ export function toTrackDto(row: TrackRow): TrackDto {
     id: row.id, title: row.title, artistName: row.artistName,
     albumTitle: row.albumTitle, genre: row.genre,
     durationMs: duration, durationSeconds: duration === null ? null : duration / 1000,
+    ...(row.artistUserId ? { artistUserId: row.artistUserId, description: row.description ?? "", coverUrl: `/api/media/assets/${row.audioAssetId}/artwork` } : {}),
     audioAssetId: row.audioAssetId,
     audioUrl: row.audioAssetId ? `/api/media/assets/${row.audioAssetId}/audio` : null,
   };

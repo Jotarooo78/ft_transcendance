@@ -26,6 +26,7 @@ export async function deleteFile(storageDir: string, files: FileDeletion, reques
   if (asset.state === "ready" && !await files.markDeleting(id, asset.uploaderUserId)) {
     const current = await files.read(request, id);
     if (current?.state === "deleted") return;
+    if (current?.state === "ready") throw new FileError(409, "file_in_use");
     if (current?.state !== "deleting") throw new FileError(404, "file_not_found");
   }
   // L’état deleting interdit désormais une nouvelle pochette ; relire évite une liste de variantes périmée.

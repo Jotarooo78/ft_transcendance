@@ -255,3 +255,32 @@ Les avatars, Catalogue, Library et Playback passent les contrôles de
 non-régression. Les preuves portent sur les formats et scénarios documentés,
 pas sur tous les codecs ou toutes les charges ; la validation de compréhension
 reste personnelle.
+
+## Publication depuis un compte
+
+Le nouveau parcours reçoit l’audio par `POST /api/media/assets?temporary=1`,
+puis publie par `POST /api/catalog/tracks` avec `audioAssetId`, `title` (1–200
+caractères après nettoyage) et `description` (0–5 000). Le serveur déduit
+l’artiste de la session vérifiée par Users ; tout champ d’identité ajouté au
+corps est refusé. `GET /api/users/profiles/:id` expose uniquement le profil
+public. Les lectures Catalogue utilisent le nom actuel du compte, y compris
+pour la recherche et le tri, sans lire directement les tables de Users.
+
+Media réserve durablement l’audio par sa route interne de publication avant
+l’écriture Catalogue. Cette réservation et la transition vers deleting se
+concurrencent sur la même ligne SQL : une seule peut gagner. Le morceau utilise
+l’UUID de l’audio comme identifiant stable ; une répétition retrouve la même
+publication. Une panne après réservation conserve l’audio pour une nouvelle
+tentative, même si la réponse de Catalogue s’est perdue. Ces réservations ne
+sont jamais supprimées sur un simple délai : leur issue peut être incertaine.
+Le nettoyage périodique retire au plus 100 uploads provisoires non réservés,
+expirés depuis 24 heures, après contrôle des références Catalogue. Les anciens
+fichiers, sans expiration, sont conservés.
+
+L’audio publié utilise l’aperçu MP3 validé lorsqu’il existe. Sa pochette se lit
+par `/api/media/assets/:id/artwork`, avec vérification de publication à chaque
+lecture ; `/cover` conserve ses permissions privées. Nginx interdit tout accès
+navigateur aux routes Media internes. Le service Users doit être disponible pour
+résoudre les artistes liés aux comptes ; les lectures n’inventent pas de nom en
+cas de panne. La résolution actuelle regroupe les auteurs distincts et limite
+les appels parallèles à huit, avant la recherche et la pagination SQL.

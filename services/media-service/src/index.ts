@@ -1,4 +1,7 @@
 /** Assemble Prisma et Catalogue, reprend uploads et suppressions interrompus avant d’accepter les requêtes. */
+import { registerPublicationReservation } from "./reserve-publication.js";
+import { registerPublicArtwork } from "./read-public-artwork.js";
+import { expireUploads } from "./expire-uploads.js";
 import { buildApp } from "./app.js";
 import { publicationReader } from "./publication.js";
 import { disconnectPrisma, prisma } from "./database/prisma.js";
@@ -38,11 +41,28 @@ const app = buildApp({
   fileReads: fileReader(prisma),
   fileDeletes,
   /** Lit les métadonnées nécessaires à la route audio publique depuis le schéma Media. */
-  readAsset: id => prisma.asset.findUnique({ where: { id } }),
+  readAsset: async id => {
+    const asset = await prisma.asset.findUnique({ where: { id }, include: { variants: { where: { renditionKey: "private-preview" } } } });
+    const preview = asset?.variants[0];
+    return asset && preview ? { ...asset, storageKey: preview.storageKey, mimeType: preview.mimeType, byteSize: preview.byteSize } : asset;
+  },
   isPublished: publicationReader(catalogUrl),
   /** Vérifie PostgreSQL avant de déclarer Media disponible. */
   ready: async () => { await prisma.$queryRaw`SELECT 1`; },
   close: disconnectPrisma,
 });
 
+registerPublicationReservation(app, prisma, process.env.INTERNAL_SERVICE_TOKEN ?? "");
+registerPublicArtwork(app, prisma, storageDir, publicationReader(catalogUrl));
+/** Nettoyage périodique sans chevauchement ; une indisponibilité Catalogue conserve les fichiers. */
+let cleaning = false;
+const cleanupTimer = setInterval(async () => {
+  if (cleaning) return;
+  cleaning = true;
+  try { await expireUploads(prisma, fileDeletes, storageDir); }
+  catch (error) { app.log.error(error, "Upload expiration deferred"); }
+  finally { cleaning = false; }
+}, 60_000);
+cleanupTimer.unref();
+app.addHook("onClose", async () => { clearInterval(cleanupTimer); });
 await app.listen({ port: Number(process.env.PORT ?? 4003), host: "0.0.0.0" });

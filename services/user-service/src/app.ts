@@ -506,6 +506,15 @@ export function buildApp({
     });
   }
 
+  /** Profil public minimal de l’artiste ; aucune donnée de connexion ni présence n’est exposée. */
+  app.get<{ Params: { id: string } }>("/profiles/:id", async (request, reply) => {
+    reply.header("Cache-Control", "no-store");
+    if (!uuidPattern.test(request.params.id)) return reply.code(400).send({ error: "invalid_request" });
+    const profile = await readProfile(request.params.id.toLowerCase());
+    if (!profile) return reply.code(404).send({ error: "profile_not_found" });
+    return { userId: profile.userId, displayName: profile.displayName, username: profile.username, avatarUrl: profile.avatarUrl, bio: profile.bio };
+  });
+
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof app.multipartErrors.RequestFileTooLargeError) {
       return reply.code(413).send({ error: "avatar must not exceed 2 MiB" });

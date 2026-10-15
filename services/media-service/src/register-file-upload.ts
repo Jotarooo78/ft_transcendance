@@ -33,14 +33,15 @@ export function registerFileUpload(app: FastifyInstance, storageDir: string, sto
     request.raw.on("aborted", abort); reply.raw.on("close", disconnect);
     return { signal: controller.signal, cleanup: () => { request.raw.off("aborted", abort); reply.raw.off("close", disconnect); } };
   };
-  app.post("/assets", { onRequest: authenticateUser }, async (request, reply) => {
+  app.post<{ Querystring: { temporary?: string } }>("/assets", { onRequest: authenticateUser }, async (request, reply) => {
+    if (Object.keys(request.query).some(key => key !== "temporary") || (request.query.temporary !== undefined && request.query.temporary !== "1")) return reply.code(400).send({ error: "invalid_request" });
     if (receiving) return reply.code(503).send({ error: "upload_busy", message: "An upload is already running. Please retry." });
     receiving = true; const current = cancellation(request, reply);
     try {
       let started = Date.now();
       const asset = await saveFile(storageDir, request.authenticatedUserId!, store, async path => {
         const mime = await receiveFile(request, path, audioByteLimit, current.signal); started = Date.now(); return mime;
-      }, current.signal);
+      }, current.signal, request.query.temporary === "1" ? new Date(Date.now() + 86_400_000) : undefined);
       let cover: FileVariant | null = null, warning: string | undefined;
       if (covers) {
         try {

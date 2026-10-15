@@ -65,7 +65,7 @@ export async function recoverUploads(storageDir: string, store: FileStore, maxim
  * @returns Fichier confirmé en base ; les marqueurs restants peuvent être nettoyés au redémarrage.
  */
 export async function saveFile(storageDir: string, owner: string, store: FileStore,
-  receive: (path: string) => Promise<string>, signal?: AbortSignal) {
+  receive: (path: string) => Promise<string>, signal?: AbortSignal, expiresAt?: Date) {
   const id = randomUUID(); const staging = join(storageDir, `.upload-${id}`);
   try { await mkdir(staging, { mode: 0o700 }); } catch { throw new FileError(503, "file_storage_unavailable"); }
   let installed = false;
@@ -81,7 +81,7 @@ export async function saveFile(storageDir: string, owner: string, store: FileSto
     await link(source, join(storageDir, storageKey)); installed = true;
     if (previewKey) await link(preview, join(storageDir, previewKey));
     await syncDirectory(storageDir);
-    const asset = await store.create(id, owner, file, storageKey, previewKey);
+    const asset = await store.create(id, owner, file, storageKey, previewKey, expiresAt);
     // A confirmed SQL commit stays ready even if only marker cleanup fails.
     await rm(staging, { recursive: true }).catch(() => {});
     return asset;

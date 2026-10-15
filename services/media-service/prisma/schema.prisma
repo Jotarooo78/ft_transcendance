@@ -27,6 +27,10 @@ model Asset {
   purpose        String
   /// État Media : pending, ready, deleting ou deleted selon le cycle de stockage.
   state          String   @default("pending")
+  /// Expiration des nouveaux uploads provisoires ; null pour les fichiers historiques.
+  expiresAt      DateTime? @map("expires_at") @db.Timestamptz(6)
+  /// Réservation durable avant publication : interdit la suppression même si Catalogue tarde à confirmer.
+  publicationTrackId String? @map("publication_track_id") @db.Uuid
   /// Nom interne du fichier sur le volume durable ; ne doit pas être exposé au client.
   storageKey     String   @unique @map("storage_key")
   /// Type MIME du contenu vérifié, utilisé pour servir les octets avec leur format.

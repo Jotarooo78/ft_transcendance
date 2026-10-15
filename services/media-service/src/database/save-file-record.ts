@@ -14,8 +14,8 @@ export function fileStore(database: Pick<PrismaClient, "asset">): FileStore {
      * Crée l’asset ready du propriétaire avec son original et, pour l’audio, sa variante MP3 private-
      * preview ; aucun dédoublonnage par checksum.
      */
-    create: (id, uploaderUserId, file, storageKey, previewKey) => database.asset.create({ data: {
-      id, uploaderUserId, purpose: file.purpose === "audio" ? "audio" : "cover", state: "ready", storageKey,
+    create: (id, uploaderUserId, file, storageKey, previewKey, expiresAt) => database.asset.create({ data: {
+      id, uploaderUserId, expiresAt, purpose: file.purpose === "audio" ? "audio" : "cover", state: "ready", storageKey,
       mimeType: file.mimeType, byteSize: BigInt(file.byteSize), durationMs: file.durationMs === null ? null : BigInt(file.durationMs), checksumSha256: file.checksumSha256,
       ...(previewKey ? { variants: { create: { renditionKey: "private-preview", storageKey: previewKey, mimeType: "audio/mpeg", byteSize: BigInt(file.previewByteSize!), bitrateKbps: 128 } } } : {}),
     } }),

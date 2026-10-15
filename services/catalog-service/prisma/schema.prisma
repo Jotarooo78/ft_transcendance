@@ -71,6 +71,8 @@ model Track {
   id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   /// Titre du morceau publié.
   title           String
+  /// Présentation libre du morceau, limitée à 5 000 caractères par le serveur et PostgreSQL.
+  description     String?
   /// UUID du fichier Media lié au morceau ; null si aucun audio n’est associé.
   audioAssetId    String?   @map("audio_asset_id") @db.Uuid
   /// Durée en millisecondes ; null lorsque cette durée n’est pas disponible ou ne s’applique pas.
