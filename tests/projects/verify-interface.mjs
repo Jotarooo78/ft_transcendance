@@ -9,7 +9,7 @@ const browser = await chromium.launch({
 });
 try {
   const context = await browser.newContext({
-    ignoreHTTPSErrors: true,
+    locale: "en-US", ignoreHTTPSErrors: true,
     viewport: { width: 1280, height: 800 },
   });
   const projects = await (

@@ -17,7 +17,7 @@ const sql=query=>compose(['exec','-T','db','psql','-XAtq','-U','e2e_admin','-d',
 /** Autorise seulement les UUID contrôlés dans les requêtes SQL de preuve. */
 const uuid=value=>{assert.match(value,/^[a-f0-9-]{36}$/i);return value;};
 const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
-const context=await browser.newContext({ignoreHTTPSErrors:true});
+const context=await browser.newContext({locale: "en-US", ignoreHTTPSErrors:true});
 /** Envoie la requête et exige son statut avant de lire son JSON. */
 async function api(path,{token,method='GET',data,multipart,status=200}={}) {
  const r=await context.request.fetch(base+path,{method,headers:token?{Authorization:`Bearer ${token}`}:{},data,multipart,timeout:330000});

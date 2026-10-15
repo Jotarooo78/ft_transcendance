@@ -227,7 +227,7 @@ test('library: confirmed gestures, failures, persistence and account isolation',
   await page.getByRole('button', { name: 'Playlists', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Tracks in Renamed library', exact: true })).toBeVisible();
   await expect(rows.first()).toHaveAttribute('data-item-id', ids[1]);
-  const fresh = await browser.newContext({ baseURL: 'https://127.0.0.1:3443', ignoreHTTPSErrors: true });
+  const fresh = await browser.newContext({ baseURL: 'https://127.0.0.1:3443', locale: "en-US", ignoreHTTPSErrors: true });
   try {
     const other = await fresh.newPage(); await other.goto('/'); await login(other, userA);
     await other.getByRole('button', { name: 'Playlists', exact: true }).click();

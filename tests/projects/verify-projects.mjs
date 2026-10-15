@@ -56,7 +56,7 @@ const browser = await chromium.launch({
   headless: true,
   args: ["--no-sandbox"],
 });
-const context = await browser.newContext({ ignoreHTTPSErrors: true });
+const context = await browser.newContext({ locale: "en-US", ignoreHTTPSErrors: true });
 /** Envoie la requête et exige son statut avant de lire son JSON. */
 async function api(
   path,
@@ -207,7 +207,7 @@ try {
   await signIn(page, a);
   await page.getByRole("button", { name: "Upload", exact: true }).click();
   await page
-    .getByRole("button", { name: "Evening windows album · draft", exact: true })
+    .getByRole("button", { name: "Evening windows Album · Draft", exact: true })
     .click();
   assert.equal(
     await page.getByLabel("Track 2 title", { exact: true }).inputValue(),
@@ -339,7 +339,7 @@ try {
   await api(`/api/library/public/playlists/${playlist.id}`, { status: 404 });
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
-  await page.getByText("Playlist saved · public.", { exact: true }).waitFor();
+  await page.getByText("Playlist saved · Public.", { exact: true }).waitFor();
   playlist = await api(`/api/library/public/playlists/${playlist.id}`);
   assert.equal(playlist.items.length, 1);
   await api(`/api/library/playlists/${playlist.id}`, {
@@ -353,7 +353,7 @@ try {
     method: "PUT",
     status: 204,
   });
-  const guestContext = await browser.newContext({ ignoreHTTPSErrors: true });
+  const guestContext = await browser.newContext({ locale: "en-US", ignoreHTTPSErrors: true });
   const guest = await guestContext.newPage();
   await guest.goto(base + `/#/playlists/${playlist.id}`);
   await guest
@@ -374,9 +374,10 @@ try {
     .selectOption("private");
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
-  await page.getByText("Playlist saved · private.", { exact: true }).waitFor();
+  await page.getByText("Playlist saved · Private.", { exact: true }).waitFor();
   await api(`/api/library/public/playlists/${playlist.id}`, { status: 404 });
-  await guest.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await guest.bringToFront();
+  await returnToTab(guest);
   await guest
     .getByRole("alert")
     .filter({ hasText: "no longer available" })

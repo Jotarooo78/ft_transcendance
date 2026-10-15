@@ -12,7 +12,7 @@ const browser = await chromium.launch({
   args: ["--no-sandbox"],
 });
 const ctx = await browser.newContext({
-  ignoreHTTPSErrors: true,
+  locale: "en-US", ignoreHTTPSErrors: true,
   viewport: { width: 1440, height: 800 },
 });
 const email = `scroll_${Date.now()}@example.invalid`,

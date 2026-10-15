@@ -11,6 +11,6 @@ export default defineConfig({
   testDir: '.', testMatch: 'browser.spec.mjs', timeout: 90000,
   expect: { timeout: 10000 }, retries: 0, workers: 1, reporter: 'line',
   outputDir: './test-results',
-  use: { browserName:'chromium', baseURL, headless:true, ignoreHTTPSErrors:true,
+  use: { browserName:'chromium', baseURL, headless:true, locale: "en-US", ignoreHTTPSErrors:true,
     actionTimeout:10000, trace:'off', video:'off', screenshot:'only-on-failure' },
 });

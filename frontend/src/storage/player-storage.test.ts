@@ -49,3 +49,30 @@ test("un refus du stockage n’empêche ni lecture ni sauvegarde en mémoire", (
     writePlayer("alice", emptyQueue(), 0, 1, false, blocked),
   );
 });
+
+/** La reprise distingue un libellé applicatif d'un titre utilisateur, même lorsque leur texte est identique. */
+test("queue origins preserve their translation intent and accept older saves", () => {
+  const store = storage();
+  writePlayer(
+    "alice",
+    { ...emptyQueue(), source: "History", sourceLocalized: true },
+    0,
+    1,
+    false,
+    store,
+  );
+  assert.equal(readPlayer("alice", store)?.sourceLocalized, true);
+  writePlayer(
+    "alice",
+    { ...emptyQueue(), source: "History", sourceLocalized: false },
+    0,
+    1,
+    false,
+    store,
+  );
+  const saved = readPlayer("alice", store)!;
+  assert.equal(saved.source, "History");
+  assert.equal(saved.sourceLocalized, false);
+  assert(validSavedPlayer({ ...saved, sourceLocalized: undefined }));
+  assert(!validSavedPlayer({ ...saved, sourceLocalized: "true" }));
+});

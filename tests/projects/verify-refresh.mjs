@@ -27,7 +27,7 @@ async function focus(page) {
 }
 try {
   const context = await browser.newContext({
-    ignoreHTTPSErrors: true,
+    locale: "en-US", ignoreHTTPSErrors: true,
     viewport: { width: 1280, height: 800 },
   });
   const email = "refresh_" + randomUUID().slice(0, 8) + "@example.invalid";

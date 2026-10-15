@@ -14,7 +14,7 @@ const browser = await chromium.launch({
   args: ["--no-sandbox"],
 });
 const context = await browser.newContext({
-  ignoreHTTPSErrors: true,
+  locale: "en-US", ignoreHTTPSErrors: true,
   viewport: { width: 1440, height: 1000 },
 });
 /** Appelle les services réels et exige le statut attendu sans afficher de jeton. */

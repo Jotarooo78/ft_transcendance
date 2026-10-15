@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test:music": "node --experimental-strip-types --test src/services/listening-clock.test.ts src/services/music-queue.test.ts src/storage/player-storage.test.ts",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:languages": "node --experimental-strip-types --test src/services/language.test.ts src/services/translate.test.ts && node ../tests/projects/verify-language-coverage.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",
