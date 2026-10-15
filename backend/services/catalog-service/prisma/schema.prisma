@@ -131,6 +131,12 @@ model TrackArtist {
 
 /// Sortie musicale et ses métadonnées ; coverAssetId est une référence logique vers Media.
 model Release {
+  /// Compte propriétaire ; null pour les sorties historiques créées par le seed.
+  ownerUserId  String?   @map("owner_user_id") @db.Uuid
+  /// Présentation facultative du projet, limitée à 5 000 caractères.
+  description  String?
+  /// Version attendue pour empêcher deux onglets d’écraser leurs changements.
+  version      Int       @default(1)
   /// Identifiant de cette entité ; distinct des identifiants des objets liés.
   id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   /// Titre du morceau publié.

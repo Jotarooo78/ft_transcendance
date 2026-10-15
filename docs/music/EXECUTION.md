@@ -704,3 +704,15 @@ Les critères de compréhension restent personnels.
 - Cette passe ne rejoue pas les campagnes HTTPS/SQL/Chromium historiques :
   elle documente les comportements existants sans les modifier. La publication
   et le résultat du pull sont consignés dans les missions Notion après git-sync.
+
+## Projets musicaux — données
+
+Branche `feat/music-projects-library`, évolution du 15 octobre 2026.
+`catalog-service/prisma/schema.prisma` ajoute au projet un propriétaire facultatif
+(pour conserver les anciennes sorties), une description et une version.
+`20261015100000_music_projects/migration.sql` conserve les types historiques et
+ajoute mixtape, les contraintes de texte/version et les index de lecture.
+Prisma validate/generate réussis. Une base PostgreSQL 16 jetable a reçu la
+baseline, un album témoin, puis la migration : album conservé, version 1 et
+insertion d’une mixtape vérifiés par assertion SQL. Aucun schéma de développement
+n’a été modifié. Les fonctions de brouillon et publication restent à produire.
