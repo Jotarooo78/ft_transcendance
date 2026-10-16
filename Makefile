@@ -1,15 +1,27 @@
 NAME = Transcendance
 
+# ifeq ($(shell command -v docker 2>/dev/null),)
+# DOCKER = flatpak-spawn --host docker
+# else
+# DOCKER = docker
+# endif
+
 setup:
-	@docker compose -f docker-compose.yml up -d --build
+	@$(DOCKER) compose -f docker-compose.yml up -d --build
 
 down:
-	@docker compose -f docker-compose.yml down
+	@$(DOCKER) compose -f docker-compose.yml down
 
 logs:
-	@docker compose -f docker-compose.yml logs -f --tail=120
+	@$(DOCKER) compose -f docker-compose.yml logs -f --tail=120
+
+backup:
+	@DOCKER="$(DOCKER)" ./scripts/backup.sh
+
+restore:
+	@DOCKER="$(DOCKER)" ./scripts/restore.sh $(DIR)
 
 prune:
-	@docker system prune -af
+	@$(DOCKER) system prune -af
 
-.PHONY: setup down logs prune
+.PHONY: setup down logs backup restore prune

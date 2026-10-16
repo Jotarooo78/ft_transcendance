@@ -203,6 +203,43 @@ services:
       - ft_network
     restart: unless-stopped
 
+  status:
+    image: docker.io/library/node:22-alpine
+    container_name: ft_status
+    command: ["node", "/app/server.js"]
+    environment:
+      PROMETHEUS_URL: http://prometheus:9090/monitoring/prometheus
+    volumes:
+      - ./monitoring/status/server.js:/app/server.js:ro
+    expose:
+      - "8080"
+    depends_on:
+      - prometheus
+    networks:
+      - ft_network
+    restart: unless-stopped
+
+  backup:
+    image: docker.io/library/postgres:16-alpine
+    container_name: ft_backup
+    command: ["sh", "/backup.sh"]
+    environment:
+      PGHOST: db
+      PGUSER: ${DB_USER}
+      PGPASSWORD: ${DB_PASSWORD}
+      PGDATABASE: ${DB_NAME}
+    volumes:
+      - ./monitoring/backup-loop.sh:/backup.sh:ro
+      - ./backups:/backups
+      - media_data:/media_data:ro
+      - avatar_data:/avatar_data:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - ft_network
+    restart: unless-stopped
+
   # --- Base de données ---
   # Partagée entre services au démarrage pour rester simple à évaluer,
   # mais chaque service ne doit lire/écrire QUE ses propres tables

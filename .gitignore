@@ -25,3 +25,6 @@ backend/packages/*/dist/
 backend/services/*/dist/
 backend/services/*/src/generated/prisma/
 backend/services/*/dist-test/
+
+#Armand
+backups/
