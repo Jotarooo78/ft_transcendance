@@ -24,19 +24,19 @@ Chaque domaine utilise deux comptes techniques distincts :
 | `<service>_migration` | migrations Prisma et propriété des objets |
 | `<service>_runtime` | serveur HTTP et opérations DML autorisées |
 
-Les douze mots de passe sont déclarés avec les variables
+Les quatorze mots de passe sont déclarés avec les variables
 `AUTH_MIGRATION_PASSWORD`, `AUTH_RUNTIME_PASSWORD`, puis le même couple pour
-`USERS`, `CATALOG`, `MEDIA`, `LIBRARY` et `PLAYBACK`.
+`USERS`, `CATALOG`, `MEDIA`, `LIBRARY`, `PLAYBACK` et `CHAT`.
 
 Les URLs `<SERVICE>_MIGRATION_DATABASE_URL` et `<SERVICE>_DATABASE_URL`
 utilisent ces comptes et indiquent le schéma concerné. Il n'existe plus d'URL
-`DATABASE_URL` commune aux six services.
+`DATABASE_URL` commune aux sept services.
 
 ## Démarrage depuis une base neuve
 
 Le script `database/init/10-bootstrap-roles.sh` est exécuté par PostgreSQL
 uniquement lors de la création initiale du volume. Il crée les 12 rôles et les
-six schémas. Compose applique ensuite les six baselines et les permissions.
+sept schémas. Compose applique ensuite les sept baselines et les permissions.
 
 ```sh
 docker compose up --build
@@ -104,3 +104,24 @@ Nginx conserve Authorization, résout dynamiquement les services et refuse leurs
 `/metrics` publics. Sans JWT, `/api/playback/sessions` retourne 401.
 La pile musicale configure ses propres valeurs de test et n’utilise pas le
 fichier `.env` de développement. Aucun déploiement distant n’est impliqué.
+
+## Chat
+
+`chat-service` stocke les conversations et messages entre amis dans le schéma
+`chat`. Il utilise sa propre connexion runtime, `CHAT_DATABASE_URL`, jamais
+l'URL de migration `CHAT_MIGRATION_DATABASE_URL`.
+
+Il reçoit le même `JWT_SECRET` qu'Auth pour vérifier le compte courant, et
+`INTERNAL_SERVICE_TOKEN` pour interroger `user-service` :
+`USER_SERVICE_URL=http://user-service:4001` sert à savoir si deux comptes sont
+amis avant d'ouvrir une conversation et avant chaque envoi. Une panne de
+`user-service` refuse les envois par 503 ; l'historique reste lisible.
+
+Le navigateur utilise `/api/chat/` pour les routes ordinaires et
+`/api/chat/ws` pour le WebSocket, sur le même HTTPS. Nginx refuse
+`/api/chat/metrics` publiquement. Le registre des connexions WebSocket est en
+mémoire : le service doit tourner en une seule instance.
+
+Après avoir tiré une version qui ajoute ces variables, la base locale doit être
+reconstruite (`docker compose down --volumes`) : les rôles PostgreSQL ne sont
+créés que sur un volume neuf.

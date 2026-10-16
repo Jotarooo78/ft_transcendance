@@ -19,6 +19,8 @@ services:
       LIBRARY_RUNTIME_PASSWORD: per_library_runtime_test_only
       PLAYBACK_MIGRATION_PASSWORD: per_playback_migration_test_only
       PLAYBACK_RUNTIME_PASSWORD: per_playback_runtime_test_only
+      CHAT_MIGRATION_PASSWORD: per_chat_migration_test_only
+      CHAT_RUNTIME_PASSWORD: per_chat_runtime_test_only
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U per_admin -d transcendence_per"]
       interval: 2s
@@ -96,6 +98,18 @@ services:
       target: build
     environment:
       PLAYBACK_MIGRATION_DATABASE_URL: postgresql://playback_migration:per_playback_migration_test_only@db:5432/transcendence_per?schema=playback
+    command: ["npm", "run", "prisma:migrate:deploy"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  migrate-chat:
+    build:
+      context: ../../backend
+      dockerfile: services/chat-service/Dockerfile
+      target: build
+    environment:
+      CHAT_MIGRATION_DATABASE_URL: postgresql://chat_migration:per_chat_migration_test_only@db:5432/transcendence_per?schema=chat
     command: ["npm", "run", "prisma:migrate:deploy"]
     depends_on:
       db:

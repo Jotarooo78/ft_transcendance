@@ -1,6 +1,6 @@
 # Rôles et permissions PostgreSQL
 
-La database partagée contient six schémas propriétaires. Chaque schéma possède
+La database partagée contient sept schémas propriétaires. Chaque schéma possède
 un rôle de migration et un rôle runtime :
 
 ```text
@@ -10,8 +10,8 @@ un rôle de migration et un rôle runtime :
 
 Ordre d'installation sur une database neuve :
 
-1. `bootstrap-roles.sql` crée les douze rôles et les six schémas ;
-2. les six historiques Prisma sont exécutés avec leurs rôles de migration ;
+1. `bootstrap-roles.sql` crée les quatorze rôles et les sept schémas ;
+2. les sept historiques Prisma sont exécutés avec leurs rôles de migration ;
 3. `assign-owners.sql` vérifie et réapplique les propriétaires attendus ;
 4. `apply-grants.sql` retire les accès implicites et accorde les droits runtime.
 

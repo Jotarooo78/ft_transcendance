@@ -10,7 +10,7 @@ L'organisation générale du code est décrite dans [CONVENTIONS.md](CONVENTIONS
 
 1. [L'essentiel en une minute](#1-lessentiel-en-une-minute)
 2. [Les notions à connaître](#2-les-notions-à-connaître)
-3. [Une base, six schémas](#3-une-base-six-schémas)
+3. [Une base, sept schémas](#3-une-base-sept-schémas)
 4. [Deux rôles par service](#4-deux-rôles-par-service)
 5. [Les liens entre services](#5-les-liens-entre-services)
 6. [Où sont les fichiers](#6-où-sont-les-fichiers)
@@ -25,7 +25,7 @@ L'organisation générale du code est décrite dans [CONVENTIONS.md](CONVENTIONS
 ## 1. L'essentiel en une minute
 
 - Une seule base **PostgreSQL 16**, nommée par `DB_NAME` (`transcendence`).
-- Elle est divisée en **six schémas**, un par service. Un service ne voit et ne
+- Elle est divisée en **sept schémas**, un par service. Un service ne voit et ne
   touche que le sien.
 - Chaque service a **deux comptes de connexion** : l'un modifie la structure des
   tables (migrations), l'autre lit et écrit les lignes (serveur).
@@ -69,9 +69,9 @@ toutes. Indispensable quand deux lignes doivent rester cohérentes.
 
 ---
 
-## 3. Une base, six schémas
+## 3. Une base, sept schémas
 
-22 tables au total.
+24 tables au total.
 
 | Schéma     | Service propriétaire | Tables                                                                                                                            |
 | ---------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
@@ -81,6 +81,7 @@ toutes. Indispensable quand deux lignes doivent rester cohérentes.
 | `media`    | media-service        | `assets`, `variants`                                                                                                              |
 | `library`  | library-service      | `playlists`, `playlist_items`, `track_favorites`                                                                                  |
 | `playback` | playback-service     | `sessions`, `events`                                                                                                              |
+| `chat`     | chat-service         | `conversations`, `messages`                                                                                                       |
 
 À quoi sert chaque table :
 
@@ -102,6 +103,8 @@ toutes. Indispensable quand deux lignes doivent rester cohérentes.
 | `library.track_favorites`                                                                      | favoris — table créée, pas encore utilisée par une route                                    |
 | `playback.sessions`                                                                            | une écoute : morceau, début, fin, temps crédité                                             |
 | `playback.events`                                                                              | les signaux de progression reçus pendant une écoute                                         |
+| `chat.conversations`                                                                           | une conversation entre deux amis (une seule par paire) et ce que chacun a lu                |
+| `chat.messages`                                                                                | un message : expéditeur, texte, date, date de suppression logique                           |
 
 Les colonnes exactes se lisent dans `backend/services/<service>/prisma/schema.prisma`.
 Le détail des contraintes est dans `docs/SCHEMA_DONNEES.md`.
@@ -119,7 +122,7 @@ La base n'en garde que le nom et les caractéristiques.
 | `<service>_migration` | le conteneur `migrate-<service>` | créer et modifier les tables de son schéma (DDL)              |
 | `<service>_runtime`   | le serveur du service            | lire et écrire des lignes dans son schéma (DML), rien d'autre |
 
-Soit douze rôles : `auth_migration`, `auth_runtime`, `users_migration`,
+Soit quatorze rôles : `auth_migration`, `auth_runtime`, `users_migration`,
 `users_runtime`, etc.
 
 **Pourquoi.** Si un service est compromis ou bogué, il ne peut ni toucher aux
@@ -140,8 +143,8 @@ Chaque service reçoit donc deux adresses de connexion :
 | `AUTH_DATABASE_URL`           | `auth_runtime`   | le serveur     |
 | `AUTH_MIGRATION_DATABASE_URL` | `auth_migration` | les migrations |
 
-Et de même avec les préfixes `USER_`, `CATALOG_`, `MEDIA_`, `LIBRARY_` et
-`PLAYBACK_`. Les valeurs sont dans le `.env` de la racine du dépôt, sur le modèle
+Et de même avec les préfixes `USER_`, `CATALOG_`, `MEDIA_`, `LIBRARY_`,
+`PLAYBACK_` et `CHAT_`. Les valeurs sont dans le `.env` de la racine du dépôt, sur le modèle
 de `.env.example`.
 
 ---
@@ -162,6 +165,8 @@ contient des morceaux (Catalogue). Ces liens existent, mais **sans clé
 | `library.playlist_items.track_id`                                   | un morceau       | catalog |
 | `playback.sessions.user_id`                                         | un compte        | auth    |
 | `playback.sessions.track_id`                                        | un morceau       | catalog |
+| `chat.conversations.user_a_id`, `chat.conversations.user_b_id`      | un compte        | auth    |
+| `chat.messages.sender_user_id`                                      | un compte        | auth    |
 
 **Conséquence.** PostgreSQL ne vérifie pas que l'objet désigné existe. C'est le
 code qui le fait, en interrogeant l'autre service par HTTP au moment d'écrire :
@@ -423,7 +428,7 @@ Preuve complète des migrations, des rôles et des droits, depuis la racine :
 tests/per/run.sh
 ```
 
-Elle reconstruit une base jetable, vérifie les 22 tables, les 12 rôles, les
+Elle reconstruit une base jetable, vérifie les 24 tables, les 14 rôles, les
 propriétaires et les interdictions (un service ne peut pas lire le schéma d'un
 autre), puis rejoue les migrations pour prouver qu'elles ne font rien la seconde
 fois.

@@ -40,5 +40,9 @@ export const PublicProfileSchema = Type.Object({
 export const UserIdParamsSchema = Type.Object({ userId: Type.String() })
 /** @brief Partie variable `:friendId` d'une URL. */
 export const FriendIdParamsSchema = Type.Object({ friendId: Type.String() })
+/** @brief Parties variables de l'URL `/internal/friendships/:userId/:otherId`. */
+export const FriendshipParamsSchema = Type.Object({ userId: Type.String(), otherId: Type.String() })
+/** @brief Forme de la réponse de la route d'amitié : un simple booléen. */
+export const FriendshipSchema = Type.Object({ areFriends: Type.Boolean() })
 /** @brief Partie variable `:fileName` de l'URL d'un avatar. */
 export const FileNameParamsSchema = Type.Object({ fileName: Type.String() })

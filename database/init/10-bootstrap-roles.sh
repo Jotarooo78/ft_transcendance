@@ -16,6 +16,8 @@ set -Eeuo pipefail
 : "${LIBRARY_RUNTIME_PASSWORD:?LIBRARY_RUNTIME_PASSWORD is required}"
 : "${PLAYBACK_MIGRATION_PASSWORD:?PLAYBACK_MIGRATION_PASSWORD is required}"
 : "${PLAYBACK_RUNTIME_PASSWORD:?PLAYBACK_RUNTIME_PASSWORD is required}"
+: "${CHAT_MIGRATION_PASSWORD:?CHAT_MIGRATION_PASSWORD is required}"
+: "${CHAT_RUNTIME_PASSWORD:?CHAT_RUNTIME_PASSWORD is required}"
 
 # ON_ERROR_STOP arrête l’initialisation dès le premier refus SQL ; les valeurs passent par des variables psql.
 psql \
@@ -35,4 +37,6 @@ psql \
   --set library_runtime_password="$LIBRARY_RUNTIME_PASSWORD" \
   --set playback_migration_password="$PLAYBACK_MIGRATION_PASSWORD" \
   --set playback_runtime_password="$PLAYBACK_RUNTIME_PASSWORD" \
+  --set chat_migration_password="$CHAT_MIGRATION_PASSWORD" \
+  --set chat_runtime_password="$CHAT_RUNTIME_PASSWORD" \
   --file /permissions/bootstrap-roles.sql

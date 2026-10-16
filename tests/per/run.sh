@@ -88,11 +88,11 @@ cd "$repo_dir"
 "${compose[@]}" config --quiet
 "${compose[@]}" build \
   migrate-auth migrate-users migrate-catalog \
-  migrate-media migrate-library migrate-playback
+  migrate-media migrate-library migrate-playback migrate-chat
 "${compose[@]}" up -d --wait db
 
-echo "[PER] Applying the six Prisma baselines with their migration owners"
-for service in auth users catalog media library playback; do
+echo "[PER] Applying the seven Prisma baselines with their migration owners"
+for service in auth users catalog media library playback chat; do
   "${compose[@]}" run --rm "migrate-$service"
 done
 
@@ -108,6 +108,7 @@ runtime_psql catalog_runtime per_catalog_runtime_test_only "$script_dir/catalog-
 runtime_psql media_runtime per_media_runtime_test_only "$script_dir/media-runtime.sql"
 runtime_psql library_runtime per_library_runtime_test_only "$script_dir/library-runtime.sql"
 runtime_psql playback_runtime per_playback_runtime_test_only "$script_dir/playback-runtime.sql"
+runtime_psql chat_runtime per_chat_runtime_test_only "$script_dir/chat-runtime.sql"
 
 echo "[PER] Proving forbidden cross-service and DDL operations"
 expect_sql_failure \
@@ -130,6 +131,14 @@ expect_sql_failure \
   auth_migration per_auth_migration_test_only \
   'CREATE TABLE users.forbidden_cross_owner (id integer)' \
   'permission denied'
+expect_sql_failure \
+  chat_runtime per_chat_runtime_test_only \
+  'SELECT * FROM library.playlists' \
+  'permission denied'
+expect_sql_failure \
+  chat_runtime per_chat_runtime_test_only \
+  'DELETE FROM chat.messages' \
+  'permission denied'
 
 echo "[PER] Proving representative database constraints"
 expect_sql_failure \
@@ -148,6 +157,15 @@ expect_sql_failure \
   media_runtime per_media_runtime_test_only \
   "INSERT INTO media.variants (asset_id, rendition_key, storage_key, mime_type, byte_size) VALUES ('70000000-0000-4000-8000-000000000002', 'invalid', 'invalid-variant', 'audio/mpeg', 1)" \
   'variants_asset_fkey'
+
+expect_sql_failure \
+  chat_runtime per_chat_runtime_test_only \
+  "INSERT INTO chat.conversations (user_a_id, user_b_id) VALUES ('60000000-0000-4000-8000-0000000000b2', '60000000-0000-4000-8000-0000000000a1')" \
+  'conversations_pair_order_check'
+expect_sql_failure \
+  chat_runtime per_chat_runtime_test_only \
+  "WITH c AS (INSERT INTO chat.conversations (user_a_id, user_b_id) VALUES ('60000000-0000-4000-8000-0000000000a1', '60000000-0000-4000-8000-0000000000b2') RETURNING id) INSERT INTO chat.messages (conversation_id, sender_user_id, body) SELECT id, '60000000-0000-4000-8000-0000000000a1', '   ' FROM c" \
+  'messages_body_check'
 
 echo "[PER] Proving runtime Prisma connections"
 "${compose[@]}" run --rm \
@@ -168,12 +186,15 @@ echo "[PER] Proving runtime Prisma connections"
 "${compose[@]}" run --rm \
   --env PLAYBACK_DATABASE_URL=postgresql://playback_runtime:per_playback_runtime_test_only@db:5432/transcendence_per?schema=playback \
   migrate-playback npm run prisma:smoke
+"${compose[@]}" run --rm \
+  --env CHAT_DATABASE_URL=postgresql://chat_runtime:per_chat_runtime_test_only@db:5432/transcendence_per?schema=chat \
+  migrate-chat npm run prisma:smoke
 
 echo "[PER] Replaying migrations to prove a stable no-op"
-for service in auth users catalog media library playback; do
+for service in auth users catalog media library playback chat; do
   "${compose[@]}" run --rm "migrate-$service"
 done
 
 admin_psql --file /dev/stdin < "$script_dir/assert-state.sql"
 
-echo "[PER] PASS: six schemas, 12 roles, ownership, cardinalities, constraints and permission boundaries"
+echo "[PER] PASS: seven schemas, 14 roles, ownership, cardinalities, constraints and permission boundaries"

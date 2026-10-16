@@ -15,7 +15,8 @@ BEGIN
         'catalog_migration', 'catalog_runtime',
         'media_migration', 'media_runtime',
         'library_migration', 'library_runtime',
-        'playback_migration', 'playback_runtime'
+        'playback_migration', 'playback_runtime',
+        'chat_migration', 'chat_runtime'
     ] LOOP
         SELECT rolcanlogin, rolsuper, rolcreatedb, rolcreaterole, rolreplication, rolbypassrls
           INTO role_record
@@ -40,7 +41,7 @@ BEGIN
         END IF;
     END LOOP;
 
-    FOREACH schema_name IN ARRAY ARRAY['auth', 'users', 'catalog', 'media', 'library', 'playback'] LOOP
+    FOREACH schema_name IN ARRAY ARRAY['auth', 'users', 'catalog', 'media', 'library', 'playback', 'chat'] LOOP
         expected_owner := schema_name || '_migration';
 
         IF (SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname = schema_name)
@@ -57,7 +58,7 @@ BEGIN
       INTO bad_table
       FROM pg_class AS c
       JOIN pg_namespace AS n ON n.oid = c.relnamespace
-     WHERE n.nspname = ANY (ARRAY['auth', 'users', 'catalog', 'media', 'library', 'playback'])
+     WHERE n.nspname = ANY (ARRAY['auth', 'users', 'catalog', 'media', 'library', 'playback', 'chat'])
        AND c.relkind IN ('r', 'p')
        AND pg_get_userbyid(c.relowner) <> n.nspname || '_migration'
      LIMIT 1;
@@ -75,7 +76,8 @@ BEGIN
        OR (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'catalog') <> 10
        OR (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'media') <> 3
        OR (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'library') <> 4
-       OR (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'playback') <> 3 THEN
+       OR (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'playback') <> 3
+       OR (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'chat') <> 3 THEN
         RAISE EXCEPTION 'unexpected table count in one or more schemas';
     END IF;
 
@@ -84,7 +86,9 @@ BEGIN
        OR has_table_privilege('catalog_runtime', 'media.assets', 'SELECT')
        OR has_table_privilege('media_runtime', 'catalog.tracks', 'SELECT')
        OR has_table_privilege('library_runtime', 'playback.sessions', 'SELECT')
-       OR has_table_privilege('playback_runtime', 'library.playlists', 'SELECT') THEN
+       OR has_table_privilege('playback_runtime', 'library.playlists', 'SELECT')
+       OR has_table_privilege('chat_runtime', 'library.playlists', 'SELECT')
+       OR has_table_privilege('library_runtime', 'chat.messages', 'SELECT') THEN
         RAISE EXCEPTION 'a runtime role can read a neighboring schema';
     END IF;
 
@@ -93,6 +97,11 @@ BEGIN
        OR has_table_privilege('users_runtime', 'users.inbox_messages', 'UPDATE') THEN
         RAISE EXCEPTION 'Auth or Users received an operation not used by the current code';
     END IF;
+
+    IF has_table_privilege('chat_runtime', 'chat.messages', 'DELETE')
+       OR has_table_privilege('chat_runtime', 'chat.conversations', 'DELETE') THEN
+        RAISE EXCEPTION 'Chat can delete rows although messages are deleted logically';
+    END IF;
 END
 $assertions$;
 
@@ -100,6 +109,6 @@ SELECT
     table_schema,
     COUNT(*) AS table_count
 FROM information_schema.tables
-WHERE table_schema IN ('auth', 'users', 'catalog', 'media', 'library', 'playback')
+WHERE table_schema IN ('auth', 'users', 'catalog', 'media', 'library', 'playback', 'chat')
 GROUP BY table_schema
 ORDER BY table_schema;

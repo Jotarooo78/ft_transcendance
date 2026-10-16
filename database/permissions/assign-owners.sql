@@ -40,3 +40,8 @@ ALTER SCHEMA playback OWNER TO playback_migration;
 ALTER TABLE playback._prisma_migrations OWNER TO playback_migration;
 ALTER TABLE playback.sessions OWNER TO playback_migration;
 ALTER TABLE playback.events OWNER TO playback_migration;
+
+ALTER SCHEMA chat OWNER TO chat_migration;
+ALTER TABLE chat._prisma_migrations OWNER TO chat_migration;
+ALTER TABLE chat.conversations OWNER TO chat_migration;
+ALTER TABLE chat.messages OWNER TO chat_migration;

@@ -2,9 +2,9 @@
 
 `run.sh` reconstruit une database PostgreSQL jetable avec :
 
-- six schémas propriétaires ;
-- six rôles de migration et six rôles runtime ;
-- les baselines Prisma Auth, Users, Catalog, Media, Library et Playback ;
+- sept schémas propriétaires ;
+- sept rôles de migration et sept rôles runtime ;
+- les baselines Prisma Auth, Users, Catalog, Media, Library, Playback et Chat ;
 - les propriétaires et privilèges attendus ;
 - des essais DML autorisés, des refus interservices et des contraintes locales.
 

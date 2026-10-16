@@ -1,0 +1,67 @@
+// Modèles possédés par ce service ; les références vers les autres services restent des UUID logiques.
+generator client {
+  /// Moteur du client ou de la base ; ce choix détermine la génération et les opérations disponibles.
+  provider            = "prisma-client"
+  /// Dossier du client Prisma généré, exclu des modifications manuelles.
+  output              = "../src/generated/prisma"
+  /// Format ESM des modules générés, aligné sur les imports du service.
+  moduleFormat        = "esm"
+  /// Extension .js des imports après compilation TypeScript.
+  importFileExtension = "js"
+}
+
+datasource db {
+  /// Moteur du client ou de la base ; ce choix détermine la génération et les opérations disponibles.
+  provider = "postgresql"
+  /// Schéma PostgreSQL possédé par ce service ; l’URL runtime choisit son rôle limité.
+  schemas  = ["chat"]
+}
+
+/// Conversation entre deux amis ; il n'en existe qu'une par paire, avec userAId toujours inférieur à userBId.
+model Conversation {
+  /// Identifiant de cette entité ; distinct des identifiants des objets liés.
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// UUID logique du premier compte ; le plus petit des deux, pour qu'une paire n'ait qu'une écriture possible.
+  userAId            String    @map("user_a_id") @db.Uuid
+  /// UUID logique du second compte ; le plus grand des deux.
+  userBId            String    @map("user_b_id") @db.Uuid
+  /// Dernier message lu par le compte A ; null tant qu'il n'a rien lu.
+  lastReadAMessageId BigInt?   @map("last_read_a_message_id")
+  /// Dernier message lu par le compte B ; null tant qu'il n'a rien lu.
+  lastReadBMessageId BigInt?   @map("last_read_b_message_id")
+  /// Date du dernier message envoyé, pour trier la liste des conversations ; null tant qu'elle est vide.
+  lastMessageAt      DateTime? @map("last_message_at") @db.Timestamptz(6)
+  /// Date de création prise par PostgreSQL.
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  /// Messages de la conversation ; supprimés avec elle.
+  messages Message[]
+
+  @@unique([userAId, userBId], map: "conversations_pair_key")
+  @@index([userBId], map: "conversations_user_b_idx")
+  @@map("conversations")
+  @@schema("chat")
+}
+
+/// Message d'une conversation ; la suppression est logique : la ligne reste, deletedAt est renseigné.
+model Message {
+  /// Numéro croissant donné par PostgreSQL ; sert d'ordre, de curseur de pagination et de repère « lu jusqu'ici ».
+  id             BigInt    @id @default(autoincrement())
+  /// UUID de la conversation locale ; sa suppression entraîne celle de ses messages.
+  conversationId String    @map("conversation_id") @db.Uuid
+  /// UUID logique du compte qui a écrit le message ; c'est toujours A ou B de la conversation.
+  senderUserId   String    @map("sender_user_id") @db.Uuid
+  /// Texte brut du message, de 1 à 2000 caractères une fois les espaces retirés.
+  body           String
+  /// Date d'envoi prise par PostgreSQL.
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// Date de suppression ; null tant que le message est visible.
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  /// Conversation qui contient ce message.
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, id(sort: Desc)], map: "messages_conversation_idx")
+  @@map("messages")
+  @@schema("chat")
+}

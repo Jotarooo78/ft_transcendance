@@ -4,17 +4,18 @@
 BEGIN;
 
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
-REVOKE ALL ON SCHEMA auth, users, catalog, media, library, playback FROM PUBLIC;
-REVOKE ALL ON SCHEMA auth, users, catalog, media, library, playback FROM
+REVOKE ALL ON SCHEMA auth, users, catalog, media, library, playback, chat FROM PUBLIC;
+REVOKE ALL ON SCHEMA auth, users, catalog, media, library, playback, chat FROM
   auth_runtime, users_runtime, catalog_runtime,
-  media_runtime, library_runtime, playback_runtime;
+  media_runtime, library_runtime, playback_runtime, chat_runtime;
 
-REVOKE ALL ON ALL TABLES IN SCHEMA auth FROM auth_runtime, users_runtime, catalog_runtime, media_runtime, library_runtime, playback_runtime;
-REVOKE ALL ON ALL TABLES IN SCHEMA users FROM auth_runtime, users_runtime, catalog_runtime, media_runtime, library_runtime, playback_runtime;
-REVOKE ALL ON ALL TABLES IN SCHEMA catalog FROM auth_runtime, users_runtime, catalog_runtime, media_runtime, library_runtime, playback_runtime;
-REVOKE ALL ON ALL TABLES IN SCHEMA media FROM auth_runtime, users_runtime, catalog_runtime, media_runtime, library_runtime, playback_runtime;
-REVOKE ALL ON ALL TABLES IN SCHEMA library FROM auth_runtime, users_runtime, catalog_runtime, media_runtime, library_runtime, playback_runtime;
-REVOKE ALL ON ALL TABLES IN SCHEMA playback FROM auth_runtime, users_runtime, catalog_runtime, media_runtime, library_runtime, playback_runtime;
+REVOKE ALL ON ALL TABLES IN SCHEMA auth FROM auth_runtime, users_runtime, catalog_runtime, media_runtime, library_runtime, playback_runtime, chat_runtime;
+REVOKE ALL ON ALL TABLES IN SCHEMA users FROM auth_runtime, users_runtime, catalog_runtime, media_runtime, library_runtime, playback_runtime, chat_runtime;
+REVOKE ALL ON ALL TABLES IN SCHEMA catalog FROM auth_runtime, users_runtime, catalog_runtime, media_runtime, library_runtime, playback_runtime, chat_runtime;
+REVOKE ALL ON ALL TABLES IN SCHEMA media FROM auth_runtime, users_runtime, catalog_runtime, media_runtime, library_runtime, playback_runtime, chat_runtime;
+REVOKE ALL ON ALL TABLES IN SCHEMA library FROM auth_runtime, users_runtime, catalog_runtime, media_runtime, library_runtime, playback_runtime, chat_runtime;
+REVOKE ALL ON ALL TABLES IN SCHEMA playback FROM auth_runtime, users_runtime, catalog_runtime, media_runtime, library_runtime, playback_runtime, chat_runtime;
+REVOKE ALL ON ALL TABLES IN SCHEMA chat FROM auth_runtime, users_runtime, catalog_runtime, media_runtime, library_runtime, playback_runtime, chat_runtime;
 
 GRANT USAGE ON SCHEMA auth TO auth_runtime;
 GRANT USAGE ON SCHEMA users TO users_runtime;
@@ -22,6 +23,7 @@ GRANT USAGE ON SCHEMA catalog TO catalog_runtime;
 GRANT USAGE ON SCHEMA media TO media_runtime;
 GRANT USAGE ON SCHEMA library TO library_runtime;
 GRANT USAGE ON SCHEMA playback TO playback_runtime;
+GRANT USAGE ON SCHEMA chat TO chat_runtime;
 
 -- Les droits DML autorisent les lignes métier ; ils ne donnent aucun droit de création ou modification de structure.
 GRANT SELECT, INSERT, UPDATE
@@ -63,6 +65,10 @@ GRANT SELECT, INSERT, UPDATE, DELETE
   ON TABLE playback.sessions, playback.events
   TO playback_runtime;
 
+GRANT SELECT, INSERT, UPDATE
+  ON TABLE chat.conversations, chat.messages
+  TO chat_runtime;
+
 -- Empêche les futurs objets de devenir accessibles à PUBLIC par les privilèges par défaut.
 ALTER DEFAULT PRIVILEGES FOR ROLE auth_migration IN SCHEMA auth REVOKE ALL ON TABLES FROM PUBLIC;
 ALTER DEFAULT PRIVILEGES FOR ROLE users_migration IN SCHEMA users REVOKE ALL ON TABLES FROM PUBLIC;
@@ -70,6 +76,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE catalog_migration IN SCHEMA catalog REVOKE ALL
 ALTER DEFAULT PRIVILEGES FOR ROLE media_migration IN SCHEMA media REVOKE ALL ON TABLES FROM PUBLIC;
 ALTER DEFAULT PRIVILEGES FOR ROLE library_migration IN SCHEMA library REVOKE ALL ON TABLES FROM PUBLIC;
 ALTER DEFAULT PRIVILEGES FOR ROLE playback_migration IN SCHEMA playback REVOKE ALL ON TABLES FROM PUBLIC;
+ALTER DEFAULT PRIVILEGES FOR ROLE chat_migration IN SCHEMA chat REVOKE ALL ON TABLES FROM PUBLIC;
 
 ALTER DEFAULT PRIVILEGES FOR ROLE auth_migration IN SCHEMA auth REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
 ALTER DEFAULT PRIVILEGES FOR ROLE users_migration IN SCHEMA users REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
@@ -77,5 +84,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE catalog_migration IN SCHEMA catalog REVOKE EXE
 ALTER DEFAULT PRIVILEGES FOR ROLE media_migration IN SCHEMA media REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
 ALTER DEFAULT PRIVILEGES FOR ROLE library_migration IN SCHEMA library REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
 ALTER DEFAULT PRIVILEGES FOR ROLE playback_migration IN SCHEMA playback REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+ALTER DEFAULT PRIVILEGES FOR ROLE chat_migration IN SCHEMA chat REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
 
 COMMIT;

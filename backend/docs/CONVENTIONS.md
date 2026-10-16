@@ -16,7 +16,7 @@ La base de données a son propre document : [PRISMA.md](PRISMA.md).
 6. [Le trajet d'une requête, pas à pas](#6-le-trajet-dune-requête-pas-à-pas)
 7. [Le paquet partagé `@ft/service-kit`](#7-le-paquet-partagé-ftservice-kit)
 8. [Comment les services se parlent](#8-comment-les-services-se-parlent)
-9. [Les six services](#9-les-six-services)
+9. [Les sept services](#9-les-sept-services)
 10. [Validation et erreurs](#10-validation-et-erreurs)
 11. [Tests](#11-tests)
 12. [Je veux… (recettes)](#12-je-veux-recettes)
@@ -28,7 +28,7 @@ La base de données a son propre document : [PRISMA.md](PRISMA.md).
 
 ## 1. Le backend en une minute
 
-Le backend d'une application d'écoute de musique. Il est découpé en **six petits
+Le backend d'une application d'écoute de musique. Il est découpé en **sept petits
 serveurs indépendants**, les _services_. Chacun a une seule responsabilité, son
 propre conteneur Docker et sa propre partie de la base de données.
 
@@ -40,6 +40,7 @@ propre conteneur Docker et sa propre partie de la base de données.
 | `media-service`    | les fichiers : envoi, vérification, stockage, diffusion audio |
 | `library-service`  | les playlists privées                                         |
 | `playback-service` | les sessions d'écoute et l'historique                         |
+| `chat-service`     | les conversations et messages entre amis, le chat en direct   |
 
 Techniquement : Node.js 22, TypeScript, le framework web **Fastify**, la base
 **PostgreSQL** via **Prisma**. Le navigateur ne parle jamais directement à un
@@ -147,6 +148,7 @@ Prometheus, affichés dans Grafana).
 | `media-service`    | 4003 | `/api/media/`    | `media`    | catalog |
 | `library-service`  | 4004 | `/api/library/`  | `library`  | catalog |
 | `playback-service` | 4005 | `/api/playback/` | `playback` | catalog |
+| `chat-service`     | 4006 | `/api/chat/`     | `chat`     | user    |
 
 Nginx **retire le préfixe** avant de transmettre : le navigateur appelle
 `/api/library/playlists`, `library-service` reçoit `/playlists`. Dans le code des
@@ -165,14 +167,15 @@ backend/
 ├─ .prettierrc.json      # règles de formatage
 ├─ docs/                 # ce guide et PRISMA.md
 ├─ packages/
-│  └─ service-kit/       # code partagé par les six services (section 7)
+│  └─ service-kit/       # code partagé par les sept services (section 7)
 └─ services/
    ├─ auth-service/
    ├─ user-service/
    ├─ catalog-service/
    ├─ media-service/
    ├─ library-service/
-   └─ playback-service/
+   ├─ playback-service/
+   └─ chat-service/
 ```
 
 C'est un **monorepo npm** : `packages/*` et `services/*` sont des paquets liés
@@ -183,7 +186,7 @@ entre eux. Un service importe le code partagé par `import { ... } from
 
 ## 5. Anatomie d'un service
 
-Les six services ont **exactement la même arborescence**. Quand tu en connais
+Les sept services ont **exactement la même arborescence**. Quand tu en connais
 un, tu connais les autres.
 
 ```
@@ -238,7 +241,8 @@ Dossiers supplémentaires de certains services :
   fichiers dans un processus isolé) ;
 - `user-service` : `storage/` (fichiers d'avatar) ;
 - `auth-service` : `workers/` (tâche de fond) ;
-- `catalog-service` et `media-service` : `seed/` (données de démonstration).
+- `catalog-service` et `media-service` : `seed/` (données de démonstration) ;
+- `chat-service` : `realtime/` (registre des connexions WebSocket).
 
 ### `server.ts` et `app.ts` : pourquoi deux fichiers
 
@@ -288,7 +292,7 @@ ouvre son fichier `routes/`, puis suis les appels.
 
 ## 7. Le paquet partagé `@ft/service-kit`
 
-Dans `backend/packages/service-kit/src/`. Il contient ce que les six services
+Dans `backend/packages/service-kit/src/`. Il contient ce que les sept services
 font à l'identique, pour ne l'écrire et ne le corriger qu'une fois.
 
 | Élément                                         | Fichier                     | À quoi il sert                                                                                          |
@@ -333,18 +337,33 @@ passer pour un autre en envoyant un autre identifiant.
 
 ### Les appels entre services
 
-| Qui appelle | Qui est appelé | Route                                 | Pourquoi                                             | Si l'appelé est en panne                            |
-| ----------- | -------------- | ------------------------------------- | ---------------------------------------------------- | --------------------------------------------------- |
-| auth        | user           | `PUT /internal/profiles/:userId`      | créer le profil d'un nouveau compte                  | l'inscription reste « en attente » et sera relivrée |
-| library     | catalog        | `GET /tracks/:id`                     | vérifier qu'un morceau est publié avant de l'ajouter | l'ajout est refusé (503)                            |
-| playback    | catalog        | `GET /tracks/:id`                     | connaître la durée du morceau                        | l'ouverture de session est refusée (503)            |
-| media       | catalog        | `GET /assets/:id/publication`         | ne diffuser que l'audio d'un morceau publié          | la diffusion est refusée (503)                      |
-| media       | catalog        | `GET /internal/assets/:id/references` | ne pas supprimer un fichier encore utilisé           | la suppression est refusée (503)                    |
+| Qui appelle | Qui est appelé | Route                                        | Pourquoi                                             | Si l'appelé est en panne                            |
+| ----------- | -------------- | -------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------- |
+| auth        | user           | `PUT /internal/profiles/:userId`             | créer le profil d'un nouveau compte                  | l'inscription reste « en attente » et sera relivrée |
+| library     | catalog        | `GET /tracks/:id`                            | vérifier qu'un morceau est publié avant de l'ajouter | l'ajout est refusé (503)                            |
+| playback    | catalog        | `GET /tracks/:id`                            | connaître la durée du morceau                        | l'ouverture de session est refusée (503)            |
+| media       | catalog        | `GET /assets/:id/publication`                | ne diffuser que l'audio d'un morceau publié          | la diffusion est refusée (503)                      |
+| media       | catalog        | `GET /internal/assets/:id/references`        | ne pas supprimer un fichier encore utilisé           | la suppression est refusée (503)                    |
+| chat        | user           | `GET /internal/friendships/:userId/:otherId` | vérifier que deux comptes sont amis avant d'écrire   | l'envoi est refusé (503)                            |
 
 Chaque appel est écrit dans le dossier `clients/` du service appelant, avec un
 délai maximal de 2 ou 3 secondes. Principe constant : **en cas de doute, on
 refuse**. Un service en panne ne doit jamais faire accepter une opération non
 vérifiée.
+
+### Le chat en direct (WebSocket)
+
+Un navigateur ne peut pas mettre d'en-tête `Authorization` sur un WebSocket, et
+le jeton de connexion (valable une heure) ne doit pas figurer dans une adresse.
+`chat-service` utilise donc un **ticket** : le client le demande par une route
+ordinaire (`POST /api/chat/ws-ticket`, avec son jeton), puis ouvre
+`/api/chat/ws?ticket=...`. Le ticket est aléatoire, valable 30 secondes et
+utilisable **une seule fois**. Le REST reste la source de vérité : le WebSocket
+ne sert qu'à pousser les événements (`message.created`, `message.deleted`,
+`conversation.read`).
+
+Le registre des connexions et les tickets sont en mémoire : `chat-service` doit
+tourner en **une seule instance**.
 
 ### L'inscription, cas particulier
 
@@ -366,7 +385,7 @@ secondes. Tant que le profil n'existe pas, la connexion répond
 
 ---
 
-## 9. Les six services
+## 9. Les sept services
 
 Les chemins sont relatifs à `backend/services/<service>/src/`.
 
@@ -515,6 +534,41 @@ pas sur parole. Il crédite le plus petit de quatre montants (ce qui est déclar
 le temps réellement écoulé depuis le dernier signal, le temps écoulé depuis
 l'ouverture, ce qui reste du morceau). Avancer dans le morceau ne crédite rien.
 
+### chat-service — conversations et messages entre amis
+
+| Méthode | Route                                    | Accès    | Rôle                                               |
+| ------- | ---------------------------------------- | -------- | -------------------------------------------------- |
+| GET     | `/conversations`                         | connecté | mes conversations, avec dernier message et non-lus |
+| POST    | `/conversations`                         | connecté | ouvrir (ou retrouver) la conversation avec un ami  |
+| GET     | `/conversations/:id/messages`            | connecté | historique paginé (`before`, `after`, `limit`)     |
+| POST    | `/conversations/:id/messages`            | connecté | envoyer un message                                 |
+| DELETE  | `/conversations/:id/messages/:messageId` | connecté | supprimer son message (suppression logique)        |
+| POST    | `/conversations/:id/read`                | connecté | marquer la conversation comme lue                  |
+| GET     | `/unread`                                | connecté | nombre total de messages non lus                   |
+| POST    | `/ws-ticket`                             | connecté | obtenir un ticket à usage unique pour le WebSocket |
+| GET     | `/ws?ticket=`                            | ticket   | WebSocket : reçoit les événements en direct        |
+
+| Tu cherches…                                    | Regarde dans                            |
+| ----------------------------------------------- | --------------------------------------- |
+| les limites du texte, les curseurs d'historique | `domain/message.ts`                     |
+| le classement d'une paire d'amis                | `domain/conversation.ts` (`orderPair`)  |
+| les codes d'erreur                              | `domain/errors.ts`                      |
+| la liste des conversations et les non-lus (SQL) | `repositories/conversation-list.sql.ts` |
+| l'appel à user-service « sont-ils amis ? »      | `clients/users.client.ts`               |
+| les événements WebSocket, le battement          | `realtime/hub.ts`                       |
+| les tickets WebSocket                           | `services/tickets.service.ts`           |
+
+À savoir :
+
+- une conversation n'est jamais lisible par un étranger : la réponse est `404
+conversation_not_found`, jamais `403`, pour ne pas révéler son existence ;
+- l'amitié est revérifiée **à chaque envoi** (`403 not_friends`) mais pas pour
+  lire : l'historique reste visible après une rupture ;
+- si user-service ne répond pas, l'envoi est refusé (`503 chat_unavailable`) ;
+- un message supprimé reste en base (`deleted_at`), son texte n'est plus renvoyé ;
+- les numéros de messages sont des entiers croissants : ils servent d'ordre, de
+  curseur de pagination et de repère « lu jusqu'ici ».
+
 ---
 
 ## 10. Validation et erreurs
@@ -556,7 +610,7 @@ Toute erreur a la même forme :
 | panne imprévue           | 503 ou 500                | le code générique du service |
 
 Codes génériques : `catalog_unavailable`, `library_unavailable`,
-`playback_unavailable`, `media_unavailable` (503) ; `internal server error`
+`playback_unavailable`, `media_unavailable`, `chat_unavailable` (503) ; `internal server error`
 (500) pour Auth et Users.
 
 Trois exceptions à connaître :
@@ -775,7 +829,7 @@ Depuis `backend/` :
 | `npm run build -w @ft/<service>`     | compile le service dans `dist/`                |
 
 `<service>` vaut `auth-service`, `user-service`, `catalog-service`,
-`media-service`, `library-service` ou `playback-service`.
+`media-service`, `library-service`, `playback-service` ou `chat-service`.
 
 Depuis la racine du dépôt :
 
