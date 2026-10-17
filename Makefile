@@ -1,10 +1,10 @@
 NAME = Transcendance
 
-# ifeq ($(shell command -v docker 2>/dev/null),)
-# DOCKER = flatpak-spawn --host docker
-# else
-# DOCKER = docker
-# endif
+ifeq ($(shell command -v docker 2>/dev/null),)
+DOCKER = flatpak-spawn --host docker
+else
+DOCKER = docker
+endif
 
 setup:
 	@$(DOCKER) compose -f docker-compose.yml up -d --build
