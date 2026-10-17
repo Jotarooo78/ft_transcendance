@@ -22,6 +22,7 @@ const errorMessages: Record<string, string> = {
   invalid_message: "A message must contain between 1 and 2000 characters.",
   cannot_chat_with_yourself: "You cannot message yourself.",
   chat_unavailable: "Messaging is temporarily unavailable. Please retry.",
+  track_not_found: "This track is no longer available.",
 };
 
 /** Remplace le message générique d'un refus par celui de son code métier, quand il est connu. */
@@ -50,6 +51,7 @@ function isMessage(value: unknown): value is ChatMessage {
     typeof m.conversationId === "string" &&
     typeof m.senderUserId === "string" &&
     (typeof m.body === "string" || m.body === null) &&
+    (typeof m.trackId === "string" || m.trackId === null) &&
     typeof m.createdAt === "string" &&
     (typeof m.deletedAt === "string" || m.deletedAt === null)
   );
@@ -128,14 +130,17 @@ export async function getMessages(
   return { items: page.items, hasMore: page.hasMore };
 }
 
-/** Envoie un message ; le serveur le renvoie avec son numéro définitif. */
+/**
+ * Envoie un message : du texte, un morceau partagé, ou les deux. Le serveur le renvoie avec son numéro
+ * définitif.
+ */
 export async function sendMessage(
   conversationId: string,
-  body: string,
+  content: { body?: string; trackId?: string },
 ): Promise<ChatMessage> {
   const message = await request(
     `/conversations/${conversationId}/messages`,
-    jsonCommand("POST", { body }),
+    jsonCommand("POST", content),
   );
   if (!isMessage(message)) invalid();
   return message;

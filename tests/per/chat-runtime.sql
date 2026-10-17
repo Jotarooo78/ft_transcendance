@@ -25,6 +25,15 @@ VALUES
     'second'
   );
 
+-- Message qui ne partage qu'un morceau : texte vide et référence au catalogue, autorisés ensemble.
+INSERT INTO chat.messages (conversation_id, sender_user_id, body, track_id)
+VALUES (
+  '60000000-0000-4000-8000-000000000001',
+  '60000000-0000-4000-8000-0000000000b2',
+  '',
+  '60000000-0000-4000-8000-0000000000c3'
+);
+
 UPDATE chat.conversations
 SET last_message_at = CURRENT_TIMESTAMP,
     last_read_a_message_id = (SELECT max(id) FROM chat.messages)

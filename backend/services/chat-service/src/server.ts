@@ -4,7 +4,8 @@
  *
  * @details Il fait trois choses, dans l'ordre. 1) Il lit la configuration dans les variables
  *   d'environnement et s'arrête avec un message clair si l'une manque. 2) Il crée les « vraies »
- *   dépendances : la connexion à PostgreSQL, les repositories, le client qui interroge user-service,
+ *   dépendances : la connexion à PostgreSQL, les repositories, les clients qui interrogent
+ *   user-service et catalog-service,
  *   le hub WebSocket et le service de tickets. 3) Il les donne à `buildApp` (fichier app.ts), puis
  *   ouvre le port 4006.
  *
@@ -13,6 +14,7 @@
  */
 
 import { buildApp } from './app.js'
+import { createCatalogClient } from './clients/catalog.client.js'
 import { createUsersClient } from './clients/users.client.js'
 import { loadConfig } from './config/env.js'
 import { createHub } from './realtime/hub.js'
@@ -41,6 +43,7 @@ const app = await buildApp(config, {
   conversations: createConversationsRepository(prisma),
   messages: createMessagesRepository(prisma),
   users: createUsersClient(config.usersUrl, config.internalServiceToken),
+  catalog: createCatalogClient(config.catalogUrl),
   hub: createHub(),
   tickets: createTicketsService(),
   ready: () => prisma.$queryRaw`SELECT 1`,

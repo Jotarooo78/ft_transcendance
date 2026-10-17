@@ -51,8 +51,10 @@ model Message {
   conversationId String    @map("conversation_id") @db.Uuid
   /// UUID logique du compte qui a écrit le message ; c'est toujours A ou B de la conversation.
   senderUserId   String    @map("sender_user_id") @db.Uuid
-  /// Texte brut du message, de 1 à 2000 caractères une fois les espaces retirés.
+  /// Texte brut du message, jusqu'à 2000 caractères ; vide seulement quand le message partage un morceau.
   body           String
+  /// UUID logique d'un morceau du catalogue partagé dans le message ; null pour un message texte.
+  trackId        String?   @map("track_id") @db.Uuid
   /// Date d'envoi prise par PostgreSQL.
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   /// Date de suppression ; null tant que le message est visible.

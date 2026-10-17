@@ -49,3 +49,10 @@ export const invalidMessage = () => new DomainError(400, 'invalid_message')
  *   chat_unavailable`, la même que celle d'une panne imprévue.
  */
 export const chatUnavailable = () => new DomainError(503, 'chat_unavailable')
+
+/**
+ * @brief Crée l'erreur « ce morceau n'existe pas dans le catalogue, ou n'est pas publié » : réponse
+ *   `404 track_not_found`.
+ * @details Levée quand on partage un morceau en brouillon, retiré, ou dont l'identifiant est inventé.
+ */
+export const trackNotFound = () => new DomainError(404, 'track_not_found')

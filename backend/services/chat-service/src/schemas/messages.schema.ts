@@ -9,7 +9,8 @@
  *   champ qui n'y figure pas n'est jamais envoyé au client, même si le code le renvoie.
  *
  * Le texte d'un message n'est pas vérifié ici : sa longueur se mesure après avoir retiré les
- * espaces, ce qu'un schéma ne sait pas faire. Elle est vérifiée dans domain/message.ts.
+ * espaces, ce qu'un schéma ne sait pas faire, et il peut manquer quand un morceau est partagé. Le
+ * contenu est vérifié dans domain/message.ts.
  */
 
 import { UuidSchema } from '@ft/service-kit'
@@ -29,9 +30,12 @@ export const MessageParamsSchema = Type.Object({
   messageId: Type.String({ pattern: positiveInteger }),
 })
 
-/** @brief Corps accepté par `POST .../messages` : le texte, rien d'autre. */
+/**
+ * @brief Corps accepté par `POST .../messages` : le texte, un morceau à partager, ou les deux. Les
+ *   deux champs sont facultatifs ici ; c'est domain/message.ts qui refuse un message vide.
+ */
 export const SendMessageBodySchema = Type.Object(
-  { body: Type.String() },
+  { body: Type.Optional(Type.String()), trackId: Type.Optional(UuidSchema) },
   { additionalProperties: false }
 )
 
@@ -57,6 +61,7 @@ export const MessageSchema = Type.Object({
   conversationId: Type.String(),
   senderUserId: Type.String(),
   body: Type.Union([Type.String(), Type.Null()]),
+  trackId: Type.Union([Type.String(), Type.Null()]),
   createdAt: Type.String(),
   deletedAt: Type.Union([Type.String(), Type.Null()]),
 })

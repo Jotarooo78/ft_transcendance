@@ -345,6 +345,7 @@ passer pour un autre en envoyant un autre identifiant.
 | media       | catalog        | `GET /assets/:id/publication`                | ne diffuser que l'audio d'un morceau publié          | la diffusion est refusée (503)                      |
 | media       | catalog        | `GET /internal/assets/:id/references`        | ne pas supprimer un fichier encore utilisé           | la suppression est refusée (503)                    |
 | chat        | user           | `GET /internal/friendships/:userId/:otherId` | vérifier que deux comptes sont amis avant d'écrire   | l'envoi est refusé (503)                            |
+| chat        | catalog        | `GET /tracks/:id`                            | vérifier qu'un morceau partagé est publié            | le partage est refusé (503)                         |
 
 Chaque appel est écrit dans le dossier `clients/` du service appelant, avec un
 délai maximal de 2 ou 3 secondes. Principe constant : **en cas de doute, on
@@ -541,7 +542,7 @@ l'ouverture, ce qui reste du morceau). Avancer dans le morceau ne crédite rien.
 | GET     | `/conversations`                         | connecté | mes conversations, avec dernier message et non-lus |
 | POST    | `/conversations`                         | connecté | ouvrir (ou retrouver) la conversation avec un ami  |
 | GET     | `/conversations/:id/messages`            | connecté | historique paginé (`before`, `after`, `limit`)     |
-| POST    | `/conversations/:id/messages`            | connecté | envoyer un message                                 |
+| POST    | `/conversations/:id/messages`            | connecté | envoyer un message, et/ou partager un morceau      |
 | DELETE  | `/conversations/:id/messages/:messageId` | connecté | supprimer son message (suppression logique)        |
 | POST    | `/conversations/:id/read`                | connecté | marquer la conversation comme lue                  |
 | GET     | `/unread`                                | connecté | nombre total de messages non lus                   |
@@ -565,6 +566,9 @@ conversation_not_found`, jamais `403`, pour ne pas révéler son existence ;
 - l'amitié est revérifiée **à chaque envoi** (`403 not_friends`) mais pas pour
   lire : l'historique reste visible après une rupture ;
 - si user-service ne répond pas, l'envoi est refusé (`503 chat_unavailable`) ;
+- un message peut partager un morceau (`trackId`) : seul son identifiant est
+  enregistré (une référence), après que le catalogue a confirmé qu'il est publié
+  (`404 track_not_found` sinon) ; le client relit le morceau dans le catalogue ;
 - un message supprimé reste en base (`deleted_at`), son texte n'est plus renvoyé ;
 - les numéros de messages sont des entiers croissants : ils servent d'ordre, de
   curseur de pagination et de repère « lu jusqu'ici ».

@@ -15,6 +15,7 @@
 
 import websocket from '@fastify/websocket'
 import { authPlugin, createApp, opsPlugin } from '@ft/service-kit'
+import type { CatalogClient } from './clients/catalog.client.js'
 import type { UsersClient } from './clients/users.client.js'
 import type { Config } from './config/env.js'
 import { createConversationsController } from './controllers/conversations.controller.js'
@@ -44,6 +45,8 @@ export type Dependencies = {
   messages: MessagesRepository
   /** @brief Objet qui interroge user-service par HTTP, pour savoir si deux comptes sont amis. */
   users: UsersClient
+  /** @brief Objet qui interroge catalog-service par HTTP, pour savoir si un morceau partagé est publié. */
+  catalog: CatalogClient
   /** @brief Registre des connexions WebSocket (voir realtime/hub.ts). */
   hub: Hub
   /** @brief Service des tickets de connexion WebSocket (voir services/tickets.service.ts). */
@@ -69,14 +72,14 @@ export type Dependencies = {
  *   WebSocket doit être enregistré **avant** les routes qui l'utilisent. En cas de panne imprévue, le
  *   client reçoit `503 chat_unavailable`.
  * @param config Configuration ; seul le secret des jetons (`jwtSecret`) est utilisé ici.
- * @param dependencies Repositories, client des utilisateurs, hub, tickets, test de disponibilité et
+ * @param dependencies Repositories, clients des utilisateurs et du catalogue, hub, tickets, test de disponibilité et
  *   fonction de fermeture.
  * @returns Le serveur Fastify, à démarrer avec `listen` ou à interroger en mémoire avec `inject` (et
  *   `injectWS` pour le WebSocket) dans un test.
  * @throws {Error} Si le secret des jetons est vide : le service refuse de démarrer.
  */
 export async function buildApp(config: Pick<Config, 'jwtSecret'>, dependencies: Dependencies) {
-  const { conversations, messages, users, hub, tickets } = dependencies
+  const { conversations, messages, users, catalog, hub, tickets } = dependencies
   const app = createApp({
     service,
     logger: dependencies.logger,
@@ -97,7 +100,7 @@ export async function buildApp(config: Pick<Config, 'jwtSecret'>, dependencies: 
   )
   registerMessagesRoutes(
     app,
-    createMessagesController(createMessagesService(conversations, messages, users, hub))
+    createMessagesController(createMessagesService(conversations, messages, users, catalog, hub))
   )
   registerRealtimeRoutes(app, createRealtimeController(tickets, hub))
 

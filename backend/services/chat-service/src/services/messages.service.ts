@@ -13,11 +13,17 @@
  * l'historique.
  */
 
+import type { CatalogClient } from '../clients/catalog.client.js'
 import type { UsersClient } from '../clients/users.client.js'
 import { lastReadBy, peerOf, type ConversationRow } from '../domain/conversation.js'
-import { conversationNotFound, messageNotFound, notFriends } from '../domain/errors.js'
 import {
-  normalizeBody,
+  conversationNotFound,
+  messageNotFound,
+  notFriends,
+  trackNotFound,
+} from '../domain/errors.js'
+import {
+  normalizeContent,
   toHistoryOptions,
   toMessage,
   toSafeNumber,
@@ -36,6 +42,7 @@ export type MessagesService = ReturnType<typeof createMessagesService>
  * @param conversations Repository des conversations (appartenance et repère de lecture).
  * @param messages Repository des messages.
  * @param users Client qui interroge user-service pour savoir si deux comptes sont amis.
+ * @param catalog Client qui interroge catalog-service pour savoir si un morceau partagé est publié.
  * @param hub Hub WebSocket, pour pousser les événements aux comptes connectés.
  * @returns Un objet offrant `send`, `history`, `remove` et `markRead`.
  */
@@ -43,6 +50,7 @@ export function createMessagesService(
   conversations: ConversationsRepository,
   messages: MessagesRepository,
   users: UsersClient,
+  catalog: CatalogClient,
   hub: Hub
 ) {
   /**
@@ -63,24 +71,35 @@ export function createMessagesService(
 
   return {
     /**
-     * @brief Envoie un message.
-     * @details Les règles, dans cet ordre : le texte est valide ; la conversation existe pour
+     * @brief Envoie un message : du texte, un morceau partagé, ou les deux.
+     * @details Les règles, dans cet ordre : le contenu est valide ; la conversation existe pour
      *   l'appelant ; les deux comptes sont **toujours** amis (vérifié à chaque envoi : si l'amitié a
-     *   été supprimée, l'envoi est refusé) ; puis le message est enregistré, et enfin diffusé.
+     *   été supprimée, l'envoi est refusé) ; le morceau partagé, s'il y en a un, est publié dans le
+     *   catalogue ; puis le message est enregistré, et enfin diffusé. Seul l'identifiant du morceau
+     *   est enregistré (une référence) : le client relit ses informations dans le catalogue.
      * @param me Identifiant de l'expéditeur.
      * @param conversationId Identifiant de la conversation.
-     * @param rawBody Texte envoyé par le client.
+     * @param raw Texte et identifiant de morceau envoyés par le client, chacun facultatif.
      * @returns Le message créé.
-     * @throws {DomainError} 400 `invalid_message` ; 404 `conversation_not_found` ; 403 `not_friends`.
-     * @throws {Error} Si user-service ne répond pas : l'appelant reçoit `503 chat_unavailable`.
+     * @throws {DomainError} 400 `invalid_message` ; 404 `conversation_not_found` ; 403 `not_friends` ;
+     *   404 `track_not_found`.
+     * @throws {Error} Si user-service ou catalog-service ne répond pas : l'appelant reçoit `503
+     *   chat_unavailable`.
      */
-    async send(me: string, conversationId: string, rawBody: string): Promise<Message> {
-      const body = normalizeBody(rawBody)
+    async send(
+      me: string,
+      conversationId: string,
+      raw: { body?: string; trackId?: string }
+    ): Promise<Message> {
+      const content = normalizeContent(raw)
       const peer = peerOf(await memberOf(me, conversationId), me)
       if (!(await users.areFriends(me, peer))) {
         throw notFriends()
       }
-      const message = toMessage(await messages.insert(conversationId, me, body))
+      if (content.trackId && !(await catalog.isTrackPublished(content.trackId))) {
+        throw trackNotFound()
+      }
+      const message = toMessage(await messages.insert(conversationId, me, content))
       hub.publish([me, peer], { type: 'message.created', conversationId, message })
       return message
     },

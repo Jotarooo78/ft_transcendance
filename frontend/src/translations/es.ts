@@ -728,6 +728,17 @@ export const es = {
     "Ya en la lista ({tracks}): {titles}. ¿Añadir todas las canciones seleccionadas de todos modos?",
   "Failed to fetch": "Red no disponible. Vuelve a intentarlo.",
   // Messagerie (chat-service).
+  "Share with a friend": "Compartir con un amigo",
+  "Share “{0}” with a friend": "Compartir «{0}» con un amigo",
+  "Find a friend": "Buscar un amigo",
+  "Loading friends…": "Cargando amigos…",
+  "No friend matches this search.": "Ningún amigo coincide con esta búsqueda.",
+  "Add a message (optional)": "Añadir un mensaje (opcional)",
+  "Sent to {0}.": "Enviado a {0}.",
+  "Open conversation": "Abrir la conversación",
+  "Shared a track": "Ha compartido una canción",
+  "Play {0}": "Reproducir {0}",
+  "Pause {0}": "Pausar {0}",
   Messages: "Mensajes",
   Message: "Mensaje",
   "Message {0}": "Escribir a {0}",
@@ -771,4 +782,9 @@ export const es = {
   "You cannot message yourself.": "No puedes escribirte a ti mismo.",
   "Messaging is temporarily unavailable. Please retry.":
     "La mensajería no está disponible por el momento. Inténtalo de nuevo.",
+  // Session conservée au rechargement (sessionStorage).
+  "Welcome back": "Bienvenido de nuevo",
+  "Restoring your session…": "Restaurando tu sesión…",
+  "Unable to restore your session.": "No se pudo restaurar tu sesión.",
+  "Sign in again": "Iniciar sesión de nuevo",
 } satisfies Dictionary;

@@ -165,7 +165,7 @@ expect_sql_failure \
 expect_sql_failure \
   chat_runtime per_chat_runtime_test_only \
   "WITH c AS (INSERT INTO chat.conversations (user_a_id, user_b_id) VALUES ('60000000-0000-4000-8000-0000000000a1', '60000000-0000-4000-8000-0000000000b2') RETURNING id) INSERT INTO chat.messages (conversation_id, sender_user_id, body) SELECT id, '60000000-0000-4000-8000-0000000000a1', '   ' FROM c" \
-  'messages_body_check'
+  'messages_content_check'
 
 echo "[PER] Proving runtime Prisma connections"
 "${compose[@]}" run --rm \

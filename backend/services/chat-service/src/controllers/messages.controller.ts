@@ -39,7 +39,7 @@ export function createMessagesController(messages: MessagesService) {
 
     /**
      * @brief Répond à `POST /conversations/:id/messages` : envoie un message.
-     * @param request Requête reçue ; `request.body` contient le texte.
+     * @param request Requête reçue ; `request.body` contient le texte et/ou le morceau partagé.
      * @param reply Réponse ; elle est envoyée avec le statut 201, qui signifie « créé ».
      */
     async send(
@@ -49,7 +49,7 @@ export function createMessagesController(messages: MessagesService) {
       const message = await messages.send(
         request.userId,
         request.params.id.toLowerCase(),
-        request.body.body
+        request.body
       )
       return reply.code(201).send(message)
     },

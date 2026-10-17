@@ -7,7 +7,7 @@
  *   de les appeler.
  */
 
-import type { HistoryOptions, MessageRow } from '../domain/message.js'
+import type { HistoryOptions, MessageContent, MessageRow } from '../domain/message.js'
 import type { Database } from './prisma.js'
 
 /**
@@ -31,12 +31,18 @@ export function createMessagesRepository(prisma: Database) {
      *   jamais `prisma` : une requête faite avec `prisma` sortirait de la transaction sans prévenir.
      * @param conversationId Identifiant de la conversation.
      * @param senderUserId Identifiant de l'expéditeur.
-     * @param body Texte déjà nettoyé et vérifié.
+     * @param content Texte déjà nettoyé et morceau partagé (déjà vérifié auprès du catalogue), ou null.
      * @returns Le message créé.
      */
-    insert(conversationId: string, senderUserId: string, body: string): Promise<MessageRow> {
+    insert(
+      conversationId: string,
+      senderUserId: string,
+      { body, trackId }: MessageContent
+    ): Promise<MessageRow> {
       return prisma.$transaction(async (tx) => {
-        const message = await tx.message.create({ data: { conversationId, senderUserId, body } })
+        const message = await tx.message.create({
+          data: { conversationId, senderUserId, body, trackId },
+        })
         await tx.conversation.update({
           where: { id: conversationId },
           data: { lastMessageAt: message.createdAt },

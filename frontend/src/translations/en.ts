@@ -716,6 +716,17 @@ export const en = {
     "Already present ({tracks}): {titles}. Add all selected tracks anyway?",
   "Failed to fetch": "Network unavailable. Please retry.",
   // Messagerie (chat-service).
+  "Share with a friend": "Share with a friend",
+  "Share “{0}” with a friend": "Share “{0}” with a friend",
+  "Find a friend": "Find a friend",
+  "Loading friends…": "Loading friends…",
+  "No friend matches this search.": "No friend matches this search.",
+  "Add a message (optional)": "Add a message (optional)",
+  "Sent to {0}.": "Sent to {0}.",
+  "Open conversation": "Open conversation",
+  "Shared a track": "Shared a track",
+  "Play {0}": "Play {0}",
+  "Pause {0}": "Pause {0}",
   Messages: "Messages",
   Message: "Message",
   "Message {0}": "Message {0}",
@@ -760,6 +771,11 @@ export const en = {
   "You cannot message yourself.": "You cannot message yourself.",
   "Messaging is temporarily unavailable. Please retry.":
     "Messaging is temporarily unavailable. Please retry.",
+  // Session conservée au rechargement (sessionStorage).
+  "Welcome back": "Welcome back",
+  "Restoring your session…": "Restoring your session…",
+  "Unable to restore your session.": "Unable to restore your session.",
+  "Sign in again": "Sign in again",
 } as const;
 
 /** Identifiants communs aux trois dictionnaires. */

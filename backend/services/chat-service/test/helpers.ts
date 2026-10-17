@@ -12,6 +12,7 @@
 import { randomUUID } from 'node:crypto'
 import type { WebSocket } from 'ws'
 import { buildApp, type Dependencies } from '../src/app.js'
+import type { CatalogClient } from '../src/clients/catalog.client.js'
 import type { UsersClient } from '../src/clients/users.client.js'
 import {
   lastReadBy,
@@ -55,6 +56,29 @@ export function createFakeUsers() {
     befriend: (a: string, b: string) => state.friends.add(key(a, b)),
     unfriend: (a: string, b: string) => state.friends.delete(key(a, b)),
   }
+}
+
+/** @brief Identifiant d'un morceau publié dans le faux catalogue. */
+export const publishedTrack = '20000000-0000-4000-8000-000000000001'
+/** @brief Identifiant d'un morceau inconnu du faux catalogue (brouillon, retiré ou inventé). */
+export const unknownTrack = '20000000-0000-4000-8000-000000000099'
+
+/**
+ * @brief Crée un faux client du catalogue qui connaît un seul morceau publié.
+ * @returns Le faux client, et son état : les morceaux publiés et un interrupteur `failure` pour
+ *   simuler une panne du catalogue.
+ */
+export function createFakeCatalog() {
+  const state = { published: new Set([publishedTrack]), failure: false }
+  const client: CatalogClient = {
+    async isTrackPublished(trackId) {
+      if (state.failure) {
+        throw new Error('catalog unavailable')
+      }
+      return state.published.has(trackId)
+    },
+  }
+  return { client, state }
 }
 
 /**
@@ -149,7 +173,7 @@ export function createFakeChat() {
   }
 
   const messages: MessagesRepository = {
-    async insert(conversationId, senderUserId, body) {
+    async insert(conversationId, senderUserId, { body, trackId }) {
       guard()
       const id = state.nextId++
       const message: MessageRow = {
@@ -157,6 +181,7 @@ export function createFakeChat() {
         conversationId,
         senderUserId,
         body,
+        trackId,
         createdAt: new Date(Date.UTC(2026, 0, 1) + Number(id) * 1000),
         deletedAt: null,
       }
@@ -200,7 +225,7 @@ export function createFakeChat() {
  * @brief Construit un serveur de test, avec Alice et Bob déjà amis.
  * @param overrides Fausses dépendances que le test veut remplacer.
  * @returns Le serveur, la fonction `bearer` qui fabrique l'en-tête de connexion d'un compte donné, les
- *   fausses dépendances (`chat`, `users`), le vrai `hub`, `clock`, l'horloge des tickets (un test
+ *   fausses dépendances (`chat`, `users`, `catalog`), le vrai `hub`, `clock`, l'horloge des tickets (un test
  *   avance le temps en modifiant `clock.now`), `sockets`, la liste des WebSocket ouverts par le test,
  *   et `close`, qui arrête tout. Utilise `close` à la place de `app.close` dès qu'un test ouvre un
  *   WebSocket : voir sa description.
@@ -209,6 +234,7 @@ export async function buildTestApp(overrides: Partial<Dependencies> = {}) {
   const chat = createFakeChat()
   const users = createFakeUsers()
   users.befriend(alice, bob)
+  const catalog = createFakeCatalog()
   const hub = createHub({ pingIntervalMs: 60_000 })
   const clock = { now: 1_000_000 }
   const tickets = createTicketsService({ now: () => clock.now })
@@ -218,6 +244,7 @@ export async function buildTestApp(overrides: Partial<Dependencies> = {}) {
       conversations: chat.conversations,
       messages: chat.messages,
       users: users.client,
+      catalog: catalog.client,
       hub,
       tickets,
       ready: async () => undefined,
@@ -241,7 +268,7 @@ export async function buildTestApp(overrides: Partial<Dependencies> = {}) {
     sockets.forEach((socket) => socket.terminate())
     await app.close()
   }
-  return { app, bearer, chat, users, hub, clock, sockets, close }
+  return { app, bearer, chat, users, catalog, hub, clock, sockets, close }
 }
 
 /** @brief Le serveur de test et ses outils, tels que `buildTestApp` les renvoie. */

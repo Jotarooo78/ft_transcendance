@@ -1,5 +1,6 @@
 import { createContext, useContext } from "react";
 import type { ChatConnection, ChatEvent } from "../types/chat";
+import type { Track } from "../types/music";
 
 /** Ce que la messagerie partage avec toute l'application connectée. */
 export type ChatState = {
@@ -13,6 +14,8 @@ export type ChatState = {
   subscribe: (listener: (event: ChatEvent) => void) => () => void;
   /** Prévient après une reconnexion ; renvoie la fonction de désabonnement. */
   onReconnect: (listener: () => void) => () => void;
+  /** Ouvre la fenêtre « Partager avec un ami » pour ce morceau. */
+  shareTrack: (track: Track) => void;
 };
 
 /** Absent hors session : aucune fonction de messagerie n'est alors disponible. */

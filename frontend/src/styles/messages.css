@@ -379,6 +379,127 @@
   background: #e3dcf1;
 }
 
+/* Morceau partagé dans un message : une petite carte lisible dans les deux couleurs de bulle. */
+.chat-bubble:has(> .shared-track) {
+  padding: 6px;
+}
+
+.chat-bubble > .shared-track + p {
+  padding: 6px 8px 4px;
+}
+
+.shared-track {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: min(320px, 100%);
+  min-width: 220px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  color: var(--text-h);
+  background: var(--surface);
+}
+
+.shared-track .track-artwork {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.shared-track-text {
+  display: grid;
+  min-width: 0;
+}
+
+.shared-track-text strong,
+.shared-track-text span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shared-track-text strong {
+  font-size: 0.9375rem;
+}
+
+.shared-track-text span {
+  color: var(--text);
+  font-size: 0.8125rem;
+}
+
+.shared-track-play {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.shared-track-play svg {
+  width: 18px;
+  height: 18px;
+}
+
+.shared-track.unavailable {
+  opacity: 0.7;
+}
+
+/* Fenêtre « Partager avec un ami » */
+.share-dialog form {
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.share-dialog > .message {
+  margin-top: 16px;
+}
+
+.share-friend-list {
+  display: grid;
+  gap: 6px;
+  max-height: 35vh;
+  overflow-y: auto;
+}
+
+.share-friend {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border-color: var(--border);
+  color: var(--text-h);
+  background: transparent;
+  font-weight: 500;
+  text-align: left;
+}
+
+.share-friend:hover:not(:disabled) {
+  background: var(--surface-soft);
+}
+
+.share-friend.active,
+.share-friend.active:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.share-friend .user-status {
+  font-size: 0.8125rem;
+  font-weight: 400;
+}
+
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
 /* Petits écrans : la liste, puis la conversation choisie en plein écran. */
 @media (max-width: 760px) {
   .messages-layout {
@@ -405,6 +526,10 @@
 
   .chat-bubble {
     max-width: 85%;
+  }
+
+  .shared-track {
+    min-width: 0;
   }
 }
 

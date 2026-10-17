@@ -117,6 +117,10 @@ Il reçoit le même `JWT_SECRET` qu'Auth pour vérifier le compte courant, et
 amis avant d'ouvrir une conversation et avant chaque envoi. Une panne de
 `user-service` refuse les envois par 503 ; l'historique reste lisible.
 
+`CATALOG_SERVICE_URL=http://catalog-service:4002` sert à vérifier qu'un morceau
+partagé dans un message est publié. Le chat n'enregistre que l'identifiant du
+morceau ; une panne du catalogue refuse seulement les partages par 503.
+
 Le navigateur utilise `/api/chat/` pour les routes ordinaires et
 `/api/chat/ws` pour le WebSocket, sur le même HTTPS. Nginx refuse
 `/api/chat/metrics` publiquement. Le registre des connexions WebSocket est en

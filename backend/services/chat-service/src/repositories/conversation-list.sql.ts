@@ -29,6 +29,7 @@ type RawSummary = {
   lm_id: bigint | null
   lm_sender_user_id: string | null
   lm_body: string | null
+  lm_track_id: string | null
   lm_created_at: Date | null
   lm_deleted_at: Date | null
   unread: bigint
@@ -54,6 +55,7 @@ export function selectSummaries(prisma: Database, me: string, query: SummaryQuer
            c.last_read_a_message_id, c.last_read_b_message_id,
            c.last_message_at, c.created_at,
            lm.id AS lm_id, lm.sender_user_id AS lm_sender_user_id, lm.body AS lm_body,
+           lm.track_id AS lm_track_id,
            lm.created_at AS lm_created_at, lm.deleted_at AS lm_deleted_at,
            (SELECT count(*) FROM chat.messages u
              WHERE u.conversation_id = c.id
@@ -65,7 +67,7 @@ export function selectSummaries(prisma: Database, me: string, query: SummaryQuer
                           ELSE c.last_read_b_message_id END, 0)) AS unread
       FROM chat.conversations c
       LEFT JOIN LATERAL (
-        SELECT m.id, m.sender_user_id, m.body, m.created_at, m.deleted_at
+        SELECT m.id, m.sender_user_id, m.body, m.track_id, m.created_at, m.deleted_at
           FROM chat.messages m
          WHERE m.conversation_id = c.id
          ORDER BY m.id DESC
@@ -98,6 +100,7 @@ export function toSummary(raw: RawSummary): ConversationSummary {
           conversationId: raw.id,
           senderUserId: raw.lm_sender_user_id!,
           body: raw.lm_body!,
+          trackId: raw.lm_track_id,
           createdAt: raw.lm_created_at!,
           deletedAt: raw.lm_deleted_at,
         }

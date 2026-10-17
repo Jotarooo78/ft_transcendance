@@ -7,6 +7,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { getAvatarSource } from "../avatar";
+import SharedTrack from "./SharedTrack";
 import { useChat } from "../contexts/chat";
 import { useLanguage } from "../hooks/useLanguage";
 import {
@@ -218,7 +219,7 @@ export default function ChatThread({
     setSending(true);
     setError("");
     try {
-      const message = await sendMessage(conversationId, body);
+      const message = await sendMessage(conversationId, { body });
       scrollPlan.current = "bottom";
       setMessages((current) => mergeMessages(current, [message]));
       setDraft("");
@@ -353,7 +354,12 @@ export default function ChatThread({
                   {message.body === null ? (
                     <em className="chat-deleted">{t("Message deleted")}</em>
                   ) : (
-                    <p>{message.body}</p>
+                    <>
+                      {message.trackId && (
+                        <SharedTrack trackId={message.trackId} />
+                      )}
+                      {message.body && <p>{message.body}</p>}
+                    </>
                   )}
                 </div>
                 <div className="chat-meta">

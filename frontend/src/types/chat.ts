@@ -1,12 +1,17 @@
 /** Formes échangées avec chat-service ; voir backend/docs/IMPLEMENTER_LE_CHAT.md, section 3. */
 
-/** Message d'une conversation ; `body` vaut null une fois le message supprimé. */
+/**
+ * Message d'une conversation ; `body` vaut null une fois le message supprimé, et "" pour un message qui
+ * ne fait que partager un morceau.
+ */
 export type ChatMessage = {
   /** Numéro croissant : sert d'ordre, de curseur et de repère « lu jusqu'ici ». */
   id: number;
   conversationId: string;
   senderUserId: string;
   body: string | null;
+  /** Morceau du catalogue partagé (simple référence), relu dans le catalogue pour l'afficher. */
+  trackId: string | null;
   createdAt: string;
   deletedAt: string | null;
 };

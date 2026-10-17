@@ -85,8 +85,8 @@ export default function ConversationList({
                 : last.body === null
                   ? t("Message deleted")
                   : last.senderUserId === me
-                    ? t("You: {0}", { "0": last.body })
-                    : last.body;
+                    ? t("You: {0}", { "0": last.body || t("Shared a track") })
+                    : last.body || t("Shared a track");
             const selected = conversation.id === selectedId;
             return (
               <li key={conversation.id}>

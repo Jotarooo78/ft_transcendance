@@ -14,8 +14,8 @@ import { Type } from 'typebox'
 
 /**
  * @brief Description des variables d'environnement attendues.
- * @details `CHAT_DATABASE_URL`, `JWT_SECRET` et `INTERNAL_SERVICE_TOKEN` sont obligatoires. `PORT` et
- *   `USER_SERVICE_URL` sont facultatives et ont une valeur par défaut.
+ * @details `CHAT_DATABASE_URL`, `JWT_SECRET` et `INTERNAL_SERVICE_TOKEN` sont obligatoires. `PORT`,
+ *   `USER_SERVICE_URL` et `CATALOG_SERVICE_URL` sont facultatives et ont une valeur par défaut.
  */
 const EnvSchema = Type.Object({
   PORT: Type.Optional(Type.String({ pattern: '^[0-9]+$' })),
@@ -23,6 +23,7 @@ const EnvSchema = Type.Object({
   JWT_SECRET: Type.String({ minLength: 1 }),
   INTERNAL_SERVICE_TOKEN: Type.String({ minLength: 1 }),
   USER_SERVICE_URL: Type.Optional(Type.String({ minLength: 1 })),
+  CATALOG_SERVICE_URL: Type.Optional(Type.String({ minLength: 1 })),
 })
 
 /**
@@ -31,7 +32,8 @@ const EnvSchema = Type.Object({
  *   `chat_runtime` qui ne peut lire et écrire que dans le schéma `chat`. `jwtSecret` : secret servant à
  *   vérifier les jetons de connexion, identique dans tous les services. `internalServiceToken` :
  *   secret présenté à user-service pour ses routes `/internal`. `usersUrl` : adresse de user-service
- *   sur le réseau interne.
+ *   sur le réseau interne. `catalogUrl` : adresse de catalog-service, interrogé avant de partager un
+ *   morceau.
  */
 export type Config = {
   port: number
@@ -39,6 +41,7 @@ export type Config = {
   jwtSecret: string
   internalServiceToken: string
   usersUrl: string
+  catalogUrl: string
 }
 
 /**
@@ -51,6 +54,11 @@ const defaultPort = 4006
  *   définie.
  */
 const defaultUsersUrl = 'http://user-service:4001'
+/**
+ * @brief Adresse de catalog-service sur le réseau Docker, utilisée quand `CATALOG_SERVICE_URL` n'est
+ *   pas définie.
+ */
+const defaultCatalogUrl = 'http://catalog-service:4002'
 
 /**
  * @brief Lit les variables d'environnement et renvoie la configuration du service.
@@ -66,5 +74,6 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): Config {
     jwtSecret: env.JWT_SECRET,
     internalServiceToken: env.INTERNAL_SERVICE_TOKEN,
     usersUrl: env.USER_SERVICE_URL ?? defaultUsersUrl,
+    catalogUrl: env.CATALOG_SERVICE_URL ?? defaultCatalogUrl,
   }
 }

@@ -29,7 +29,12 @@ import type { ChatConversation } from "./types/chat";
 import { openConversation } from "./services/chat";
 import { useLibrary } from "./hooks/useLibrary";
 
-import { clearAccessToken, onSessionCleared } from "./services/session";
+import {
+  clearAccessToken,
+  getAccessToken,
+  onSessionCleared,
+} from "./services/session";
+import { restoreSession } from "./services/auth";
 import {
   addFriend,
   getFriends,
@@ -56,6 +61,38 @@ type PublicPage = "register" | "login";
 type PrivatePage =
   "profile" | "catalog" | "library" | "users" | "files" | "messages";
 
+/** Onglets que l'on peut retrouver après un rechargement. */
+const privatePages: PrivatePage[] = [
+  "profile",
+  "catalog",
+  "library",
+  "users",
+  "files",
+  "messages",
+];
+/** Clé de l'onglet ouvert dans `sessionStorage`, propre à l'onglet du navigateur comme le jeton. */
+const PAGE_STORAGE_KEY = "ft_private_page";
+
+/** Onglet ouvert avant le rechargement, ou le profil par défaut. */
+function readStoredPage(): PrivatePage {
+  try {
+    const page = globalThis.sessionStorage?.getItem(PAGE_STORAGE_KEY);
+    return privatePages.find((item) => item === page) ?? "profile";
+  } catch {
+    return "profile";
+  }
+}
+
+/** Retient l'onglet ouvert pour le retrouver après un rechargement ; null l'oublie. */
+function storePage(page: PrivatePage | null): void {
+  try {
+    if (page === null) globalThis.sessionStorage?.removeItem(PAGE_STORAGE_KEY);
+    else globalThis.sessionStorage?.setItem(PAGE_STORAGE_KEY, page);
+  } catch {
+    // Stockage bloqué : on revient simplement au profil après un rechargement.
+  }
+}
+
 function getErrorMessage(error: unknown, fallbackMessage: string): string {
   if (error instanceof Error) {
     return error.name === "SyntaxError" ? fallbackMessage : error.message;
@@ -74,7 +111,15 @@ function App() {
     null,
   );
 
-  const [privatePage, setPrivatePage] = useState<PrivatePage>("profile");
+  const [privatePage, setPrivatePage] = useState<PrivatePage>(readStoredPage);
+  /**
+   * Reconnexion après un rechargement : « pending » tant que le profil n'est pas relu à partir du
+   * jeton de l'onglet, « failed » si le serveur n'a pas pu répondre.
+   */
+  const [restoring, setRestoring] = useState<"idle" | "pending" | "failed">(
+    getAccessToken() === null ? "idle" : "pending",
+  );
+  const [restoreAttempt, setRestoreAttempt] = useState(0);
   const [lastLibrarySection, setLastLibrarySection] = useState("track");
   useEffect(() => {
     /** Retient aussi une section quittée en ouvrant une carte, sans conserver son contenu privé. */
@@ -100,6 +145,7 @@ function App() {
       setLastLibrarySection(musicRoute.id.split("/")[0]);
     window.location.hash = page === "library" ? `/library/${section}` : "";
     setPrivatePage(page);
+    storePage(page);
   }
 
   /** Playlists persistantes du compte ; un changement de compte invalide les réponses précédentes. */
@@ -137,6 +183,13 @@ function App() {
   /** Conversation ouverte depuis Utilisateurs ou Profil, affichée dès l'arrivée dans la messagerie. */
   const [chatStart, setChatStart] = useState<ChatConversation | null>(null);
 
+  /** Affiche la messagerie sur une conversation déjà ouverte (après un partage de morceau). */
+  function openChat(conversation: ChatConversation) {
+    setErrorMessage("");
+    setChatStart(conversation);
+    navigate("messages");
+  }
+
   /** Ouvre (ou retrouve) la conversation avec cet ami, puis affiche la messagerie dessus. */
   async function handleMessage(userId: string): Promise<void> {
     setErrorMessage("");
@@ -151,6 +204,21 @@ function App() {
     }
   }
 
+  /** Au chargement, reconnecte l'onglet s'il avait une session (jeton dans `sessionStorage`). */
+  useEffect(() => {
+    if (getAccessToken() === null) return;
+    restoreSession().then(
+      (user) => {
+        if (user) setCurrentUser(user);
+        setRestoring("idle");
+      },
+      () => {
+        // Jeton refusé : il est déjà effacé et la page de connexion s'affiche. Sinon, panne.
+        setRestoring(getAccessToken() === null ? "idle" : "failed");
+      },
+    );
+  }, [restoreAttempt]);
+
   useEffect(() => {
     const unsubscribe = onSessionCleared(() => {
       setCurrentUser(null);
@@ -158,6 +226,8 @@ function App() {
       window.location.hash = "";
       setPrivatePage("profile");
       setLastLibrarySection("track");
+      storePage(null);
+      setRestoring("idle");
       setErrorMessage("");
       setChatStart(null);
     });
@@ -314,7 +384,7 @@ function App() {
   if (currentUser !== null) {
     return (
       <MusicPlayerProvider key={currentUser.id} accountId={currentUser.id}>
-        <ChatProvider userId={currentUser.id}>
+        <ChatProvider userId={currentUser.id} onOpenConversation={openChat}>
           <LibraryViewProvider>
             <CollectionsProvider active={musicVisible}>
               <header className="site-header">
@@ -499,6 +569,46 @@ function App() {
       </MusicPlayerProvider>
     );
   }
+
+  if (restoring !== "idle")
+    return (
+      <>
+        <header className="site-header">
+          <strong className="site-title">FT Music</strong>
+          <LanguageSelector />
+        </header>
+        <main>
+          <header>
+            <h1>{t("Welcome back")}</h1>
+            <p role="status">
+              {restoring === "pending"
+                ? t("Restoring your session…")
+                : t("Unable to restore your session.")}
+            </p>
+          </header>
+          {restoring === "failed" && (
+            <div className="edit-profile-actions">
+              <button
+                type="button"
+                className="cancel-edit-button"
+                onClick={() => clearAccessToken()}
+              >
+                {t("Sign in again")}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setRestoring("pending");
+                  setRestoreAttempt((value) => value + 1);
+                }}
+              >
+                {t("Retry")}
+              </button>
+            </div>
+          )}
+        </main>
+      </>
+    );
 
   if (musicRoute && musicRoute.kind !== "library")
     return (

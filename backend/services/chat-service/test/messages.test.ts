@@ -10,7 +10,16 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { alice, bob, buildTestApp, eve, openConversation, sendMessage } from './helpers.js'
+import {
+  alice,
+  bob,
+  buildTestApp,
+  eve,
+  openConversation,
+  publishedTrack,
+  sendMessage,
+  unknownTrack,
+} from './helpers.js'
 
 test('sending stores the message and returns it', async (t) => {
   const test_ = await buildTestApp()
@@ -25,6 +34,7 @@ test('sending stores the message and returns it', async (t) => {
     conversationId: id,
     senderUserId: alice,
     body: 'Salut !',
+    trackId: null,
     createdAt: '2026-01-01T00:00:01.000Z',
     deletedAt: null,
   })
@@ -45,16 +55,21 @@ test('sending refuses an invalid text, an extra field and a missing body', async
   }
   assert.equal((await sendMessage(test_, alice, id, 'a'.repeat(2000))).statusCode, 201)
   assert.equal((await sendMessage(test_, alice, id, '😀'.repeat(2000))).statusCode, 201)
-  for (const payload of [{}, { body: 'x', extra: 1 }, { body: 5 }]) {
-    const response = await app.inject({
+  const post = (payload: object) =>
+    app.inject({
       method: 'POST',
       url: `/conversations/${id}/messages`,
       headers: bearer(alice),
       payload,
     })
+  for (const payload of [{ body: 'x', extra: 1 }, { body: 5 }]) {
+    const response = await post(payload)
     assert.equal(response.statusCode, 400)
     assert.deepEqual(response.json(), { error: 'invalid_request' })
   }
+  const empty = await post({})
+  assert.equal(empty.statusCode, 400)
+  assert.deepEqual(empty.json(), { error: 'invalid_message' })
 })
 
 test('a stranger gets 404, never 403, on every conversation route', async (t) => {
@@ -220,4 +235,70 @@ test('read marks only move forward and are validated against the conversation', 
     payload: { upToMessageId: 0 },
   })
   assert.equal(invalid.statusCode, 400)
+})
+
+test('a message can share a published track, with or without text', async (t) => {
+  const test_ = await buildTestApp()
+  const { app, bearer, catalog } = test_
+  t.after(() => app.close())
+  const id = await openConversation(test_, alice, bob)
+  const send = (payload: object) =>
+    app.inject({
+      method: 'POST',
+      url: `/conversations/${id}/messages`,
+      headers: bearer(alice),
+      payload,
+    })
+
+  const alone = await send({ trackId: publishedTrack })
+  assert.equal(alone.statusCode, 201)
+  assert.deepEqual([alone.json().body, alone.json().trackId], ['', publishedTrack])
+  const withText = await send({ trackId: publishedTrack.toUpperCase(), body: ' écoute ! ' })
+  assert.deepEqual([withText.json().body, withText.json().trackId], ['écoute !', publishedTrack])
+
+  const list = await app.inject({ url: '/conversations', headers: bearer(bob) })
+  assert.equal(list.json().items[0].lastMessage.trackId, publishedTrack)
+  const history = await app.inject({ url: `/conversations/${id}/messages`, headers: bearer(bob) })
+  assert.deepEqual(
+    history.json().items.map((message: { trackId: string | null }) => message.trackId),
+    [publishedTrack, publishedTrack]
+  )
+
+  const unknown = await send({ trackId: unknownTrack })
+  assert.equal(unknown.statusCode, 404)
+  assert.deepEqual(unknown.json(), { error: 'track_not_found' })
+  assert.equal((await send({ trackId: 'not-a-uuid' })).statusCode, 400)
+  assert.equal((await send({ body: '   ' })).statusCode, 400)
+
+  catalog.state.failure = true
+  const down = await send({ trackId: publishedTrack })
+  assert.equal(down.statusCode, 503)
+  assert.deepEqual(down.json(), { error: 'chat_unavailable' })
+  catalog.state.failure = false
+
+  const deleted = await app.inject({
+    method: 'DELETE',
+    url: `/conversations/${id}/messages/${alone.json().id}`,
+    headers: bearer(alice),
+  })
+  assert.deepEqual([deleted.json().body, deleted.json().trackId], [null, null])
+})
+
+test('a stranger or a former friend cannot share a track', async (t) => {
+  const test_ = await buildTestApp()
+  const { app, bearer, users } = test_
+  t.after(() => app.close())
+  const id = await openConversation(test_, alice, bob)
+  const share = (subject: string) =>
+    app.inject({
+      method: 'POST',
+      url: `/conversations/${id}/messages`,
+      headers: bearer(subject),
+      payload: { trackId: publishedTrack },
+    })
+  assert.equal((await share(eve)).statusCode, 404)
+  users.unfriend(alice, bob)
+  const refused = await share(alice)
+  assert.equal(refused.statusCode, 403)
+  assert.deepEqual(refused.json(), { error: 'not_friends' })
 })
