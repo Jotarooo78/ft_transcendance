@@ -36,6 +36,7 @@ possède la donnée concernée.
 | un fichier envoyé, sa vérification, son stockage, sa diffusion | `media-service`    | `/api/media/`                 |
 | des playlists privées                                          | `library-service`  | `/api/library/`               |
 | une session d'écoute, l'historique, le suivi de lecture        | `playback-service` | `/api/playback/`              |
+| une conversation, un message, le chat entre amis               | `chat-service`     | `/api/chat/`                  |
 
 Règles de décision :
 
@@ -55,7 +56,7 @@ Tout se passe ensuite dans `backend/services/<service>/src/`.
 
 ## 2. La carte : un fichier par rôle
 
-Les six services ont la même arborescence. Une requête traverse les dossiers dans
+Les sept services ont la même arborescence. Une requête traverse les dossiers dans
 cet ordre, et tu y ajoutes un morceau de code à chaque étape qui te concerne :
 
 ```

@@ -60,6 +60,23 @@ export function createSocialRepository(prisma: Database) {
     },
 
     /**
+     * @brief Dit si deux comptes sont amis.
+     * @details Une amitié est enregistrée dans les deux sens (voir l'en-tête du fichier) : il suffit
+     *   donc de chercher la ligne « userId a pour ami friendId ». C'est une lecture par clé primaire,
+     *   la plus rapide qui existe.
+     * @param userId Identifiant du premier compte.
+     * @param friendId Identifiant du second compte.
+     * @returns Vrai si l'amitié existe.
+     */
+    async areFriends(userId: string, friendId: string): Promise<boolean> {
+      const link = await prisma.friend.findUnique({
+        where: { userId_friendId: { userId, friendId } },
+        select: { userId: true },
+      })
+      return link !== null
+    },
+
+    /**
      * @brief Lit la liste des amis d'un compte.
      * @param userId Identifiant du compte.
      * @returns Les identifiants de ses amis.

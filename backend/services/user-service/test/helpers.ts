@@ -107,6 +107,7 @@ export function memoryStores(initial: Profile[] = []) {
       links.delete(`${userId}>${friendId}`)
       links.delete(`${friendId}>${userId}`)
     },
+    areFriends: async (userId, friendId) => links.has(`${userId}>${friendId}`),
     friendIds: async (userId) =>
       [...links].filter((link) => link.startsWith(`${userId}>`)).map((link) => link.split('>')[1]!),
     setPresence: async (userId, isOnline) => {

@@ -54,6 +54,21 @@ export function createSocialService(profiles: ProfilesRepository, social: Social
     },
 
     /**
+     * @brief Dit si deux comptes sont amis ; utilisé par chat-service avant d'autoriser un message.
+     * @details Un compte n'est jamais son propre ami : la réponse est alors `false`, sans interroger la
+     *   base.
+     * @param userId Identifiant du premier compte.
+     * @param otherId Identifiant du second compte.
+     * @returns Vrai si l'amitié existe.
+     */
+    areFriends(userId: string, otherId: string): Promise<boolean> {
+      if (userId === otherId) {
+        return Promise.resolve(false)
+      }
+      return social.areFriends(userId, otherId)
+    },
+
+    /**
      * @brief Renvoie la liste des amis de l'utilisateur connecté.
      * @param userId Identifiant de l'utilisateur connecté.
      * @returns Pour chaque ami : son profil public, son état en ligne et la date de son dernier

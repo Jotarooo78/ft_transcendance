@@ -158,6 +158,30 @@ services:
       - ft_network
     restart: unless-stopped
 
+  # Service propriétaire des conversations et messages entre amis, et du temps réel (WebSocket).
+  # Une seule instance : le registre des connexions WebSocket est gardé en mémoire.
+  chat-service:
+    build:
+      context: ./backend
+      dockerfile: services/chat-service/Dockerfile
+    container_name: ft_chat_service
+    expose:
+      - "4006"
+    env_file:
+      - .env
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN}
+      USER_SERVICE_URL: http://user-service:4001
+      # Vérifie qu'un morceau partagé dans un message est publié.
+      CATALOG_SERVICE_URL: http://catalog-service:4002
+    depends_on:
+      apply-permissions:
+        condition: service_completed_successfully
+    networks:
+      - ft_network
+    restart: unless-stopped
+
   prometheus:
     image: docker.io/prom/prometheus:v2.55.1
     container_name: ft_prometheus
@@ -266,6 +290,8 @@ services:
       LIBRARY_RUNTIME_PASSWORD: ${LIBRARY_RUNTIME_PASSWORD}
       PLAYBACK_MIGRATION_PASSWORD: ${PLAYBACK_MIGRATION_PASSWORD}
       PLAYBACK_RUNTIME_PASSWORD: ${PLAYBACK_RUNTIME_PASSWORD}
+      CHAT_MIGRATION_PASSWORD: ${CHAT_MIGRATION_PASSWORD}
+      CHAT_RUNTIME_PASSWORD: ${CHAT_RUNTIME_PASSWORD}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -367,6 +393,20 @@ services:
     networks:
       - ft_network
 
+  migrate-chat:
+    build:
+      context: ./backend
+      dockerfile: services/chat-service/Dockerfile
+      target: build
+    env_file:
+      - .env
+    command: ["npm", "run", "prisma:migrate:deploy"]
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - ft_network
+
   apply-permissions:
     image: docker.io/library/postgres:16-alpine
     environment:
@@ -394,6 +434,8 @@ services:
       migrate-library:
         condition: service_completed_successfully
       migrate-playback:
+        condition: service_completed_successfully
+      migrate-chat:
         condition: service_completed_successfully
     networks:
       - ft_network

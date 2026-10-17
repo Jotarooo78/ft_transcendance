@@ -7,7 +7,8 @@ import type {
   ProfileResponse,
 } from "../types/auth";
 
-import { setAccessToken } from "./session";
+import { authenticatedFetch } from "./api";
+import { getAccessToken, readTokenClaims, setAccessToken } from "./session";
 
 export async function registerUser(
   request: RegisterRequest,
@@ -85,6 +86,14 @@ export async function loginUser(
 
   setAccessToken(result.token);
 
+  return toAuthenticatedUser(profile, email);
+}
+
+/** Assemble l'utilisateur courant à partir de son profil et de son adresse e-mail. */
+function toAuthenticatedUser(
+  profile: ProfileResponse,
+  email: string,
+): AuthenticatedUser {
   return {
     id: profile.userId,
     displayName: profile.displayName,
@@ -95,4 +104,28 @@ export async function loginUser(
     avatarUrl: profile.avatarUrl,
     createdAt: null,
   };
+}
+
+/**
+ * Reconnecte l'onglet après un rechargement, à partir du jeton gardé dans `sessionStorage`.
+ * Le profil est relu sur le serveur : c'est lui qui confirme que le jeton est toujours valable. Un
+ * jeton refusé (401) est effacé par `authenticatedFetch`, et la page de connexion s'affiche.
+ * @returns L'utilisateur connecté, ou null si l'onglet n'avait pas de session.
+ * @throws {Error} Si le serveur est injoignable ou refuse le jeton.
+ */
+export async function restoreSession(): Promise<AuthenticatedUser | null> {
+  const token = getAccessToken();
+  if (token === null) return null;
+
+  const response = await authenticatedFetch("/api/users/me");
+  const data = (await response.json().catch(() => null)) as
+    ProfileResponse | { error?: string } | null;
+  if (!response.ok || data === null || !("userId" in data))
+    throw new Error("Unable to restore your session.");
+
+  // Un autre compte a pu se connecter pendant la lecture : on ne mélange pas les deux.
+  if (getAccessToken() !== token)
+    throw new Error("Your session changed. Please sign in again.");
+
+  return toAuthenticatedUser(data, readTokenClaims(token)?.email ?? "");
 }

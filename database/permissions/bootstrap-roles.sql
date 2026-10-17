@@ -37,6 +37,12 @@ WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'playback_migration')
 SELECT format('CREATE ROLE playback_runtime LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS', :'playback_runtime_password')
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'playback_runtime')
 \gexec
+SELECT format('CREATE ROLE chat_migration LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS', :'chat_migration_password')
+WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'chat_migration')
+\gexec
+SELECT format('CREATE ROLE chat_runtime LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS', :'chat_runtime_password')
+WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'chat_runtime')
+\gexec
 
 -- Met à jour les mots de passe configurés sans donner de droits superutilisateur.
 ALTER ROLE auth_migration PASSWORD :'auth_migration_password';
@@ -51,6 +57,8 @@ ALTER ROLE library_migration PASSWORD :'library_migration_password';
 ALTER ROLE library_runtime PASSWORD :'library_runtime_password';
 ALTER ROLE playback_migration PASSWORD :'playback_migration_password';
 ALTER ROLE playback_runtime PASSWORD :'playback_runtime_password';
+ALTER ROLE chat_migration PASSWORD :'chat_migration_password';
+ALTER ROLE chat_runtime PASSWORD :'chat_runtime_password';
 
 -- Retire les droits implicites de PUBLIC ; seuls les rôles explicitement listés accèdent à la base.
 REVOKE CONNECT, TEMPORARY ON DATABASE :"database_name" FROM PUBLIC;
@@ -60,7 +68,8 @@ GRANT CONNECT ON DATABASE :"database_name" TO
   catalog_migration, catalog_runtime,
   media_migration, media_runtime,
   library_migration, library_runtime,
-  playback_migration, playback_runtime;
+  playback_migration, playback_runtime,
+  chat_migration, chat_runtime;
 
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
 
@@ -71,6 +80,7 @@ CREATE SCHEMA IF NOT EXISTS catalog AUTHORIZATION catalog_migration;
 CREATE SCHEMA IF NOT EXISTS media AUTHORIZATION media_migration;
 CREATE SCHEMA IF NOT EXISTS library AUTHORIZATION library_migration;
 CREATE SCHEMA IF NOT EXISTS playback AUTHORIZATION playback_migration;
+CREATE SCHEMA IF NOT EXISTS chat AUTHORIZATION chat_migration;
 
 ALTER SCHEMA auth OWNER TO auth_migration;
 ALTER SCHEMA users OWNER TO users_migration;
@@ -78,8 +88,9 @@ ALTER SCHEMA catalog OWNER TO catalog_migration;
 ALTER SCHEMA media OWNER TO media_migration;
 ALTER SCHEMA library OWNER TO library_migration;
 ALTER SCHEMA playback OWNER TO playback_migration;
+ALTER SCHEMA chat OWNER TO chat_migration;
 
-REVOKE ALL ON SCHEMA auth, users, catalog, media, library, playback FROM PUBLIC;
+REVOKE ALL ON SCHEMA auth, users, catalog, media, library, playback, chat FROM PUBLIC;
 
 GRANT USAGE, CREATE ON SCHEMA auth TO auth_migration;
 GRANT USAGE, CREATE ON SCHEMA users TO users_migration;
@@ -87,12 +98,14 @@ GRANT USAGE, CREATE ON SCHEMA catalog TO catalog_migration;
 GRANT USAGE, CREATE ON SCHEMA media TO media_migration;
 GRANT USAGE, CREATE ON SCHEMA library TO library_migration;
 GRANT USAGE, CREATE ON SCHEMA playback TO playback_migration;
+GRANT USAGE, CREATE ON SCHEMA chat TO chat_migration;
 GRANT USAGE ON SCHEMA auth TO auth_runtime;
 GRANT USAGE ON SCHEMA users TO users_runtime;
 GRANT USAGE ON SCHEMA catalog TO catalog_runtime;
 GRANT USAGE ON SCHEMA media TO media_runtime;
 GRANT USAGE ON SCHEMA library TO library_runtime;
 GRANT USAGE ON SCHEMA playback TO playback_runtime;
+GRANT USAGE ON SCHEMA chat TO chat_runtime;
 
 -- Fixe un search_path propre au service ; les accès interservices restent interdits par les privilèges.
 ALTER ROLE auth_migration IN DATABASE :"database_name" SET search_path TO auth, pg_catalog;
@@ -107,3 +120,5 @@ ALTER ROLE library_migration IN DATABASE :"database_name" SET search_path TO lib
 ALTER ROLE library_runtime IN DATABASE :"database_name" SET search_path TO library, pg_catalog;
 ALTER ROLE playback_migration IN DATABASE :"database_name" SET search_path TO playback, pg_catalog;
 ALTER ROLE playback_runtime IN DATABASE :"database_name" SET search_path TO playback, pg_catalog;
+ALTER ROLE chat_migration IN DATABASE :"database_name" SET search_path TO chat, pg_catalog;
+ALTER ROLE chat_runtime IN DATABASE :"database_name" SET search_path TO chat, pg_catalog;

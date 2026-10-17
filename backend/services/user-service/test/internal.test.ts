@@ -11,7 +11,7 @@ import { randomUUID } from 'node:crypto'
 import { test } from 'node:test'
 import { profileConflict, usernameTaken } from '../src/domain/errors.js'
 import type { ProfileProvisionCommand } from '../src/domain/provision.js'
-import { buildTestApp, internalHeaders, newUserId } from './helpers.js'
+import { buildTestApp, internalHeaders, memoryStores, newUserId, profileOf } from './helpers.js'
 
 /** @brief Fabrique une demande de création de profil valide pour un compte donné. */
 const commandFor = (userId: string, username = 'lea') => ({
@@ -118,4 +118,37 @@ test('PUT /internal/profiles requires the service credential and a well-formed c
     assert.deepEqual(response.json(), { error: 'invalid profile provision command' })
   }
   assert.equal(provisioning.received.length, 0)
+})
+
+test('GET /internal/friendships tells chat-service whether two accounts are friends', async (t) => {
+  const [alice, bob, eve] = [newUserId(), newUserId(), newUserId()]
+  const stores = memoryStores([
+    profileOf(alice, 'alice'),
+    profileOf(bob, 'bob'),
+    profileOf(eve, 'eve'),
+  ])
+  await stores.socialRepository.link(alice, bob)
+  const { app, bearer } = await buildTestApp({
+    profiles: stores.profilesRepository,
+    social: stores.socialRepository,
+  })
+  t.after(() => app.close())
+  const get = (first: string, second: string, headers: Record<string, string> = internalHeaders) =>
+    app.inject({ url: `/internal/friendships/${first}/${second}`, headers })
+
+  for (const headers of [{}, { authorization: 'Bearer wrong' }, bearer(alice)]) {
+    const refused = await get(alice, bob, headers)
+    assert.equal(refused.statusCode, 401)
+    assert.deepEqual(refused.json(), { error: 'unauthorized' })
+  }
+
+  assert.deepEqual((await get(alice, bob)).json(), { areFriends: true })
+  assert.deepEqual((await get(bob, alice)).json(), { areFriends: true })
+  assert.deepEqual((await get(alice.toUpperCase(), bob)).json(), { areFriends: true })
+  assert.deepEqual((await get(alice, eve)).json(), { areFriends: false })
+  assert.deepEqual((await get(alice, alice)).json(), { areFriends: false })
+
+  const malformed = await get('not-a-uuid', bob)
+  assert.equal(malformed.statusCode, 400)
+  assert.deepEqual(malformed.json(), { error: 'invalid user id' })
 })

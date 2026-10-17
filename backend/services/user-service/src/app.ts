@@ -104,9 +104,10 @@ export async function buildApp(
   })
 
   registerProfilesRoutes(app, createProfilesController(createProfilesService(profiles, social)))
-  registerSocialRoutes(app, createSocialController(createSocialService(profiles, social)))
+  const socialService = createSocialService(profiles, social)
+  registerSocialRoutes(app, createSocialController(socialService))
   registerAvatarsRoutes(app, createAvatarsController(createAvatarsService(profiles, avatars)))
-  registerInternalRoutes(app, createInternalController(provisioning))
+  registerInternalRoutes(app, createInternalController(provisioning, socialService))
 
   return app
 }

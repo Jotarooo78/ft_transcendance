@@ -20,6 +20,8 @@ services:
       LIBRARY_RUNTIME_PASSWORD: e2e_library_runtime_test_only
       PLAYBACK_MIGRATION_PASSWORD: e2e_playback_migration_test_only
       PLAYBACK_RUNTIME_PASSWORD: e2e_playback_runtime_test_only
+      CHAT_MIGRATION_PASSWORD: e2e_chat_migration_test_only
+      CHAT_RUNTIME_PASSWORD: e2e_chat_runtime_test_only
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U e2e_admin -d transcendence_e2e"]
       interval: 2s
@@ -102,6 +104,18 @@ services:
       db:
         condition: service_healthy
 
+  migrate-chat:
+    build:
+      context: ../../backend
+      dockerfile: services/chat-service/Dockerfile
+      target: build
+    environment:
+      CHAT_MIGRATION_DATABASE_URL: postgresql://chat_migration:e2e_chat_migration_test_only@db:5432/transcendence_e2e?schema=chat
+    command: ["npm", "run", "prisma:migrate:deploy"]
+    depends_on:
+      db:
+        condition: service_healthy
+
   apply-permissions:
     image: docker.io/library/postgres:16-alpine
     # psql needs no local database. Override the image's VOLUME so this client
@@ -133,6 +147,8 @@ services:
       migrate-library:
         condition: service_completed_successfully
       migrate-playback:
+        condition: service_completed_successfully
+      migrate-chat:
         condition: service_completed_successfully
 
   auth-service:

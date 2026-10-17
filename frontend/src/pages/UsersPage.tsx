@@ -8,6 +8,8 @@ type UsersPageProps = {
   friendIds: string[];
   onAddFriend: (userId: string) => void;
   onRemoveFriend: (userId: string) => void;
+  /** Ouvre la messagerie sur la conversation avec cet ami. */
+  onMessage: (userId: string) => Promise<void>;
 };
 
 /** Affiche UsersPage dans la langue choisie en conservant son état. */
@@ -16,6 +18,7 @@ function UsersPage({
   friendIds,
   onAddFriend,
   onRemoveFriend,
+  onMessage,
 }: UsersPageProps) {
   useLanguage();
   return (
@@ -45,6 +48,7 @@ function UsersPage({
                   isFriend={isFriend}
                   onAddFriend={onAddFriend}
                   onRemoveFriend={onRemoveFriend}
+                  onMessage={onMessage}
                 />
               );
             })}

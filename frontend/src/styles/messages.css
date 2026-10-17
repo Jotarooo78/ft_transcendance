@@ -1,0 +1,541 @@
+/* Messagerie : mêmes couleurs, rayons et cartes que le reste de l'application. */
+.messages-page {
+  width: min(100% - 40px, 1080px);
+}
+
+.messages-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+/* État du temps réel : discret, à côté du titre. */
+.chat-connection {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  color: var(--text);
+  background: var(--surface-soft);
+  font-size: 0.8125rem;
+}
+
+.chat-connection.online .status-indicator {
+  background: var(--success);
+}
+
+.chat-connection.connecting .status-indicator {
+  background: var(--lavender-ink);
+}
+
+.chat-connection.offline .status-indicator {
+  background: var(--danger);
+}
+
+.messages-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  gap: 20px;
+  height: clamp(480px, 70vh, 760px);
+  margin-top: 8px;
+}
+
+.conversation-panel,
+.chat-thread {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+/* Démarrer une conversation */
+.new-conversation {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.conversation-panel > .empty-friends-message {
+  margin: 16px;
+}
+
+/* Liste des conversations */
+.conversation-list {
+  flex: 1;
+  margin: 0;
+  padding: 8px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.conversation-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 14px;
+  color: var(--text);
+  background: transparent;
+  font-weight: 400;
+  text-align: left;
+}
+
+.conversation-item:hover:not(:disabled) {
+  background: var(--surface-soft);
+}
+
+.conversation-item.active,
+.conversation-item.active:hover:not(:disabled) {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.chat-avatar {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 14px;
+  object-fit: cover;
+  background: var(--accent-bg);
+}
+
+.conversation-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.conversation-text strong {
+  overflow: hidden;
+  color: var(--text-h);
+  font-size: 0.9375rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversation-preview {
+  overflow: hidden;
+  font-size: 0.8125rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversation-side {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  font-size: 0.75rem;
+}
+
+/* Pastille des non-lus, dans la liste et dans la navigation. */
+.chat-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  color: var(--surface);
+  background: var(--accent);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.navigation-badge {
+  margin-left: 8px;
+  vertical-align: 1px;
+}
+
+/* Fil de la conversation */
+.chat-thread-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.chat-thread-identity {
+  display: grid;
+  min-width: 0;
+}
+
+.chat-thread-identity h2 {
+  font-size: 1.05rem;
+}
+
+.chat-thread-identity p {
+  color: var(--accent);
+  font-size: 0.8125rem;
+}
+
+.chat-thread-header .user-status {
+  margin-left: auto;
+  font-size: 0.8125rem;
+}
+
+.chat-back-button {
+  display: none;
+  place-items: center;
+  width: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  color: var(--lavender-ink);
+  background: var(--lavender);
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.chat-back-button:hover:not(:disabled) {
+  color: var(--lavender-ink);
+  background: #e3dcf1;
+}
+
+.chat-messages {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 20px;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--bg);
+}
+
+.chat-message {
+  display: grid;
+  justify-items: start;
+}
+
+.chat-message.mine {
+  justify-items: end;
+}
+
+.chat-day,
+.chat-older {
+  justify-self: center;
+  align-self: center;
+}
+
+.chat-day {
+  margin: 10px 0 6px;
+  padding: 2px 12px;
+  border-radius: 999px;
+  color: var(--lavender-ink);
+  background: var(--lavender);
+  font-size: 0.75rem;
+}
+
+.chat-bubble {
+  max-width: min(75%, 520px);
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 18px 18px 18px 6px;
+  color: var(--text-h);
+  background: var(--surface);
+}
+
+.chat-bubble p {
+  white-space: pre-wrap;
+}
+
+.chat-message.mine .chat-bubble {
+  border-color: var(--accent);
+  border-radius: 18px 18px 6px 18px;
+  color: var(--surface);
+  background: var(--accent);
+}
+
+/* Un message supprimé garde sa place, sans texte. */
+.chat-message .chat-bubble:has(.chat-deleted) {
+  border-style: dashed;
+  border-color: var(--border);
+  color: var(--text);
+  background: transparent;
+}
+
+.chat-deleted {
+  font-size: 0.875rem;
+}
+
+.chat-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding-inline: 6px;
+  font-size: 0.6875rem;
+}
+
+.chat-delete-button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  min-height: 24px;
+  padding: 0;
+  border-radius: 50%;
+  color: var(--text);
+  background: transparent;
+  opacity: 0;
+}
+
+.chat-delete-button svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+.chat-message:hover .chat-delete-button,
+.chat-delete-button:focus-visible {
+  opacity: 1;
+}
+
+.chat-delete-button:hover:not(:disabled) {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+@media (hover: none) {
+  .chat-delete-button {
+    opacity: 1;
+  }
+}
+
+.chat-placeholder,
+.chat-empty {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  margin: auto;
+  padding: 32px 20px;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.chat-thread-empty {
+  background: var(--surface-soft);
+}
+
+.chat-error {
+  margin: 0 16px 12px;
+}
+
+/* Zone de saisie */
+.chat-composer {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+  padding: 14px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.chat-composer textarea {
+  min-height: 46px;
+  max-height: 160px;
+  resize: none;
+}
+
+.chat-count {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+/* Bouton « Message » des pages Utilisateurs et Profil */
+.user-card-actions,
+.friend-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.user-card-actions {
+  margin-top: 8px;
+}
+
+.user-card-actions .friend-button {
+  margin-top: 0;
+}
+
+.message-friend-button {
+  color: var(--lavender-ink);
+  background: var(--lavender);
+}
+
+.message-friend-button:hover:not(:disabled) {
+  color: var(--lavender-ink);
+  background: #e3dcf1;
+}
+
+/* Morceau partagé dans un message : une petite carte lisible dans les deux couleurs de bulle. */
+.chat-bubble:has(> .shared-track) {
+  padding: 6px;
+}
+
+.chat-bubble > .shared-track + p {
+  padding: 6px 8px 4px;
+}
+
+.shared-track {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: min(320px, 100%);
+  min-width: 220px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  color: var(--text-h);
+  background: var(--surface);
+}
+
+.shared-track .track-artwork {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.shared-track-text {
+  display: grid;
+  min-width: 0;
+}
+
+.shared-track-text strong,
+.shared-track-text span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shared-track-text strong {
+  font-size: 0.9375rem;
+}
+
+.shared-track-text span {
+  color: var(--text);
+  font-size: 0.8125rem;
+}
+
+.shared-track-play {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.shared-track-play svg {
+  width: 18px;
+  height: 18px;
+}
+
+.shared-track.unavailable {
+  opacity: 0.7;
+}
+
+/* Fenêtre « Partager avec un ami » */
+.share-dialog form {
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.share-dialog > .message {
+  margin-top: 16px;
+}
+
+.share-friend-list {
+  display: grid;
+  gap: 6px;
+  max-height: 35vh;
+  overflow-y: auto;
+}
+
+.share-friend {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border-color: var(--border);
+  color: var(--text-h);
+  background: transparent;
+  font-weight: 500;
+  text-align: left;
+}
+
+.share-friend:hover:not(:disabled) {
+  background: var(--surface-soft);
+}
+
+.share-friend.active,
+.share-friend.active:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.share-friend .user-status {
+  font-size: 0.8125rem;
+  font-weight: 400;
+}
+
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+/* Petits écrans : la liste, puis la conversation choisie en plein écran. */
+@media (max-width: 760px) {
+  .messages-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .messages-layout.has-selection .conversation-panel,
+  .messages-layout:not(.has-selection) .chat-thread {
+    display: none;
+  }
+
+  .chat-thread {
+    height: 75vh;
+  }
+
+  .conversation-panel {
+    max-height: 75vh;
+  }
+
+  .chat-back-button {
+    display: grid;
+  }
+
+  .chat-bubble {
+    max-width: 85%;
+  }
+
+  .shared-track {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .friend-card > .friend-actions {
+    grid-column: 2;
+    justify-self: start;
+  }
+}

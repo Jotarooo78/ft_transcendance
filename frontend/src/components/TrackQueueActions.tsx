@@ -6,6 +6,7 @@ import { useMusicPlayer } from "../contexts/music-player";
 import type { Track } from "../types/music";
 import PlayerIcon from "./PlayerIcon";
 import { usePlaylistActions } from "../contexts/playlist-actions";
+import { useChat } from "../contexts/chat";
 /** Ferme le menu après une action, un clic extérieur ou Échap, sans lancer la ligne. */
 export default function TrackQueueActions({
   track,
@@ -16,6 +17,8 @@ export default function TrackQueueActions({
   const player = useMusicPlayer(),
     menu = useRef<HTMLDetailsElement>(null);
   const addToPlaylist = usePlaylistActions();
+  /** Absent hors session : le partage n'est alors pas proposé. */
+  const chat = useChat();
   useEffect(() => {
     /** Ferme seulement ce menu lorsqu’un autre élément reçoit le clic. */
     function outside(event: PointerEvent) {
@@ -70,6 +73,16 @@ export default function TrackQueueActions({
           >
             {" "}
             {t("Add to playlist")}{" "}
+          </button>
+        )}
+        {chat && (
+          <button
+            onClick={() => {
+              if (menu.current) menu.current.open = false;
+              chat.shareTrack(track);
+            }}
+          >
+            {t("Share with a friend")}
           </button>
         )}
         <button disabled={!track.audioUrl} onClick={() => add(true)}>
