@@ -20,8 +20,13 @@ import CatalogPage from "./pages/CatalogPage";
 import LibraryViewProvider from "./components/LibraryViewProvider";
 import UsersPage from "./pages/UsersPage";
 import FilesPage from "./pages/FilesPage";
+import MessagesPage from "./pages/MessagesPage";
+import ChatProvider from "./components/ChatProvider";
+import MessagesNavButton from "./components/MessagesNavButton";
 
 import type { AuthenticatedUser } from "./types/auth";
+import type { ChatConversation } from "./types/chat";
+import { openConversation } from "./services/chat";
 import { useLibrary } from "./hooks/useLibrary";
 
 import { clearAccessToken, onSessionCleared } from "./services/session";
@@ -40,6 +45,7 @@ import type { AvatarUploadProgress } from "./services/users";
 
 import "./App.css";
 import "./styles/playlists.css";
+import "./styles/messages.css";
 
 type PublicPage = "register" | "login";
 
@@ -47,7 +53,8 @@ type PublicPage = "register" | "login";
  * Pages privées nécessitant une session du compte ; files et history complètent les écrans de profil
  * et de playlists.
  */
-type PrivatePage = "profile" | "catalog" | "library" | "users" | "files";
+type PrivatePage =
+  "profile" | "catalog" | "library" | "users" | "files" | "messages";
 
 function getErrorMessage(error: unknown, fallbackMessage: string): string {
   if (error instanceof Error) {
@@ -102,7 +109,9 @@ function App() {
 
   const ownerId = currentUser?.id ?? null;
   const userDataVisible =
-    !!ownerId && !musicRoute && ["profile", "users"].includes(privatePage);
+    !!ownerId &&
+    !musicRoute &&
+    ["profile", "users", "messages"].includes(privatePage);
   /** Le répertoire complet ne sert qu’à Users ; Profil utilise uniquement les amis. */
   const directoryVisible = !!ownerId && !musicRoute && privatePage === "users";
   const userData = useResource(
@@ -125,6 +134,22 @@ function App() {
   const friendIds = friends.map((friend) => friend.id);
 
   const [errorMessage, setErrorMessage] = useState("");
+  /** Conversation ouverte depuis Utilisateurs ou Profil, affichée dès l'arrivée dans la messagerie. */
+  const [chatStart, setChatStart] = useState<ChatConversation | null>(null);
+
+  /** Ouvre (ou retrouve) la conversation avec cet ami, puis affiche la messagerie dessus. */
+  async function handleMessage(userId: string): Promise<void> {
+    setErrorMessage("");
+    try {
+      const conversation = await openConversation(userId);
+      setChatStart(conversation);
+      navigate("messages");
+    } catch (error) {
+      setErrorMessage(
+        getErrorMessage(error, "Unable to confirm this action. Please retry."),
+      );
+    }
+  }
 
   useEffect(() => {
     const unsubscribe = onSessionCleared(() => {
@@ -134,6 +159,7 @@ function App() {
       setPrivatePage("profile");
       setLastLibrarySection("track");
       setErrorMessage("");
+      setChatStart(null);
     });
 
     return unsubscribe;
@@ -288,167 +314,188 @@ function App() {
   if (currentUser !== null) {
     return (
       <MusicPlayerProvider key={currentUser.id} accountId={currentUser.id}>
-        <LibraryViewProvider>
-          <CollectionsProvider active={musicVisible}>
-            <header className="site-header">
-              <strong className="site-title">FT Music</strong>
-              <LanguageSelector />
+        <ChatProvider userId={currentUser.id}>
+          <LibraryViewProvider>
+            <CollectionsProvider active={musicVisible}>
+              <header className="site-header">
+                <strong className="site-title">FT Music</strong>
+                <LanguageSelector />
 
-              <nav
-                className="main-navigation"
-                aria-label={t("User navigation")}
-              >
-                <button
-                  className={
-                    libraryVisible
-                      ? "navigation-button active"
-                      : "navigation-button"
+                <nav
+                  className="main-navigation"
+                  aria-label={t("User navigation")}
+                >
+                  <button
+                    className={
+                      libraryVisible
+                        ? "navigation-button active"
+                        : "navigation-button"
+                    }
+                    aria-pressed={libraryVisible}
+                    onClick={() => navigate("library")}
+                  >
+                    {" "}
+                    {t("Library")}{" "}
+                  </button>
+                  <button
+                    type="button"
+                    className={
+                      privatePage === "files"
+                        ? "navigation-button active"
+                        : "navigation-button"
+                    }
+                    aria-pressed={!musicRoute && privatePage === "files"}
+                    onClick={() => navigate("files")}
+                  >
+                    {" "}
+                    {t("Upload")}{" "}
+                  </button>
+                  <button
+                    type="button"
+                    className={
+                      privatePage === "profile"
+                        ? "navigation-button active"
+                        : "navigation-button"
+                    }
+                    aria-pressed={!musicRoute && privatePage === "profile"}
+                    onClick={() => {
+                      navigate("profile");
+                    }}
+                  >
+                    {" "}
+                    {t("Profile")}{" "}
+                  </button>
+
+                  <button
+                    type="button"
+                    className={
+                      privatePage === "catalog"
+                        ? "navigation-button active"
+                        : "navigation-button"
+                    }
+                    aria-pressed={!musicRoute && privatePage === "catalog"}
+                    onClick={() => {
+                      navigate("catalog");
+                    }}
+                  >
+                    {" "}
+                    {t("Catalog")}{" "}
+                  </button>
+
+                  <button
+                    type="button"
+                    className={
+                      privatePage === "users"
+                        ? "navigation-button active"
+                        : "navigation-button"
+                    }
+                    aria-pressed={!musicRoute && privatePage === "users"}
+                    onClick={() => {
+                      navigate("users");
+                    }}
+                  >
+                    {" "}
+                    {t("Users")}{" "}
+                  </button>
+
+                  <MessagesNavButton
+                    active={!musicRoute && privatePage === "messages"}
+                    onClick={() => {
+                      setChatStart(null);
+                      navigate("messages");
+                    }}
+                  />
+
+                  <button
+                    type="button"
+                    className="navigation-button"
+                    onClick={() => {
+                      void handleLogout();
+                    }}
+                  >
+                    {" "}
+                    {t("Log out")}{" "}
+                  </button>
+                </nav>
+              </header>
+
+              {userDataVisible && (
+                <RefreshNotice
+                  retained={!!userData.data}
+                  error={userData.error ?? userData.refreshError}
+                  retry={userData.reload}
+                />
+              )}
+              {libraryVisible && (
+                <LibraryPage
+                  library={library}
+                  route={
+                    musicRoute?.kind === "library"
+                      ? musicRoute.id
+                      : lastLibrarySection
                   }
-                  aria-pressed={libraryVisible}
-                  onClick={() => navigate("library")}
-                >
-                  {" "}
-                  {t("Library")}{" "}
-                </button>
-                <button
-                  type="button"
-                  className={
-                    privatePage === "files"
-                      ? "navigation-button active"
-                      : "navigation-button"
-                  }
-                  aria-pressed={!musicRoute && privatePage === "files"}
-                  onClick={() => navigate("files")}
-                >
-                  {" "}
-                  {t("Upload")}{" "}
-                </button>
-                <button
-                  type="button"
-                  className={
-                    privatePage === "profile"
-                      ? "navigation-button active"
-                      : "navigation-button"
-                  }
-                  aria-pressed={!musicRoute && privatePage === "profile"}
-                  onClick={() => {
-                    navigate("profile");
-                  }}
-                >
-                  {" "}
-                  {t("Profile")}{" "}
-                </button>
+                  onUploads={() => navigate("files")}
+                />
+              )}
+              {musicRoute?.kind === "playlists" && (
+                <PublicPlaylistPage key={musicRoute.id} id={musicRoute.id} />
+              )}
+              {musicRoute?.kind === "projects" && (
+                <ProjectPage key={musicRoute.id} id={musicRoute.id} />
+              )}
+              {musicRoute?.kind === "artists" && (
+                <ArtistPage key={musicRoute.id} id={musicRoute.id} />
+              )}
+              {errorMessage && (
+                <p className="message error-message" role="alert">
+                  {translateError(errorMessage)}
+                </p>
+              )}
 
-                <button
-                  type="button"
-                  className={
-                    privatePage === "catalog"
-                      ? "navigation-button active"
-                      : "navigation-button"
-                  }
-                  aria-pressed={!musicRoute && privatePage === "catalog"}
-                  onClick={() => {
-                    navigate("catalog");
-                  }}
-                >
-                  {" "}
-                  {t("Catalog")}{" "}
-                </button>
+              {!musicRoute && privatePage === "profile" && (
+                <ProfilePage
+                  user={currentUser}
+                  friends={friends}
+                  onUpdateProfile={handleUpdateProfile}
+                  onRemoveFriend={handleRemoveFriend}
+                  onMessage={handleMessage}
+                />
+              )}
 
-                <button
-                  type="button"
-                  className={
-                    privatePage === "users"
-                      ? "navigation-button active"
-                      : "navigation-button"
-                  }
-                  aria-pressed={!musicRoute && privatePage === "users"}
-                  onClick={() => {
-                    navigate("users");
-                  }}
-                >
-                  {" "}
-                  {t("Users")}{" "}
-                </button>
+              {!musicRoute && privatePage === "catalog" && (
+                <CatalogPage
+                  key={currentUser.id}
+                  playlists={library.playlists}
+                  onAddItem={library.addItem}
+                />
+              )}
 
-                <button
-                  type="button"
-                  className="navigation-button"
-                  onClick={() => {
-                    void handleLogout();
-                  }}
-                >
-                  {" "}
-                  {t("Log out")}{" "}
-                </button>
-              </nav>
-            </header>
+              {/* La clé du compte remonte les écrans privés pour libérer les états et aperçus de l’ancien compte. */}
+              {!musicRoute && privatePage === "files" && (
+                <FilesPage key={currentUser.id} user={currentUser} />
+              )}
 
-            {userDataVisible && (
-              <RefreshNotice
-                retained={!!userData.data}
-                error={userData.error ?? userData.refreshError}
-                retry={userData.reload}
-              />
-            )}
-            {libraryVisible && (
-              <LibraryPage
-                library={library}
-                route={
-                  musicRoute?.kind === "library"
-                    ? musicRoute.id
-                    : lastLibrarySection
-                }
-                onUploads={() => navigate("files")}
-              />
-            )}
-            {musicRoute?.kind === "playlists" && (
-              <PublicPlaylistPage key={musicRoute.id} id={musicRoute.id} />
-            )}
-            {musicRoute?.kind === "projects" && (
-              <ProjectPage key={musicRoute.id} id={musicRoute.id} />
-            )}
-            {musicRoute?.kind === "artists" && (
-              <ArtistPage key={musicRoute.id} id={musicRoute.id} />
-            )}
-            {errorMessage && (
-              <p className="message error-message" role="alert">
-                {translateError(errorMessage)}
-              </p>
-            )}
+              {!musicRoute && privatePage === "users" && (
+                <UsersPage
+                  users={users}
+                  friendIds={friendIds}
+                  onAddFriend={handleAddFriend}
+                  onRemoveFriend={handleRemoveFriend}
+                  onMessage={handleMessage}
+                />
+              )}
 
-            {!musicRoute && privatePage === "profile" && (
-              <ProfilePage
-                user={currentUser}
-                friends={friends}
-                onUpdateProfile={handleUpdateProfile}
-                onRemoveFriend={handleRemoveFriend}
-              />
-            )}
-
-            {!musicRoute && privatePage === "catalog" && (
-              <CatalogPage
-                key={currentUser.id}
-                playlists={library.playlists}
-                onAddItem={library.addItem}
-              />
-            )}
-
-            {/* La clé du compte remonte les écrans privés pour libérer les états et aperçus de l’ancien compte. */}
-            {!musicRoute && privatePage === "files" && (
-              <FilesPage key={currentUser.id} user={currentUser} />
-            )}
-
-            {!musicRoute && privatePage === "users" && (
-              <UsersPage
-                users={users}
-                friendIds={friendIds}
-                onAddFriend={handleAddFriend}
-                onRemoveFriend={handleRemoveFriend}
-              />
-            )}
-          </CollectionsProvider>
-        </LibraryViewProvider>
+              {!musicRoute && privatePage === "messages" && (
+                <MessagesPage
+                  key={`${currentUser.id}:${chatStart?.id ?? ""}`}
+                  user={currentUser}
+                  friends={friends}
+                  initialConversation={chatStart}
+                />
+              )}
+            </CollectionsProvider>
+          </LibraryViewProvider>
+        </ChatProvider>
       </MusicPlayerProvider>
     );
   }

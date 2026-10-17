@@ -730,4 +730,49 @@ export const fr = {
   "Already present ({tracks}): {titles}. Add all selected tracks anyway?":
     "Déjà dans la playlist ({tracks}) : {titles}. Ajouter quand même tous les morceaux sélectionnés ?",
   "Failed to fetch": "Réseau indisponible. Veuillez réessayer.",
+  // Messagerie (chat-service).
+  Messages: "Messages",
+  Message: "Message",
+  "Message {0}": "Écrire à {0}",
+  "Unread messages: {0}": "Messages non lus : {0}",
+  "Chat in real time with your friends.":
+    "Discutez en temps réel avec vos amis.",
+  Conversations: "Conversations",
+  "New message": "Nouveau message",
+  "Choose a friend": "Choisissez un ami",
+  "Add friends to start chatting": "Ajoutez des amis pour discuter",
+  Open: "Ouvrir",
+  "Loading conversations…": "Chargement des conversations…",
+  "No conversations yet. Start one with a friend.":
+    "Aucune conversation pour l’instant. Commencez-en une avec un ami.",
+  "No messages yet": "Aucun message",
+  "You: {0}": "Vous : {0}",
+  "Unknown user": "Utilisateur inconnu",
+  "Select a conversation to start chatting.":
+    "Choisissez une conversation pour commencer à discuter.",
+  Live: "En direct",
+  "Connecting…": "Connexion…",
+  "Reconnecting…": "Reconnexion…",
+  "Conversation with {0}": "Conversation avec {0}",
+  "Back to conversations": "Retour aux conversations",
+  "Loading messages…": "Chargement des messages…",
+  "Load earlier messages": "Charger les messages précédents",
+  "No messages yet. Say hello!":
+    "Aucun message pour l’instant. Dites bonjour !",
+  "Message deleted": "Message supprimé",
+  Seen: "Vu",
+  "Delete message": "Supprimer le message",
+  "Delete this message?": "Supprimer ce message ?",
+  "Write a message…": "Écrivez un message…",
+  Send: "Envoyer",
+  "Sending…": "Envoi…",
+  "You can only message your friends.": "Vous ne pouvez écrire qu’à vos amis.",
+  "This conversation is no longer available.":
+    "Cette conversation n’est plus disponible.",
+  "This message is no longer available.": "Ce message n’est plus disponible.",
+  "A message must contain between 1 and 2000 characters.":
+    "Un message doit contenir entre 1 et 2000 caractères.",
+  "You cannot message yourself.": "Vous ne pouvez pas vous écrire à vous-même.",
+  "Messaging is temporarily unavailable. Please retry.":
+    "La messagerie est momentanément indisponible. Veuillez réessayer.",
 } satisfies Dictionary;

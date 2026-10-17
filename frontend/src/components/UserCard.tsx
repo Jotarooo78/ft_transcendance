@@ -8,6 +8,8 @@ type UserCardProps = {
   isFriend: boolean;
   onAddFriend: (userId: string) => void;
   onRemoveFriend: (userId: string) => void;
+  /** Ouvre la messagerie avec cet utilisateur ; proposé seulement aux amis. */
+  onMessage: (userId: string) => Promise<void>;
 };
 
 /** Affiche UserCard dans la langue choisie en conservant son état. */
@@ -16,6 +18,7 @@ function UserCard({
   isFriend,
   onAddFriend,
   onRemoveFriend,
+  onMessage,
 }: UserCardProps) {
   useLanguage();
   const avatarSource = getAvatarSource(user.avatarUrl);
@@ -43,21 +46,33 @@ function UserCard({
           {user.isOnline ? t("Online") : t("Offline")}
         </span>
 
-        <button
-          type="button"
-          className={
-            isFriend ? "friend-button remove-friend-button" : "friend-button"
-          }
-          onClick={() => {
-            if (isFriend) {
-              onRemoveFriend(user.id);
-            } else {
-              onAddFriend(user.id);
+        <div className="user-card-actions">
+          {isFriend && (
+            <button
+              type="button"
+              className="friend-button message-friend-button"
+              onClick={() => void onMessage(user.id)}
+              aria-label={t("Message {0}", { "0": user.username })}
+            >
+              {t("Message")}
+            </button>
+          )}
+          <button
+            type="button"
+            className={
+              isFriend ? "friend-button remove-friend-button" : "friend-button"
             }
-          }}
-        >
-          {isFriend ? t("Remove friend") : t("Add friend")}
-        </button>
+            onClick={() => {
+              if (isFriend) {
+                onRemoveFriend(user.id);
+              } else {
+                onAddFriend(user.id);
+              }
+            }}
+          >
+            {isFriend ? t("Remove friend") : t("Add friend")}
+          </button>
+        </div>
       </div>
     </article>
   );

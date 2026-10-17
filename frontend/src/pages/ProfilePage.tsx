@@ -20,6 +20,8 @@ type ProfilePageProps = {
   ) => Promise<void>;
 
   onRemoveFriend: (userId: string) => void;
+  /** Ouvre la messagerie sur la conversation avec cet ami. */
+  onMessage: (userId: string) => Promise<void>;
 };
 
 /** Affiche ProfilePage dans la langue choisie en conservant son état. */
@@ -28,6 +30,7 @@ function ProfilePage({
   friends,
   onUpdateProfile,
   onRemoveFriend,
+  onMessage,
 }: ProfilePageProps) {
   useLanguage();
   const avatarSource = getAvatarSource(user.avatarUrl);
@@ -151,19 +154,31 @@ function ProfilePage({
                     </span>
                   </div>
 
-                  <button
-                    type="button"
-                    className="remove-friend-button"
-                    onClick={() => {
-                      onRemoveFriend(friend.id);
-                    }}
-                    aria-label={t("Remove {0} from friends", {
-                      "0": friend.username,
-                    })}
-                  >
-                    {" "}
-                    {t("Remove")}{" "}
-                  </button>
+                  <div className="friend-actions">
+                    <button
+                      type="button"
+                      className="message-friend-button"
+                      onClick={() => {
+                        onMessage(friend.id);
+                      }}
+                      aria-label={t("Message {0}", { "0": friend.username })}
+                    >
+                      {t("Message")}
+                    </button>
+                    <button
+                      type="button"
+                      className="remove-friend-button"
+                      onClick={() => {
+                        onRemoveFriend(friend.id);
+                      }}
+                      aria-label={t("Remove {0} from friends", {
+                        "0": friend.username,
+                      })}
+                    >
+                      {" "}
+                      {t("Remove")}{" "}
+                    </button>
+                  </div>
                 </article>
               );
             })}

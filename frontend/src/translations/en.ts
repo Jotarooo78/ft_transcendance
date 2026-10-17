@@ -715,6 +715,51 @@ export const en = {
   "Already present ({tracks}): {titles}. Add all selected tracks anyway?":
     "Already present ({tracks}): {titles}. Add all selected tracks anyway?",
   "Failed to fetch": "Network unavailable. Please retry.",
+  // Messagerie (chat-service).
+  Messages: "Messages",
+  Message: "Message",
+  "Message {0}": "Message {0}",
+  "Unread messages: {0}": "Unread messages: {0}",
+  "Chat in real time with your friends.":
+    "Chat in real time with your friends.",
+  Conversations: "Conversations",
+  "New message": "New message",
+  "Choose a friend": "Choose a friend",
+  "Add friends to start chatting": "Add friends to start chatting",
+  Open: "Open",
+  "Loading conversations…": "Loading conversations…",
+  "No conversations yet. Start one with a friend.":
+    "No conversations yet. Start one with a friend.",
+  "No messages yet": "No messages yet",
+  "You: {0}": "You: {0}",
+  "Unknown user": "Unknown user",
+  "Select a conversation to start chatting.":
+    "Select a conversation to start chatting.",
+  Live: "Live",
+  "Connecting…": "Connecting…",
+  "Reconnecting…": "Reconnecting…",
+  "Conversation with {0}": "Conversation with {0}",
+  "Back to conversations": "Back to conversations",
+  "Loading messages…": "Loading messages…",
+  "Load earlier messages": "Load earlier messages",
+  "No messages yet. Say hello!": "No messages yet. Say hello!",
+  "Message deleted": "Message deleted",
+  Seen: "Seen",
+  "Delete message": "Delete message",
+  "Delete this message?": "Delete this message?",
+  "Write a message…": "Write a message…",
+  Send: "Send",
+  "Sending…": "Sending…",
+  "You can only message your friends.": "You can only message your friends.",
+  "This conversation is no longer available.":
+    "This conversation is no longer available.",
+  "This message is no longer available.":
+    "This message is no longer available.",
+  "A message must contain between 1 and 2000 characters.":
+    "A message must contain between 1 and 2000 characters.",
+  "You cannot message yourself.": "You cannot message yourself.",
+  "Messaging is temporarily unavailable. Please retry.":
+    "Messaging is temporarily unavailable. Please retry.",
 } as const;
 
 /** Identifiants communs aux trois dictionnaires. */
