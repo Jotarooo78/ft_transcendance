@@ -1,0 +1,117 @@
+import { translate as t } from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
+/** Vue non modale de la file ; les modifications ne touchent jamais la playlist source. */
+import { useEffect, useRef } from "react";
+import { useMusicPlayer } from "../contexts/music-player";
+import { upcoming } from "../services/music-queue";
+import TrackArtwork from "./TrackArtwork";
+import PlayerIcon from "./PlayerIcon";
+/** Place le focus à l’ouverture puis le rend au contrôle d’origine à la fermeture. */
+export default function QueuePanel() {
+  useLanguage();
+  const player = useMusicPlayer(),
+    panel = useRef<HTMLElement>(null);
+  const showQueue = player.showQueue;
+  useEffect(() => {
+    const origin = document.activeElement;
+    panel.current?.focus();
+    /** Échap fonctionne aussi après le retrait d’une ligne qui possédait le focus. */
+    function escape(event: KeyboardEvent) {
+      if (event.key === "Escape" && !event.defaultPrevented) showQueue(false);
+    }
+    window.addEventListener("keydown", escape);
+    return () => {
+      window.removeEventListener("keydown", escape);
+      if (origin instanceof HTMLElement && origin.isConnected) origin.focus();
+    };
+  }, [showQueue]);
+  const next = upcoming(player.queue);
+  return (
+    <aside
+      id="music-queue"
+      className="queue-panel"
+      aria-label={t("Playback queue")}
+      tabIndex={-1}
+      ref={panel}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.stopPropagation();
+          player.showQueue(false);
+        }
+      }}
+    >
+      <header>
+        <div>
+          <p className="page-label">{t("UP NEXT")}</p>
+          <h2>{t("Your queue")}</h2>
+        </div>
+        <button
+          className="player-icon-button"
+          aria-label={t("Close queue")}
+          title={t("Close queue")}
+          onClick={() => player.showQueue(false)}
+        >
+          <PlayerIcon name="close" />
+        </button>
+      </header>
+      <p className="queue-source">
+        {player.queue.sourceLocalized
+          ? t(player.queue.source)
+          : player.queue.source}
+      </p>
+      {player.current && (
+        <>
+          <h3>{t("Now playing")}</h3>
+          <div className="queue-current">
+            <TrackArtwork track={player.current.track} />
+            <div>
+              <strong>{player.current.track.title}</strong>
+              <span>{player.current.track.artistName}</span>
+            </div>
+            <span className="queue-current-state">
+              {player.playing ? t("Playing") : t("Paused")}
+            </span>
+          </div>
+        </>
+      )}
+      <h3>
+        {" "}
+        {t("Next up")} <span>{next.length}</span>
+      </h3>
+      {!next.length && (
+        <p className="queue-empty">
+          {player.queue.repeat === "all"
+            ? t("The queue will start again.")
+            : player.queue.repeat === "one"
+              ? t("This track will repeat.")
+              : t("You’re at the end of the queue.")}
+        </p>
+      )}
+      <ol>
+        {next.map((entry) => (
+          <li key={entry.key} data-queue-entry={entry.key}>
+            <button
+              className="queue-track"
+              onClick={() => player.jump(entry.key)}
+              aria-label={t("Play queued {0}", { "0": entry.track.title })}
+            >
+              <TrackArtwork track={entry.track} />
+              <span>
+                <strong>{entry.track.title}</strong>
+                <small>{entry.track.artistName}</small>
+              </span>
+            </button>
+            <button
+              className="player-icon-button"
+              onClick={() => player.remove(entry.key)}
+              aria-label={t("Remove queued {0}", { "0": entry.track.title })}
+              title={t("Remove from queue")}
+            >
+              <PlayerIcon name="close" />
+            </button>
+          </li>
+        ))}
+      </ol>
+    </aside>
+  );
+}

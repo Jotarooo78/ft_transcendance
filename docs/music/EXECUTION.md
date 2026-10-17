@@ -704,3 +704,338 @@ Les critères de compréhension restent personnels.
 - Cette passe ne rejoue pas les campagnes HTTPS/SQL/Chromium historiques :
   elle documente les comportements existants sans les modifier. La publication
   et le résultat du pull sont consignés dans les missions Notion après git-sync.
+
+## Projets musicaux — données
+
+Branche `feat/music-projects-library`, évolution du 15 octobre 2026.
+`catalog-service/prisma/schema.prisma` ajoute au projet un propriétaire facultatif
+(pour conserver les anciennes sorties), une description et une version.
+`20261015100000_music_projects/migration.sql` conserve les types historiques et
+ajoute mixtape, les contraintes de texte/version et les index de lecture.
+Prisma validate/generate réussis. Une base PostgreSQL 16 jetable a reçu la
+baseline, un album témoin, puis la migration : album conservé, version 1 et
+insertion d’une mixtape vérifiés par assertion SQL. Aucun schéma de développement
+n’a été modifié. Les fonctions de brouillon et publication restent à produire.
+
+## Projets musicaux — brouillons et publication
+
+Les routes personnelles et publiques des projets sont produites. La sauvegarde,
+la publication et l’abandon partagent le verrou du projet ; la publication
+historique d’un titre prend aussi le verrou audio et refuse les pistes déjà
+rattachées à un projet. Le nettoyage d’un abandon est durable et répétable.
+Typecheck Catalogue et Media réussi. Les quatre fichiers de tests Catalogue
+passent avec `node --import tsx --test test/*.test.ts` (le CLI tsx est empêché
+par le sandbox de créer son socket). PostgreSQL réel confirme droits A/B,
+rejeu de création, conflit concurrent, publication complète, date conservée,
+ordre modifié et abandon. Les tests Media sont exécutés dans Docker avec FFmpeg.
+Les copies documentaires restent locales : aucun connecteur Notion n’est
+accessible dans cette session. Aucun statut Notion n’est déclaré mis à jour.
+Les 26 tests Media passent dans l’image isolée. Le scénario PostgreSQL confirme
+également qu’une panne Media laisse la file de nettoyage en base et qu’une
+nouvelle suppression la termine. L’image de test utilise une copie temporaire
+du Dockerfile sans cache BuildKit, indisponible sur le moteur local ; les
+instructions de production du dépôt ne sont pas modifiées.
+
+## Projets musicaux — formulaire
+
+Formulaire multi-fichiers, reprise des projets sauvegardés, ordre au clavier,
+pochette commune, sauvegarde et publication branchés sur les routes Catalogue.
+Lint et compilation frontend réussis. Le contrôle navigateur avec fichiers réels
+reste à réaliser dans la campagne finale ; il n’est pas déclaré acquis ici.
+
+## Projets musicaux — présentation et lecteur
+
+La page projet utilise des cartes et lignes de titres communes. Le lecteur est
+porté par `MusicPlayerProvider`, conserve l’ordre du projet et reste monté entre
+les pages musicales ; sa clé de compte réinitialise la lecture à la déconnexion.
+Les liens `#/projects/UUID` et `#/artists/UUID` sont suivis par `useMusicRoute`.
+`ProjectPage`, `ArtistPage`, `ProjectCard`, `ArtistCard` et `MusicTrackRow` composent
+ces écrans à partir des lectures validées et des couleurs existantes. Lint et
+compilation frontend réussis ; la preuve visuelle finale reste à obtenir.
+
+## Recherche et hub
+
+Le hub comporte une recherche et trois sections : comptes artistes, projets et
+titres. Chaque catégorie dispose de sa pagination. Choix utilisateur : projets
+et titres récents, artistes par nom avant recherche. Les artistes sont recherchés
+par Users avec projection publique ; Catalogue ajoute le tri recent et le
+filtre owner aux titres. La pochette du projet accompagne les titres dans les
+listes. Les schémas d’URL réutilisent la conversion stricte de pagination de
+service-kit. Les pages artistes affichent projets et titres du compte.
+Typechecks Users/Catalogue, huit fichiers de tests backend, lint/build frontend
+et scénario PostgreSQL des projets (pagination comprise) réussis.
+
+
+## Bibliothèque, partage et historique
+
+Migration SavedItem ajoutée au schéma Library, favoris existants réutilisés.
+Les routes de collection valident les cibles publiques et isolent chaque compte.
+Les lectures et mutations propriétaires restent disponibles pour les playlists
+publiques. Un lien privé renvoie 404, et les réponses de partage sont no-store.
+Le formulaire propose privé par défaut et confirme tout changement ultérieur de
+visibilité avant l’envoi ; le message de réussite attend la réponse serveur.
+Les écrans partagent CollectionButton, MusicTrackRow, useTrackDetails et le lecteur.
+Les tests de routes Library (collections, playlists et occurrences), le typecheck
+Library ainsi que le lint et la compilation frontend passent. La campagne
+Chromium complète a réussi dans `transcendence_projects`, port 5445, avec
+comptes et volumes jetables, sans accès aux données de développement.
+
+Le premier parcours réel a révélé l'absence de droits runtime sur SavedItem.
+Les listes explicites de `database/permissions/assign-owners.sql` et
+`apply-grants.sql` sont étendues à cette table, pour Library seulement.
+Le tri récent des projets dispose désormais d'un instant de première publication
+immuable ; la date de création du brouillon ne détermine plus ce classement.
+
+
+## Vérifications de clôture — 15 octobre 2026
+
+Les preuves ont été exécutées dans des piles jetables ; aucune migration ni
+modification de données n’a été appliquée à la pile de développement.
+
+- Library : 11 tests réussis, dont partage révoqué, droits du propriétaire,
+  isolation des collections, validations et conflits de versions.
+- PostgreSQL réel : sauvegarde répétée, concurrence, publication atomique,
+  date immuable, tri récent, édition ordonnée et abandon avec nettoyage repris.
+- Rôles SQL : propriétaires des six schémas, absence d’accès croisés et opérations
+  de SavedItem avec le rôle library_runtime contrôlés ; données d’essai annulées.
+- `tests/projects/verify-projects.mjs` : import de trois audios dans Chromium,
+  pochette commune, ordre, brouillon privé, reconnexion après redémarrage,
+  publication/édition, likes/sauvegardes/suivis indépendants, deux comptes,
+  playlists privées par défaut, partage et révocation du lien invité, historique
+  répété, lecture enchaînée, single/EP/mixtape et nettoyage d’abandon.
+- `tests/music/browser.spec.mjs` : les cinq parcours adaptés passent, incluant
+  pause, déplacement, mesures SQL, panne et reprise, isolation après déconnexion,
+  occurrences répétées, conflits, lecture Media et recherche annulée.
+- `tests/publication/verify-publication.mjs` : compatibilité de la publication
+  historique, audio expiré, pochette extraite/remplacée/retirée, réponse perdue,
+  refus de fichiers corrompus et persistance après redémarrage vérifiés.
+- Frontend : lint, compilation et tests de l’horloge d’écoute réussis. Captures
+  desktop inspectées ; contraste des cartes et onglet actif corrigés.
+
+Reproduction du nouveau parcours : `bash tests/projects/run.sh`, après les
+prérequis Chromium de `tests/files`. Le runner refuse toute pile homonyme déjà
+présente et nettoie ses seuls volumes à la sortie. Dans cette session, le moteur
+local sans BuildKit a nécessité des images de test construites à partir de copies
+temporaires des instructions Docker, sans modifier les Dockerfile de production.
+La campagne de publication a utilisé la pile 5445 déjà créée et des audios
+synthétiques décodés par FFmpeg ; ses assertions sont celles du script versionné.
+
+Le périmètre visuel validé est ordinateur. La reconnexion après rechargement
+reste celle de l’application existante : jeton en mémoire, aucune persistance de
+connexion ajoutée. Les brouillons sauvegardés persistent côté serveur. Une
+référence enregistrée devenue indisponible reste retirable. Les listes se relisent
+à l’ouverture ou par actualisation ; le partage public se vérifie aussi au retour
+sur l’onglet et toutes les trente secondes. Les droits serveur sont appliqués à
+chaque requête. Les copies Notion restent non synchronisées faute de connecteur.
+
+Nettoyage final vérifié : aucun conteneur ni volume ne subsiste pour
+`transcendence_projects` et `transcendence_music`. La base temporaire de
+concurrence `tr_music_projects_schema` a également été arrêtée et supprimée.
+Les fichiers de plan préexistants et le dossier local `services/` n’ont pas été
+inclus dans les commits de cette évolution.
+
+## Lecteur commun — commandes, file et reprise
+
+Travail réalisé sur `feat/music-projects-library`, dans l’ordre du plan validé
+ici avec l’utilisateur. Les anciens uploads indépendants restent inchangés.
+
+- [x] Règles de file séparées : occurrences, navigation, répétition, aléatoire,
+  ajouts et retraits ; tests déterministes.
+- [x] Moteur unique relié aux commandes et au suivi existant ; lecture réelle
+  distincte des confirmations de sauvegarde.
+- [x] Barre fixe, panneau de file, progression, volume, clavier et focus ; captures
+  desktop inspectées, largeur contrôlée à 1024, 1280 et 1440 pixels.
+- [x] Lignes cliquables, contrôles imbriqués indépendants, playlists complètes et
+  doublons, boutons aléatoires, titres aimés au-delà des pages visibles.
+- [x] Reprise locale validée par compte : métadonnées relues, position bornée,
+  démarrage en pause, stockage corrompu ignoré et réponses tardives écartées.
+- [x] Tests unitaires, lint et compilation frontend ; campagne lecteur Chromium
+  et cinq parcours historiques avec témoins SQL réussis.
+
+La campagne `tests/projects/verify-player.mjs` utilise des comptes, playlists,
+audios et sessions réels. Elle couvre les trois modes de répétition et leur
+interaction avec suivant, les quatre occurrences d’une playlist comportant un
+doublon, l’ordre mélangé puis rétabli, les liens/likes/menus indépendants du clic,
+la reprise après rechargement et la séparation de deux comptes. Les 127 références
+de likes sont simulées pour isoler les deux niveaux de pagination ; leur audio
+reste réel. Les pannes injectées prouvent l’arrêt d’une file totalement illisible,
+la reprise réseau, la conservation d’une sauvegarde après 503 et le retrait après
+404. Une sélection récente résiste à une ancienne restauration retardée.
+
+Le défaut de focus observé après retrait d’une occurrence a été corrigé : Échap
+ferme le panneau même lorsque le bouton retiré avait le focus, puis celui-ci
+revient à l’ouverture de file. Un titre courant cliqué depuis un autre écran
+reprend sans recommencer ; les doublons explicites restent distingués.
+
+La validation utilise les piles jetables `transcendence_projects` (5445) et
+`transcendence_music` (3443). Le Docker local ne dispose toujours pas de Buildx :
+les images backend de test existantes, dont le code backend est inchangé, ont
+été réutilisées avec le frontend actuel monté en lecture seule. Aucun déploiement
+ni changement de données de développement n’a été effectué.
+
+Pour reconstruire localement les images et voir l’interface : `make setup`
+(équivalent à `docker compose up -d --build`). Les données sont conservées.
+La connexion reste en mémoire ; la reprise s’effectue après reconnexion.
+Les grandes listes de likes attendent le chargement borné de leurs détails,
+et la sauvegarde locale accepte jusqu’à 10 000 occurrences. Ces limites sont
+décrites dans `PLAYBACK_CONTRACT.md`.
+
+Clôture : le parcours complet `verify-projects.mjs` a été rejoué avec le lecteur
+final et passe également. Après les tests, aucun conteneur ni volume des deux
+piles jetables ne subsiste. Les changements préexistants dans `docs/music-plan`
+et le dossier local `services/` restent hors des commits. Les synchronisations
+intermédiaires n’ont intégré aucun nouveau commit distant et n’ont rencontré
+aucun conflit.
+
+### Fluidité et actualisation — exécution du plan validé dans la conversation
+
+- Mesure initiale sur Chromium automatisé, 1440 × 800 : catalogue 24 titres,
+  bibliothèque 48 références (24 affichées), historique 20 écoutes, données de
+  listes simulées et services de test isolés. Sur trois secondes de défilement
+  natif piloté par requestAnimationFrame : p95 16,7–16,8 ms, aucune image >25 ms,
+  aucune tâche longue >50 ms. Login/profil courts servent de témoins sans défilement.
+  Cette mesure ne reproduit pas le ressenti au trackpad physique.
+- [x] Chargement audio : couleur lavande, anneau retardé de 200 ms et statut accessible
+  sans ligne visible supplémentaire. Lint/build et test navigateur de hauteur stable.
+- [x] Pochettes vectorielles communes : centre et limites vérifiés en Chromium à 1024, 1280 et 1440 px, y compris après refus des images.
+- [x] Actualisation commune et intégration des écrans : livrées ensemble pour vérifier
+  les règles de conservation et d’invalidation chez tous les consommateurs.
+  `verify-refresh.mjs` valide les erreurs transitoires, réponses concurrentes,
+  cadence/visibilité simulées, références de bibliothèque changeantes, ancre visible,
+  formulaires et révocations seules ou mêlées à une panne.
+  Les parcours `verify-projects`, `verify-player`, `verify-interface` passent ;
+  les cinq scénarios Chromium historiques de `tests/music` passent aussi (1,7 min).
+  Lint, compilation et trois fichiers de tests unitaires musicaux passent.
+- [x] Comparaison finale du rendu, parcours globaux et publication des corrections.
+- Compréhension utilisateur et ressenti physique au trackpad : non validés à sa place.
+
+
+Le diagnostic avec lecteur a identifié deux coûts distincts : le filtre de fond
+sur toute la barre, et les mises à jour de progression diffusées aux lignes.
+La désactivation du seul filtre a ramené les p95 compilés des trois pages musicales
+à 16,8 ms. Le profil CPU de développement a ensuite attribué l’essentiel des
+échantillons applicatifs aux créations JSX dans PlayerIcon (3 792 échantillons),
+MusicTrackRow (887) et TrackQueueActions (290). Ces nombres servent à localiser
+le travail, pas à comparer des temps entre machines.
+La correction finale conserve le fond crème, partage les formes fixes des icônes
+et réserve les notifications de progression à la barre.
+
+Après cette correction, lint/build et tests unitaires passent. Le parcours complet
+du lecteur, les scénarios d’interface/actualisation et les cinq tests historiques
+ont été rejoués et passent (52,3 s pour cette dernière suite). La capture desktop
+finale a été inspectée ; l’interface garde sa palette et les pochettes centrées.
+
+
+Mesures finales indicatives, Chromium automatisé 1440 × 800, mêmes 24 titres
+visibles / 48 références / 20 écoutes, trois secondes de défilement par écran.
+Le p95 est l’intervalle sous lequel se trouvent 95 % des images échantillonnées.
+La référence compilée est `198ba60` ; la référence Vite est `b47d6a6`, avant la
+correction du coût de rendu. L’option de profil CPU était désactivée pour ce tableau.
+
+| Mode et page avec audio | p95 avant (ms) | p95 final (ms) | Maximum final (ms) | Tâches longues finales (>50 ms) |
+| --- | ---: | ---: | ---: | ---: |
+| Compilé · catalog | 50.0 | 16.7 | 16.8 | 0 |
+| Compilé · library | 50.0 | 16.8 | 33.2 | 0 |
+| Compilé · history | 50.1 | 16.8 | 49.9 | 0 |
+| Vite · catalog | 300.0 | 16.8 | 16.8 | 0 |
+| Vite · library | 233.3 | 16.8 | 116.8 | 5 |
+| Vite · history | 150.1 | 16.8 | 33.4 | 0 |
+
+Sans audio, le p95 reste autour de 16,7–16,8 ms avant comme après. Aucun déplacement
+visuel n’est enregistré dans les fenêtres finales. Des pics résiduels existent,
+surtout en développement : ce résultat ne prouve pas une disparition complète
+des saccades et ne reproduit pas un trackpad physique. Les régressions de hauteur,
+les listes vidées pendant relecture et les deux coûts identifiés avec lecteur sont
+corrigés ; le ressenti sans audio reste à confronter au navigateur de l’utilisateur.
+
+
+Clôture de cette campagne : corrections publiées sur
+`origin/feat/music-projects-library` (`5ec4205`, `28c78bf`, `b47d6a6`, `85a2eb2`).
+Aucun nouveau commit distant intégré et aucun conflit pendant les synchronisations.
+Les deux piles de test ont été supprimées et l’absence de leurs conteneurs,
+volumes et réseaux a été vérifiée. Les fichiers préexistants de `docs/music-plan`
+et `services/` sont préservés. Le frontend de développement n’a pas été redéployé ;
+pour utiliser les changements : `docker compose up -d --build --no-deps frontend`.
+La validation au trackpad physique et la compréhension utilisateur restent ouvertes.
+# Bibliothèque et playlists — salve du 15 octobre 2026
+
+Branche : `feat/library-playlists-refresh`, base `91cfbc2`. Le plan validé reste dans la conversation.
+Les modifications locales de `docs/music-plan/` et `services/` restent hors périmètre.
+
+- [x] Profil : retrait des deux filtres de flou ; le répertoire Users n’est plus chargé sur Profil.
+- [x] Opérations serveur et données des playlists.
+- [x] Pochettes de playlist.
+- [x] Navigation bibliothèque et historique.
+- [x] Listes et page dédiée.
+- [x] Ajout partagé, multiple et par projet.
+- [x] Tri, recherche, déplacement et ordre de lecture.
+- [x] Annulation du retrait et duplication.
+- [x] Vérifications techniques finales.
+- [ ] Publication : destination distante demandée, réponse encore attendue.
+
+Mesures Profil dans Chromium/Vite, 1440×800, amis simulés (0, 24 et 120), trois secondes
+par scénario. Avant : p95 16,8 ms sauf édition avec 120 amis (33,4 ms, trois tâches >50 ms).
+Diagnostic sans flou : édition avec 120 amis à 16,8 ms, aucune tâche >50 ms.
+Après : p95 16,7–16,8 ms sur les six scénarios, aucune tâche >50 ms, aucun déplacement
+de mise en page mesuré ; des images isolées restent lentes (maximum 150 ms).
+Ces premiers relevés partagent la machine avec les validations et ne suffisent pas à attribuer
+tous les écarts au code ; la validation finale doit répéter la comparaison sans charge concurrente,
+avec audio et distribution compilée. Aucun test ne remplace le ressenti au trackpad réel.
+Lint et compilation frontend réussis ; socle projets/publication/bibliothèque existant vérifié
+sur la pile jetable `transcendence_projects`, HTTPS 5445.
+
+Validation finale, distributions compilées comparées séquentiellement, sans autre
+campagne lancée en parallèle : login, profil sans amis, 24/120 amis, édition,
+catalogue, bibliothèque, historique, puis les mêmes écrans avec un véritable
+audio en boucle. Avant et après : p95 de 16,7–16,8 ms, aucune tâche >50 ms et
+aucun déplacement de mise en page mesuré. Une image isolée dépasse 25 ms dans
+chaque distribution : bibliothèque avec audio avant (33,4 ms), édition du profil
+120 amis après (33,3 ms). Ces mesures ne démontrent donc pas un gain perceptible
+sur un trackpad ; elles ne montrent pas de régression globale. Les suppressions
+de flou et de la lecture Users inutile réduisent du travail, mais le ressenti
+sur le matériel de l'utilisateur reste à confirmer.
+
+Les mécanismes communs restent `useResource` (annulation, conservation du contenu,
+ancre de défilement) et `useVisibleRefresh` (relectures visibles regroupées).
+`useLibraryView` ajoute seulement la mémoire de navigation par section ; il
+ne capture pas la molette pour simuler un défilement. Les images et le lecteur
+réutilisent leurs composants existants, les formulaires et ajouts sont partagés.
+Users, amitiés et chat ne sont pas modifiés.
+
+Preuves obtenues :
+
+- Library : vérification TypeScript et 11 tests réussis.
+- Media : 27 tests réussis dans l'image Docker disposant des vrais décodeurs,
+  dont le nettoyage prudent des images référencées ou réservées concurremment.
+  Le lancement initial sur l'hôte échouait faute de décodeur ; ce défaut
+  d'environnement est absent de la campagne Docker complète.
+- Frontend : lint sans avertissement, compilation et quatre fichiers de tests
+  musique réussis, dont ordre de lecture indépendant du filtre visuel.
+- `verify-library-workflow.mjs` : créations simultanées et réponses perdues sans
+  doublon, lots atomiques, droits, positions et dates préservées, annulation,
+  copies privées indépendantes, images réelles privées/publiques et révocation.
+  Chromium couvre les filtres conservés, déplacement souris/clavier, file complète,
+  ajout via menu, création dans le sélecteur, sélection multiple et projet entier.
+- `verify-projects.mjs` : publication, partage confirmé, historique, collections
+  et lecture continue, après adaptation aux nouveaux écrans.
+- `verify-refresh.mjs` : saisies conservées, conflit explicite, réponses anciennes,
+  ancres stables et révocation d'une carte malgré la panne d'une autre.
+- Campagne musique existante : deux scénarios de lecture et un scénario de
+  bibliothèque réussis, dont perte de réponse et isolation entre comptes.
+- `tests/per/assert-state.sql` : droits validés, six tables Library avec leur
+  propriétaire et permissions attendus.
+
+Artefacts locaux : `/tmp/tr-library-evidence/detail.png`,
+`/tmp/profile-baseline-compiled.json`, `/tmp/profile-final-compiled.json`.
+Le socle serveur est enregistré dans `0907814`, après la correction Profil
+`e544545`. Le reste de la salve fait l'objet du commit d'interface et de preuves.
+Les migrations sont additives ; pour essayer cette version avec Docker, reconstruire
+les services via `docker compose up -d --build` afin d'exécuter les migrations
+avant les permissions. La pile de développement n'a pas été redéployée.
+La fusion dans main et la suppression de branche attendent le signal utilisateur.
+
+Nettoyage final effectué : aucun conteneur, volume ni réseau étiqueté
+`transcendence_projects` ne subsiste. Les artefacts de preuve restent dans `/tmp`.
+Aucun pull, push ou merge n'a été effectué pour cette salve après les commits
+locaux : `git-sync` attend la destination distante, cette branche n'ayant pas
+d'upstream. Aucun conflit rencontré ; les fichiers hors périmètre sont préservés.

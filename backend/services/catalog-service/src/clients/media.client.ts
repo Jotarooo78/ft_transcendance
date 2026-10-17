@@ -3,6 +3,16 @@ import { DomainError, fetchJson, isRecord } from '@ft/service-kit'
 /** Construit le client interne de réservation, avec secret et délai explicites. */
 export function createMediaClient(baseUrl: string, token: string) {
   return {
+    /** Libère seulement un audio dont Catalogue a définitivement retiré la référence. */
+    async release(id: string, ownerId: string) {
+      const response = await fetchJson(new URL(`/internal/assets/${id}/publication`, baseUrl), {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+        body: { ownerId },
+        timeoutMs: 5000,
+      })
+      if (!response.ok) throw new DomainError(503, 'draft_cleanup_pending')
+    },
     /** Arbitre publication et suppression dans Media, sans partager sa base SQL. */
     async reserve(id: string, ownerId: string) {
       const response = await fetchJson(new URL(`/internal/assets/${id}/publication`, baseUrl), {

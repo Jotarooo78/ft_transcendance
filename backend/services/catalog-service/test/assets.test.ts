@@ -108,7 +108,13 @@ test('internal references require the service token and fail closed', async (t) 
 })
 
 test('the service refuses to start without an internal token', async () => {
+  const unused = async (): Promise<never> => {
+    throw new Error('Unexpected call')
+  }
   const dependencies = {
+    users: { authenticate: unused, read: unused },
+    media: { reserve: unused, release: unused },
+    publications: { owners: async () => [], publish: unused },
     tracks: {
       findPublished: async () => null,
       list: async () => ({ rows: [], total: 0n, genres: [] }),

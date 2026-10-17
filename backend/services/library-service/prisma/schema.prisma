@@ -27,8 +27,10 @@ model Playlist {
   name        String
   /// Description de playlist ; le contrat client représente son absence par une chaîne vide.
   description String?
-  /// Visibilité de playlist ; les routes produites ici gèrent uniquement private.
+  /// Visibilité de playlist ; private par défaut, public sur choix explicite du propriétaire.
   visibility  String   @default("private")
+  /// Image Media indépendante des pochettes audio ; null active la mosaïque.
+  coverAssetId String? @map("cover_asset_id") @db.Uuid
   /// Version de concurrence de la playlist ; une mutation réussie l’incrémente.
   version     BigInt   @default(1)
   /// Date de création prise par PostgreSQL.
@@ -38,9 +40,26 @@ model Playlist {
 
   /// Éléments de la page ou occurrences de playlist ; le total peut dépasser cette liste.
   items PlaylistItem[]
+  /// Reçus des modifications : une réponse perdue ne doit pas rejouer l’ajout.
+  changes PlaylistChange[]
 
   @@index([ownerUserId, updatedAt, id], map: "playlists_owner_idx")
   @@map("playlists")
+  @@schema("library")
+}
+
+/// Reçu durable d’une opération, privé au compte et supprimé avec la playlist.
+model PlaylistChange {
+  id String @id @db.Uuid
+  playlistId String @map("playlist_id") @db.Uuid
+  ownerUserId String @map("owner_user_id") @db.Uuid
+  fingerprint String
+  /// Copie de l’occurrence retirée et de ses voisins pour l’annulation.
+  undo Json?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  @@index([playlistId])
+  @@map("playlist_changes")
   @@schema("library")
 }
 
@@ -68,7 +87,7 @@ model PlaylistItem {
   @@schema("library")
 }
 
-/// Favori d’un compte pour un morceau, stocké localement dans Library ; pas de route ajoutée par cette documentation.
+/// Favori d’un compte pour un morceau, stocké localement dans Library.
 model TrackFavorite {
   /// UUID du compte auquel le profil ou la demande est rattaché.
   userId    String   @map("user_id") @db.Uuid
@@ -79,6 +98,23 @@ model TrackFavorite {
 
   @@id([userId, trackId])
   @@index([trackId], map: "favorites_track_idx")
+  @@index([userId, createdAt(sort: Desc), trackId], map: "favorites_recent_idx")
   @@map("track_favorites")
+  @@schema("library")
+}
+
+/// Référence personnelle indépendante des amitiés et des favoris de morceaux.
+model SavedItem {
+  /// Propriétaire de la bibliothèque.
+  userId String @map("user_id") @db.Uuid
+  /// project, artist ou playlist ; contrainte SQL fermée.
+  kind String
+  /// UUID logique de l'objet public, sans copier ses informations.
+  targetId String @map("target_id") @db.Uuid
+  /// Date d'enregistrement, conservée lors des requêtes répétées.
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@id([userId, kind, targetId])
+  @@index([userId, kind, createdAt(sort: Desc), targetId], map: "saved_items_recent_idx")
+  @@map("saved_items")
   @@schema("library")
 }

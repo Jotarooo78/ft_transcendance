@@ -197,6 +197,7 @@ services:
     environment:
       LIBRARY_DATABASE_URL: postgresql://library_runtime:e2e_library_runtime_test_only@db:5432/transcendence_music?schema=library
       JWT_SECRET: e2e_test_only_jwt_secret_with_sufficient_length
+      INTERNAL_SERVICE_TOKEN: e2e_test_only_internal_token_with_sufficient_length
       CATALOG_SERVICE_URL: http://catalog-service:4002
     depends_on:
       apply-permissions:

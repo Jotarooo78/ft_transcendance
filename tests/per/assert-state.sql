@@ -75,7 +75,7 @@ BEGIN
        OR (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'users') <> 5
        OR (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'catalog') <> 10
        OR (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'media') <> 3
-       OR (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'library') <> 4
+       OR (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'library') <> 6
        OR (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'playback') <> 3
        OR (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'chat') <> 3 THEN
         RAISE EXCEPTION 'unexpected table count in one or more schemas';

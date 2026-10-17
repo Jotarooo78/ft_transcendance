@@ -12,7 +12,9 @@ export type CatalogQuery = {
   /** Genre affiché ou filtre exact du Catalogue ; une chaîne vide n’impose pas de filtre. */
   genre: string;
   /** Critère de tri global appliqué avant la pagination. */
-  sort: "title" | "artist" | "duration";
+  sort: "title" | "artist" | "duration" | "recent";
+  /** Compte artiste facultatif pour sa page publique. */
+  owner?: string;
 };
 /** Page validée de morceaux avec total filtré et genres disponibles. */
 export type CatalogList = {
@@ -39,9 +41,19 @@ export function isTrack(value: unknown): value is Track {
     ["id", "title", "artistName", "albumTitle", "genre"].every(
       (key) => typeof track[key] === "string",
     ) &&
-    (track.artistUserId === undefined || track.artistUserId === null || (typeof track.artistUserId === "string" && /^[a-f0-9-]{36}$/i.test(track.artistUserId))) &&
-    (track.description === undefined || track.description === null || typeof track.description === "string") &&
-    (track.coverUrl === undefined || track.coverUrl === null || (typeof track.coverUrl === "string" && /^\/api\/media\/assets\/[a-f0-9-]{36}\/artwork$/i.test(track.coverUrl))) &&
+    (track.artistUserId === undefined ||
+      track.artistUserId === null ||
+      (typeof track.artistUserId === "string" &&
+        /^[a-f0-9-]{36}$/i.test(track.artistUserId))) &&
+    (track.description === undefined ||
+      track.description === null ||
+      typeof track.description === "string") &&
+    (track.coverUrl === undefined ||
+      track.coverUrl === null ||
+      (typeof track.coverUrl === "string" &&
+        /^\/api\/media\/assets\/[a-f0-9-]{36}\/artwork$/i.test(
+          track.coverUrl,
+        ))) &&
     (track.audioUrl === null ||
       (typeof track.audioUrl === "string" &&
         /^\/api\/media\/assets\/[0-9a-f-]+\/audio$/i.test(track.audioUrl))) &&
@@ -69,6 +81,7 @@ export async function getTracks(
     genre: query.genre,
     sort: query.sort,
   });
+  if (query.owner) params.set("owner", query.owner);
   const response = await fetch(`/api/catalog/tracks?${params}`, { signal });
   if (!response.ok)
     throw new Error(
@@ -91,6 +104,16 @@ export async function getTracks(
   return data;
 }
 
+/** Refus HTTP d’un détail, afin de distinguer disparition et panne lors d’une reprise. */
+export class TrackReadError extends Error {
+  /** Statut confirmé par Catalogue. */ readonly status: number;
+  /** Conserve le statut sans exposer la réponse brute. */
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
 /**
  * Charge le détail par UUID et exige une réponse correspondant au morceau demandé ; distingue le 404
  * des autres refus et supporte l’annulation.
@@ -104,9 +127,12 @@ export async function getTrack(
     { signal },
   );
   if (response.status === 404)
-    throw new Error("This track is no longer available.");
+    throw new TrackReadError(404, "This track is no longer available.");
   if (!response.ok)
-    throw new Error(`Unable to load track (${response.status}). Please retry.`);
+    throw new TrackReadError(
+      response.status,
+      `Unable to load track (${response.status}). Please retry.`,
+    );
   const track: unknown = await response.json();
   if (!isTrack(track) || track.id !== id)
     throw new Error("Invalid track response. Please retry.");

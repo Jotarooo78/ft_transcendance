@@ -50,6 +50,22 @@ export function memoryStores(initial: Profile[] = []) {
   const calls = { update: [] as unknown[] }
 
   const profilesRepository: ProfilesRepository = {
+    /** Simulation de la recherche ; les tests SQL restent séparés. */
+    searchArtists: async (q, page, pageSize) => {
+      const rows = [...profiles.values()]
+        .filter(
+          (p) =>
+            p.displayName.toLowerCase().includes(q.toLowerCase()) ||
+            p.username.toLowerCase().includes(q.toLowerCase())
+        )
+        .sort((a, b) => a.displayName.localeCompare(b.displayName))
+      return {
+        items: rows.slice((page - 1) * pageSize, page * pageSize),
+        total: rows.length,
+        page,
+        pageSize,
+      }
+    },
     find: async (userId) => profiles.get(userId) ?? null,
     findPublic: async (userId) => profiles.get(userId) ?? null,
     exists: async (userId) => profiles.has(userId),

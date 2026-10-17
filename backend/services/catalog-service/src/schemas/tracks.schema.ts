@@ -51,8 +51,14 @@ export const TrackQuerySchema = Type.Object(
     pageSize: Type.Optional(positiveInteger),
     q: Type.Optional(searchText),
     genre: Type.Optional(searchText),
+    owner: Type.Optional(UuidSchema),
     sort: Type.Optional(
-      Type.Union([Type.Literal('title'), Type.Literal('artist'), Type.Literal('duration')])
+      Type.Union([
+        Type.Literal('title'),
+        Type.Literal('artist'),
+        Type.Literal('duration'),
+        Type.Literal('recent'),
+      ])
     ),
   },
   { additionalProperties: false }
@@ -70,6 +76,7 @@ export const TrackParamsSchema = Type.Object({ id: UuidSchema })
  *   peuvent valoir null.
  */
 export const TrackSchema = Type.Object({
+  projectId: Type.Optional(nullable(Type.String())),
   artistUserId: Type.Optional(Type.String()),
   description: Type.Optional(nullable(Type.String())),
   coverUrl: Type.Optional(nullable(Type.String())),

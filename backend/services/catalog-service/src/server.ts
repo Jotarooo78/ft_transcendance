@@ -16,6 +16,7 @@
  * jamais besoin de ce fichier.
  */
 
+import { createProjectsRepository } from './repositories/projects.repository.js'
 import { createUsersClient } from './clients/users.client.js'
 import { createMediaClient } from './clients/media.client.js'
 import { createPublicationsRepository } from './repositories/publications.repository.js'
@@ -48,6 +49,7 @@ const prisma = createPrisma(config.databaseUrl)
  *   `close` est appelée quand le serveur s'arrête.
  */
 const app = await buildApp(config, {
+  projects: createProjectsRepository(prisma),
   users: createUsersClient(config.userUrl),
   media: createMediaClient(config.mediaUrl, config.internalServiceToken),
   publications: createPublicationsRepository(prisma),

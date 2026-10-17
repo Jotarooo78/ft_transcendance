@@ -41,6 +41,12 @@ export type PlaylistPage = Pagination & { items: Playlist[]; total: number }
  */
 export function createPlaylistsService(playlists: PlaylistsRepository) {
   return {
+    /** @brief Refuse le partage dès que la playlist redevient privée. */
+    async getPublic(id: string): Promise<Playlist> {
+      const row = await playlists.findPublic(id)
+      if (!row) throw playlistNotFound()
+      return toPlaylist(row)
+    },
     /**
      * @brief Renvoie une page des playlists du compte.
      * @param owner Identifiant du compte connecté.
@@ -74,8 +80,8 @@ export function createPlaylistsService(playlists: PlaylistsRepository) {
      * @param input Nom et description déjà vérifiés.
      * @returns La playlist créée.
      */
-    async create(owner: string, input: PlaylistInput): Promise<Playlist> {
-      return toPlaylist(await playlists.create(owner, input))
+    async create(owner: string, input: PlaylistInput, creationId?: string): Promise<Playlist> {
+      return toPlaylist(await playlists.create(owner, input, creationId))
     },
 
     /**

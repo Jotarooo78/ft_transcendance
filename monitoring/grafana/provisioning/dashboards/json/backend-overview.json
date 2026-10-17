@@ -24,7 +24,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "prometheus"
       },
       "description": "Etat up/down des cibles scrapees.",
       "fieldConfig": {
@@ -91,7 +91,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "up{job=~\"auth-service|user-service\"}",
+          "expr": "up{job=~\".*-service\"}",
           "legendFormat": "{{job}}",
           "range": true,
           "refId": "A"
@@ -103,7 +103,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "prometheus"
       },
       "description": "Requetes par seconde par service.",
       "fieldConfig": {
@@ -150,7 +150,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "prometheus"
       },
       "description": "Latence p95 des requetes HTTP par service.",
       "fieldConfig": {

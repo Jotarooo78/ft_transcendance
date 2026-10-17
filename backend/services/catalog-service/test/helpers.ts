@@ -50,7 +50,7 @@ const unused = async (): Promise<never> => {
 export function buildTestApp(overrides: Partial<Dependencies> = {}) {
   return buildApp(config, {
     users: { authenticate: unused, read: unused },
-    media: { reserve: unused },
+    media: { reserve: unused, release: unused },
     publications: { owners: async () => [], publish: unused },
     tracks: { findPublished: unused, list: unused },
     assets: { isPublished: unused, isReferenced: unused },

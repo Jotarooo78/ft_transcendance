@@ -105,3 +105,149 @@ session ouverte sont possibles. Aucun worker de clôture, reprise automatique,
 analytics ou royalties n’est produit. R15 reste un seuil produit ouvert :
 qualified=false et countingRuleVersion=1 restent leurs valeurs existantes,
 sans règle de qualification activée.
+
+## Lecteur commun et file musicale
+
+Les pages transmettent leur sélection au `MusicPlayerProvider`. Le moteur
+`AudioPlayer` reste unique et ses événements réels déterminent lecture, pause,
+chargement, position et durée. `PlayerBar`, `QueuePanel`, `MusicTrackRow` et
+`TrackQueueActions` utilisent le même contexte ; aucun écran ne crée son lecteur.
+`TrackDetails`, conservé pour compatibilité, utilise également ce contexte.
+
+`services/music-queue.ts` contient uniquement les règles d’enchaînement. Une
+occurrence possède sa propre identité, même lorsque plusieurs places portent
+le même morceau. `entries` conserve l’ordre initial et les ajouts manuels,
+`order` l’ordre réellement joué, `history` les 500 dernières transitions et
+`forward` les retours en avant après précédent. Ces tableaux appartiennent au
+lecteur : retirer un élément de la file ne modifie jamais une playlist serveur.
+`services/playback-queue.ts` reste exclusivement la file d’envoi des mesures.
+
+- Répétition désactivée : arrêt après la dernière occurrence.
+- Répétition de file : retour au début ; un nouveau mélange est produit à chaque
+  tour si l’aléatoire est actif, sans répétition immédiate de la même occurrence
+  lorsqu’il existe plusieurs places.
+- Répétition de morceau : une fin naturelle ouvre une nouvelle écoute de la même
+  occurrence ; suivant manuel passe au prochain et s’arrête au dernier.
+- Précédent après trois secondes revient au début. Avant ce seuil, il revient
+  sur l’occurrence réellement écoutée précédemment ; sans historique il revient
+  au début du morceau courant. Un retour au début conserve l’état lecture/pause.
+- Activer l’aléatoire conserve le courant et mélange les suivants. Le désactiver
+  restaure l’ordre initial autour du courant. Les doublons restent distincts.
+- Lire ensuite insère immédiatement après le courant ; ajouter à la file place
+  l’occurrence à la fin, dans l’ordre initial et dans l’ordre de lecture.
+
+Une sélection d’album, EP, mixtape, single ou playlist conserve la liste entière
+et démarre à la place cliquée. Les titres aimés chargent toutes les références,
+puis leurs détails avec au plus huit requêtes simultanées, avant d’afficher les
+lignes disponibles. La file dépasse donc les 24 lignes visibles ; sur une très
+grande bibliothèque, le chargement initial attend ces détails. Le changement de
+page visuelle ne relit pas les détails déjà obtenus. Recherche et historique
+lancent un seul titre ; le hub et la page artiste lancent leurs titres affichés.
+Une recherche, une navigation ou un filtre ne réécrit pas une file déjà lancée.
+
+Le clic sur une ligne lance ou reprend le titre ; s’il est déjà en lecture, il
+ne le recommence pas. Les doublons explicites des playlists ciblent leur place.
+Boutons, menus, liens, champs et sélection de texte restent indépendants.
+Entrée et espace activent une ligne focalisée ; espace commande aussi le lecteur
+hors des éléments interactifs et des dialogues. Échap ferme la file et restaure
+le focus du bouton d’ouverture. Les animations respectent la réduction des
+mouvements. La hauteur réelle de la barre fixe réserve de la place dans les pages.
+
+## Reprise locale et indisponibilités
+
+`storage/player-storage.ts` valide un document versionné par compte dans
+`localStorage` : identifiants et ordre des occurrences, parcours récent, source,
+position en secondes, volume, sourdine, répétition et mélange. Aucun jeton, profil
+ou URL audio n’est sauvegardé. Le stockage est limité à 10 000 occurrences ;
+une erreur de quota ou un document invalide n’empêche pas la lecture en mémoire.
+Les invités conservent leur état uniquement pendant la navigation courante.
+
+Après reconnexion au même compte dans le même navigateur, les métadonnées sont
+relues auprès de Catalogue et la position est bornée à la durée réelle après
+chargement. La reprise reste en pause et n’ouvre aucune session d’écoute avant
+lecture effective. Une nouvelle sélection invalide toute restauration en cours.
+Un autre compte ne charge jamais la reprise du précédent. Fermer le lecteur
+vide la file sauvegardée mais conserve volume et modes. Il n’y a pas de
+synchronisation entre appareils ni de changement de persistance de connexion.
+
+Un 404 confirmé pendant la restauration retire la référence ; une panne réseau
+ou serveur conserve la copie locale et propose une nouvelle tentative. Pendant
+la lecture, un fichier illisible est sauté. Chaque occurrence en échec est
+mémorisée pour arrêter une file entièrement indisponible, y compris en répétition.
+Une panne réseau ou un refus de lecture automatique demande une action explicite.
+Les erreurs de suivi d’écoute restent visibles avec leur reprise indépendante ;
+les messages techniques de sauvegarde réussie n’encombrent pas la barre.
+
+## Vérifications du lecteur
+
+Depuis `frontend` : `npm run lint`, `npm run build`, `npm run test:music`.
+Les tests sans navigateur couvrent l’horloge, les envois de suivi, les transitions
+et la validation du stockage. Depuis la racine : `bash tests/projects/run.sh`
+exécute les parcours projets, puis `verify-player.mjs`, dans la seule pile jetable
+`transcendence_projects` sur le port 5445. Les prérequis Chromium sont ceux de
+`tests/files`. Le runner reconstruit les images et supprime uniquement sa pile.
+Les anciens parcours avec témoins PostgreSQL restent dans `tests/music`.
+
+Le scénario lecteur utilise de vrais comptes, playlists, audios et sessions.
+Les 127 références de titres aimés et leurs détails sont simulés pour vérifier
+les deux niveaux de pagination ; les octets audio restent réels. Les pannes
+HTTP et réseau sont injectées explicitement dans le navigateur de test. Ces
+preuves ne constituent pas un test de charge ni une synchronisation multiappareil.
+
+### Chargement sans déplacement
+
+Le bouton central passe en lavande pendant le chargement. Un anneau décoratif
+apparaît après 200 ms, sans changer la taille du bouton ni de la barre. Son animation
+est supprimée avec son élément au changement de titre ou à la fin de l’attente ;
+la préférence de réduction des mouvements conserve seulement l’anneau fixe.
+Le statut reste annoncé aux lecteurs d’écran. Les erreurs et leur reprise restent visibles.
+
+### Pochettes absentes
+
+`EmptyArtwork` fournit une croche SVG commune aux titres, projets, playlists,
+formulaires et lecteur. Le contexte fixe la taille et la couleur ; l’icône occupe
+la moitié centrale de la boîte, sans métrique de police ni marge sous la vignette.
+Les images privées passent toujours par une lecture authentifiée ; une image
+absente, en attente ou illisible conserve la boîte de remplacement.
+
+### Actualisation des écrans
+
+Les fonctions `reload` restent disponibles dans le code ; les boutons Refresh
+ont disparu. `useVisibleRefresh` relit au retour sur l’onglet et toutes les
+30 secondes lorsqu’il est visible. Focus et visibilité rapprochés sont fusionnés.
+`useResource` effectue la lecture initiale, conserve la dernière confirmation
+pendant une relecture, annule les demandes remplacées et sépare erreur initiale
+et erreur d’actualisation. Un refus 401/403/404 retire les données. Une panne
+transitoire conserve la liste et propose une reprise discrète sous son contenu.
+
+La fonction de chargement identifie normalement compte, recherche, page et objet.
+Une portée explicite, limitée à une section de bibliothèque et sa page dans un
+composant isolé par compte, permet de changer ses références sans vider la liste.
+Les lignes/cartes portent une ancre : une insertion avant l’élément visible conserve
+sa position, sauf si l’utilisateur a défilé entre-temps. La file audio reste
+indépendante de ces lectures.
+
+Les mutations des playlists et collections suspendent les GET en cours, appliquent
+les confirmations puis reprennent une lecture. Le formulaire de playlist conserve
+sa version de départ et ses champs ; une version plus récente exige une nouvelle
+validation explicite après un message de conflit. Une suppression distante conserve
+les saisies ouvertes mais le serveur refuse leur sauvegarde sur l’objet supprimé.
+L’historique recharge ensemble les sessions et leurs détails, après une ouverture
+ou clôture d’écoute et lors des déclencheurs communs. Une révocation publique est
+également appliquée lorsqu’une autre carte enregistrée rencontre une panne.
+
+Les lectures de répertoire/amis ne sont périodiques que sur Profil/Users ; les
+collections et playlists ne le sont que sur les écrans musicaux qui les utilisent.
+Les battements de présence restent séparés. Aucun gestionnaire de roue ni
+bibliothèque de défilement artificiel n’est ajouté.
+
+### Coût du défilement pendant l’écoute
+
+La barre utilise un fond crème opaque : le flou de fond recalculé sur toute sa
+largeur était coûteux dans le navigateur de mesure. Les formes des `PlayerIcon`
+sont immuables et créées une seule fois, puis réutilisées dans les boutons.
+`PlaybackProgressContext` porte une instance observable propre à chaque lecteur.
+Seule la barre s’abonne à sa position/durée via `useSyncExternalStore` ; les lignes
+restent abonnées aux changements utiles (titre, lecture/pause, file), sans recevoir
+chaque événement `timeupdate`. La sauvegarde lit cette même position, tandis que
+le suivi d’écoute crédité conserve son horloge séparée et inchangée.

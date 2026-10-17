@@ -1,3 +1,5 @@
+import { translate as t, translateError } from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
 import { getAvatarSource } from "../avatar";
 import { useEffect, useState, type ChangeEvent, type SubmitEvent } from "react";
 import type { AuthenticatedUser } from "../types/auth";
@@ -21,11 +23,9 @@ type EditProfileFormProps = {
   onCancel: () => void;
 };
 
-function EditProfileForm({
-  user,
-  onSave,
-  onCancel,
-}: EditProfileFormProps) {
+/** Affiche EditProfileForm dans la langue choisie en conservant son état. */
+function EditProfileForm({ user, onSave, onCancel }: EditProfileFormProps) {
+  useLanguage();
   const [displayName, setDisplayName] = useState(user.displayName);
 
   const [username, setUsername] = useState(user.username);
@@ -41,8 +41,7 @@ function EditProfileForm({
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
-  const [avatarMarkedForDeletion, setAvatarMarkedForDeletion] =
-    useState(false);
+  const [avatarMarkedForDeletion, setAvatarMarkedForDeletion] = useState(false);
 
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState(
     getAvatarSource(user.avatarUrl),
@@ -98,7 +97,7 @@ function EditProfileForm({
       return;
     }
 
-    const confirmed = window.confirm("Remove your current avatar?");
+    const confirmed = window.confirm(t("Remove your current avatar?"));
 
     if (!confirmed) {
       return;
@@ -164,7 +163,7 @@ function EditProfileForm({
           <img
             className="profile-avatar"
             src={avatarPreviewUrl}
-            alt="Avatar preview"
+            alt={t("Avatar preview")}
           />
 
           {(avatarFile !== null ||
@@ -172,8 +171,8 @@ function EditProfileForm({
             <button
               type="button"
               className="remove-avatar-button"
-              aria-label="Remove avatar"
-              title="Remove avatar"
+              aria-label={t("Remove avatar")}
+              title={t("Remove avatar")}
               disabled={isSubmitting}
               onClick={() => {
                 handleDeleteAvatar();
@@ -185,7 +184,8 @@ function EditProfileForm({
         </div>
 
         <label htmlFor="profile-avatar">
-          Choose an avatar
+          {" "}
+          {t("Choose an avatar")}{" "}
           <input
             id="profile-avatar"
             type="file"
@@ -194,12 +194,14 @@ function EditProfileForm({
           />
         </label>
 
-        <p className="field-help">PNG, JPEG or WebP. Maximum size: 2 MB.</p>
-
+        <p className="field-help">
+          {t("PNG, JPEG or WebP. Maximum size: 2 MB.")}
+        </p>
       </div>
 
       <label htmlFor="profile-display-name">
-        Display name
+        {" "}
+        {t("Display name")}{" "}
         <input
           id="profile-display-name"
           type="text"
@@ -215,7 +217,8 @@ function EditProfileForm({
       </label>
 
       <label htmlFor="profile-username">
-        Username
+        {" "}
+        {t("Username")}{" "}
         <input
           id="profile-username"
           type="text"
@@ -231,7 +234,8 @@ function EditProfileForm({
       </label>
 
       <label htmlFor="profile-bio">
-        Bio
+        {" "}
+        {t("Bio")}{" "}
         <textarea
           id="profile-bio"
           rows={4}
@@ -240,7 +244,7 @@ function EditProfileForm({
           onChange={(event) => {
             setBio(event.target.value);
           }}
-          placeholder="Tell the community about yourself."
+          placeholder={t("Tell the community about yourself.")}
         />
       </label>
 
@@ -248,7 +252,7 @@ function EditProfileForm({
 
       {errorMessage && (
         <p className="message error-message" role="alert">
-          {errorMessage}
+          {translateError(errorMessage)}
         </p>
       )}
 
@@ -261,10 +265,12 @@ function EditProfileForm({
 
           <span>
             {avatarUploadProgress.phase === "processing"
-              ? "Processing avatar..."
+              ? t("Processing avatar...")
               : avatarUploadProgress.percent === null
-                ? "Uploading avatar..."
-                : `Uploading avatar: ${avatarUploadProgress.percent}%`}
+                ? t("Uploading avatar...")
+                : t("Uploading avatar: {0}%", {
+                    "0": avatarUploadProgress.percent,
+                  })}
           </span>
         </div>
       )}
@@ -276,7 +282,8 @@ function EditProfileForm({
           onClick={onCancel}
           disabled={isSubmitting}
         >
-          Cancel
+          {" "}
+          {t("Cancel")}{" "}
         </button>
 
         <button
@@ -285,7 +292,7 @@ function EditProfileForm({
             isSubmitting || displayName.trim() === "" || username.trim() === ""
           }
         >
-          {isSubmitting ? "Saving..." : "Save changes"}
+          {isSubmitting ? t("Saving...") : t("Save changes")}
         </button>
       </div>
     </form>

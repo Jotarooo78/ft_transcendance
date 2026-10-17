@@ -14,6 +14,10 @@
  * routes sans base de données.
  */
 
+import type { ProjectsRepository } from './repositories/projects.repository.js'
+import { createProjectsService } from './services/projects.service.js'
+import { createProjectsController } from './controllers/projects.controller.js'
+import { registerProjectsRoutes } from './routes/projects.routes.js'
 import type { UsersClient } from './clients/users.client.js'
 import type { MediaClient } from './clients/media.client.js'
 import type { PublicationsRepository } from './repositories/publications.repository.js'
@@ -46,6 +50,8 @@ const service = 'catalog-service'
  *   comportement d'une route quand la base renvoie tel résultat, ou quand elle tombe en panne.
  */
 export type Dependencies = {
+  /** Stockage des projets, injecté par server.ts ; facultatif pour les anciens tests ciblés. */
+  projects?: ProjectsRepository
   /** Identité actuelle fournie par Users. */
   users: UsersClient
   /** Réservation durable des audios. */
@@ -125,6 +131,14 @@ export async function buildApp(
     )
   )
   registerAssetsRoutes(app, createAssetsController(createAssetsService(dependencies.assets)))
+
+  if (dependencies.projects)
+    registerProjectsRoutes(
+      app,
+      createProjectsController(
+        createProjectsService(dependencies.projects, dependencies.users, dependencies.media)
+      )
+    )
 
   return app
 }

@@ -13,13 +13,13 @@ export async function deleteFile(id: string, signal: AbortSignal) {
     { method: "DELETE", signal },
   );
   if (signal.aborted || token !== getAccessToken())
-    throw new Error("The signed-in account changed. Refresh your files.");
+    throw new Error("The signed-in account changed. Check the automatically updated list before trying again.");
   if (response.status !== 204)
     throw new Error(
       response.status === 409
         ? "This file is still used in the catalog and was not deleted."
         : response.status === 404
-          ? "This file is no longer available. Refresh the list."
+          ? "This file is no longer available. Check the automatically updated list before trying again."
           : "Unable to delete the file. It remains visible; please try again.",
     );
 }

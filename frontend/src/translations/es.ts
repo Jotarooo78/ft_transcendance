@@ -1,0 +1,730 @@
+import type { Dictionary } from "./en";
+/** Traductions espagnoles, contrôlées contre le dictionnaire de référence. */
+export const es = {
+  Language: "Idioma",
+  "User navigation": "Navegación de usuario",
+  Library: "Biblioteca",
+  Upload: "Publicar",
+  History: "Historial",
+  Profile: "Perfil",
+  Catalog: "Catálogo",
+  Catalogue: "Catálogo",
+  Playlists: "Listas",
+  Users: "Usuarios",
+  "Log out": "Cerrar sesión",
+  "Sign in": "Iniciar sesión",
+  Authentication: "Autenticación",
+  Register: "Registrarse",
+  Login: "Iniciar sesión",
+  "Artist profile": "Perfil del artista",
+  "Loading artist…": "Cargando artista…",
+  "Close profile": "Cerrar perfil",
+  "No cover": "Sin portada",
+  "Cover unavailable": "Portada no disponible",
+  "Audio cover": "Portada del audio",
+  "Retry saving": "Reintentar guardado",
+  "Preparing audio": "Preparando audio",
+  "This is taking a little longer. Larger files can take more time.":
+    "Está tardando un poco más. Los archivos grandes pueden necesitar más tiempo.",
+  "Checking the file and preparing playback.":
+    "Comprobando el archivo y preparando la reproducción.",
+  "Like track": "Me gusta la canción",
+  "Unlike track": "Quitar me gusta",
+  "Follow artist": "Seguir al artista",
+  "Unfollow artist": "Dejar de seguir al artista",
+  "Save project": "Guardar proyecto",
+  "Unsave project": "Quitar proyecto guardado",
+  "Save playlist": "Guardar lista",
+  "Unsave playlist": "Quitar lista guardada",
+  "Retry library": "Recargar biblioteca",
+  "Remove your current avatar?": "¿Eliminar tu avatar actual?",
+  "Avatar preview": "Vista previa del avatar",
+  "Remove avatar": "Eliminar avatar",
+  "Choose an avatar": "Elegir un avatar",
+  "PNG, JPEG or WebP. Maximum size: 2 MB.":
+    "PNG, JPEG o WebP. Tamaño máximo: 2 MB.",
+  "Display name": "Nombre visible",
+  Username: "Nombre de usuario",
+  Bio: "Biografía",
+  "Tell the community about yourself.": "Cuéntale a la comunidad sobre ti.",
+  "Processing avatar...": "Procesando avatar…",
+  "Uploading avatar...": "Subiendo avatar…",
+  "Uploading avatar: {0}%": "Subiendo avatar: {0} %",
+  Cancel: "Cancelar",
+  "Saving...": "Guardando…",
+  "Save changes": "Guardar cambios",
+  "No artwork": "Sin imagen",
+  "Loading preview…": "Cargando vista previa…",
+  "Private audio preview": "Vista previa de audio privado",
+  "Your track is live": "Tu canción está publicada",
+  "is now in the catalogue.": "ya está en el catálogo.",
+  "View in catalogue": "Ver en el catálogo",
+  "Drag and drop your track here": "Arrastra tu canción aquí",
+  "Share your sound with the community.":
+    "Comparte tu música con la comunidad.",
+  "Choose a file": "Elegir un archivo",
+  "Audio file": "Archivo de audio",
+  "One audio file · Up to 500 MB": "Un archivo de audio · Hasta 500 MB",
+  "Upload progress": "Progreso de subida",
+  "Uploading audio…": "Subiendo audio…",
+  "Uploading audio — {0}%": "Subiendo audio — {0} %",
+  "Checking audio…": "Comprobando audio…",
+  "✓ Audio ready": "✓ Audio listo",
+  "Selected cover": "Portada seleccionada",
+  "Choose artwork": "Elegir imagen",
+  "Cover image": "Imagen de portada",
+  "Remove artwork": "Eliminar imagen",
+  "Artwork is optional.": "La imagen es opcional.",
+  "JPG, PNG or WebP · Up to 25 MB": "JPG, PNG o WebP · Hasta 25 MB",
+  "Checking artwork…": "Comprobando imagen…",
+  "Continue without artwork": "Continuar sin imagen",
+  "The embedded artwork could not be used. You can choose another image.":
+    "No se pudo usar la imagen integrada. Puedes elegir otra imagen.",
+  Title: "Título",
+  Artist: "Artista",
+  Description: "Descripción",
+  "Tell the story behind your track. Add credits or lyrics…":
+    "Cuenta la historia de tu canción. Añade créditos o letras…",
+  "Your track will be public when you publish it.":
+    "Tu canción será pública cuando la publiques.",
+  "Cancel upload": "Cancelar subida",
+  "Retry upload": "Reintentar subida",
+  "Publishing…": "Publicando…",
+  "Retry publication": "Reintentar publicación",
+  "Publish track": "Publicar canción",
+  Email: "Correo electrónico",
+  Password: "Contraseña",
+  "Logging in...": "Iniciando sesión…",
+  "Log in": "Iniciar sesión",
+  "Selected tracks": "Canciones seleccionadas",
+  "Retry restoration": "Reintentar restauración",
+  Dismiss: "Cerrar",
+  Pause: "Pausa",
+  Play: "Reproducir",
+  "Repeat off": "Repetición desactivada",
+  "Repeat queue": "Repetir cola",
+  "Repeat one": "Repetir canción",
+  "Audio player": "Reproductor de audio",
+  Shuffle: "Reproducción aleatoria",
+  "Shuffle on": "Reproducción aleatoria activada",
+  "Shuffle off": "Reproducción aleatoria desactivada",
+  "Previous track": "Canción anterior",
+  "Next track": "Canción siguiente",
+  "Playback position": "Posición de reproducción",
+  "{0} of {1}": "{0} de {1}",
+  Unmute: "Activar sonido",
+  Mute: "Silenciar",
+  Volume: "Volumen",
+  Queue: "Cola",
+  "Close audio player": "Cerrar reproductor de audio",
+  "Stop and clear queue": "Detener y vaciar cola",
+  "Loading audio…": "Cargando audio…",
+  "Retry playback": "Reintentar reproducción",
+  "This playlist does not contain any tracks yet.":
+    "Esta lista todavía no contiene canciones.",
+  "Play playlist": "Reproducir lista",
+  "Shuffle play": "Reproducir aleatoriamente",
+  "Remove track": "Quitar canción",
+  "Loading track…": "Cargando canción…",
+  "Track unavailable": "Canción no disponible",
+  "Retry track details": "Recargar detalles de la canción",
+  "Project artwork": "Imagen del proyecto",
+  "Default artwork": "Imagen predeterminada",
+  "Various artists": "Varios artistas",
+  "Release type": "Tipo de publicación",
+  "Single track": "Una canción",
+  "Drop your music here": "Arrastra tu música aquí",
+  "Choose audio files": "Elegir archivos de audio",
+  "Audio files": "Archivos de audio",
+  "Up to 500 MB per track · Your work stays in a draft until you publish.":
+    "Hasta 500 MB por canción · Tu trabajo permanece en borrador hasta que lo publiques.",
+  "Selected artwork": "Imagen seleccionada",
+  Artwork: "Imagen",
+  "Use default artwork": "Usar imagen predeterminada",
+  "Optional · JPG, PNG or WebP · Up to 25 MB":
+    "Opcional · JPG, PNG o WebP · Hasta 25 MB",
+  "Project title": "Título del proyecto",
+  "Untitled track": "Canción sin título",
+  "Untitled project": "Proyecto sin título",
+  "Track {0} title": "Título de la canción {0}",
+  "✓ Ready": "✓ Listo",
+  Waiting: "En espera",
+  "Preparing audio…": "Preparando audio…",
+  "Uploading {0}%": "Subiendo: {0} %",
+  "Upload {0}": "Subida {0}",
+  "Move track {0} up": "Subir canción {0}",
+  "Move track {0} down": "Bajar canción {0}",
+  Retry: "Reintentar",
+  "Remove track {0}": "Quitar canción {0}",
+  "Your project is published.": "Tu proyecto está publicado.",
+  "Only you can see this draft.": "Solo tú puedes ver este borrador.",
+  "Saving…": "Guardando…",
+  "Save draft": "Guardar borrador",
+  "Save publication": "Guardar publicación",
+  Publish: "Publicar",
+  "Playback queue": "Cola de reproducción",
+  "UP NEXT": "A CONTINUACIÓN",
+  "Your queue": "Tu cola",
+  "Close queue": "Cerrar cola",
+  "Now playing": "Reproduciendo ahora",
+  Playing: "Reproduciendo",
+  Paused: "En pausa",
+  "Next up": "A continuación",
+  "The queue will start again.": "La cola volverá a empezar.",
+  "This track will repeat.": "Esta canción se repetirá.",
+  "You’re at the end of the queue.": "Has llegado al final de la cola.",
+  "Play queued {0}": "Reproducir {0} de la cola",
+  "Remove queued {0}": "Quitar {0} de la cola",
+  "Remove from queue": "Quitar de la cola",
+  "The update failed; the last loaded content is still shown. ":
+    "La actualización falló; se sigue mostrando el último contenido cargado. ",
+  "Retry update": "Reintentar actualización",
+  "Use 3 to 24 letters (a-z), numbers or underscores.":
+    "Usa entre 3 y 24 letras (a-z), números o guiones bajos.",
+  "The name displayed on your profile. Spaces and accents are welcome.":
+    "El nombre que aparece en tu perfil. Se permiten espacios y acentos.",
+  "Confirm password": "Confirmar contraseña",
+  "Creating account...": "Creando cuenta…",
+  "Create account": "Crear cuenta",
+  "Account created": "Cuenta creada",
+  "Your account has been created. You can now log in.":
+    "Tu cuenta ha sido creada. Ya puedes iniciar sesión.",
+  "Registration in progress": "Registro en curso",
+  "Your profile is being created. Try logging in after":
+    "Tu perfil se está creando. Vuelve a iniciar sesión después de",
+  "Artwork for {0}": "Imagen de {0}",
+  Unknown: "Desconocida",
+  Album: "Álbum",
+  Duration: "Duración",
+  Selected: "Seleccionado",
+  "Track details": "Detalles de la canción",
+  "Retry detail": "Recargar detalles",
+  Artists: "Artistas",
+  "No album": "Sin álbum",
+  Genre: "Género",
+  "{0} seconds": "{0} segundos",
+  "Listen to": "Escuchar",
+  "Close details": "Cerrar detalles",
+  "Queue actions for {0}": "Acciones de cola para {0}",
+  "Queue actions": "Acciones de la cola",
+  "Play next": "Reproducir a continuación",
+  "Add to queue": "Añadir a la cola",
+  "{0}'s avatar": "Avatar de {0}",
+  "No bio provided.": "No hay biografía.",
+  Online: "En línea",
+  Offline: "Desconectado",
+  "Remove friend": "Eliminar amigo",
+  "Add friend": "Añadir amigo",
+  "Retry artist": "Recargar artista",
+  Projects: "Proyectos",
+  "No published projects yet.": "Todavía no hay proyectos publicados.",
+  Tracks: "Canciones",
+  Previous: "Anterior",
+  Page: "Página",
+  Next: "Siguiente",
+  "Added to {0}.": "Añadido a {0}.",
+  "Find your next sound.": "Encuentra tu próxima canción favorita.",
+  "Search music": "Buscar música",
+  "Artists, projects, tracks": "Artistas, proyectos, canciones",
+  "Search category": "Categoría de búsqueda",
+  "Searching your music…": "Buscando música…",
+  "See all artists": "Ver todos los artistas",
+  "No artists found.": "No se encontraron artistas.",
+  "See all projects": "Ver todos los proyectos",
+  "No projects found.": "No se encontraron proyectos.",
+  "See all tracks": "Ver todas las canciones",
+  Search: "Búsqueda",
+  "Add {0} to playlist": "Añadir {0} a una lista",
+  "Add to playlist": "Añadir a una lista",
+  "No tracks found.": "No se encontraron canciones.",
+  'Discard draft "{0}" and its files?':
+    "¿Eliminar el borrador «{0}» y sus archivos?",
+  "CREATE & SHARE": "CREAR Y COMPARTIR",
+  "Upload your music": "Publica tu música",
+  "A track, an EP, a mixtape, an album. Your sound,":
+    "Una canción, un EP, una mixtape, un álbum. Tu música,",
+  "My uploads": "Mis publicaciones",
+  "New upload": "Nueva publicación",
+  "Loading your projects…": "Cargando tus proyectos…",
+  "Discard {0}": "Eliminar {0}",
+  Discard: "Eliminar",
+  "YOUR LISTENING": "TUS ESCUCHAS",
+  "Recently played": "Escuchado recientemente",
+  "Every listen, from newest to oldest.":
+    "Cada escucha, de la más reciente a la más antigua.",
+  "Loading listening history…": "Cargando historial de escucha…",
+  "Retry history": "Recargar historial",
+  "No listening sessions on this page.": "No hay escuchas en esta página.",
+  "History pagination": "Paginación del historial",
+  "Temporarily unavailable": "No disponible temporalmente",
+  "Retry details": "Recargar detalles",
+  "Loading library…": "Cargando biblioteca…",
+  "Nothing saved here yet. Explore the catalogue to add something you love.":
+    "Todavía no hay nada guardado aquí. Explora el catálogo para añadir lo que te gusta.",
+  "Item unavailable": "Elemento no disponible",
+  "Liked tracks": "Canciones que te gustan",
+  "tracks · Public playlist": "canciones · Lista pública",
+  "Library pagination": "Paginación de la biblioteca",
+  "Upload or edit a project": "Publicar o editar un proyecto",
+  "Loading your uploads…": "Cargando tus publicaciones…",
+  "Draft ·": "Borrador ·",
+  "No uploads yet.": "Todavía no hay publicaciones.",
+  "Saved projects": "Proyectos guardados",
+  "Followed artists": "Artistas que sigues",
+  "My playlists": "Mis listas",
+  "Saved playlists": "Listas guardadas",
+  "YOUR MUSIC": "TU MÚSICA",
+  "Library sections": "Secciones de la biblioteca",
+  "Access your account and continue listening.":
+    "Accede a tu cuenta y sigue escuchando.",
+  "Make this playlist {0}? {1}": "¿Hacer esta lista {0}? {1}",
+  "Anyone with its link can view it.":
+    "Cualquier persona con el enlace podrá verla.",
+  "Its public link will no longer show its contents.":
+    "Su enlace público ya no mostrará su contenido.",
+  "Edit playlist": "Editar lista",
+  Name: "Nombre",
+  Visibility: "Visibilidad",
+  Private: "Privada",
+  Public: "Pública",
+  "Cancel edit": "Cancelar edición",
+  'Delete playlist "{0}"?': "¿Eliminar la lista «{0}»?",
+  "Playlist created.": "Lista creada.",
+  "Your library": "Tu biblioteca",
+  "Create your own collections and choose who can see them.":
+    "Crea tus colecciones y elige quién puede verlas.",
+  "Create a playlist": "Crear una lista",
+  "Creating…": "Creando…",
+  "Create playlist": "Crear lista",
+  "Loading playlists…": "Cargando listas…",
+  "Retry playlists": "Recargar listas",
+  "No playlists yet.": "Todavía no hay listas.",
+  "No description": "Sin descripción",
+  "Tracks in": "Canciones de",
+  "Open public link": "Abrir enlace público",
+  "Deleting…": "Eliminando…",
+  "Delete playlist": "Eliminar lista",
+  "Playlist saved · {0}.": "Lista guardada · {0}.",
+  "Edit profile": "Editar perfil",
+  "Profile statistics": "Estadísticas del perfil",
+  Friends: "Amigos",
+  "You have no friends yet.": "Todavía no tienes amigos.",
+  "Remove {0} from friends": "Eliminar a {0} de tus amigos",
+  Remove: "Eliminar",
+  "Loading project…": "Cargando proyecto…",
+  "Play project": "Reproducir proyecto",
+  "PUBLIC PLAYLIST": "LISTA PÚBLICA",
+  "Loading playlist…": "Cargando lista…",
+  "Retry playlist": "Recargar lista",
+  "Create your account": "Crea tu cuenta",
+  "Join our independent music community.":
+    "Únete a nuestra comunidad de música independiente.",
+  Community: "Comunidad",
+  "Discover other members of the music community.":
+    "Descubre a otros miembros de la comunidad musical.",
+  "Community members": "Miembros de la comunidad",
+  "No users are available.": "No hay usuarios disponibles.",
+  "Unable to update your online status.":
+    "No se pudo actualizar tu estado en línea.",
+  "Profile saved, but the avatar was not uploaded. Please try uploading it again.":
+    "Perfil guardado, pero no se subió el avatar. Intenta subirlo de nuevo.",
+  "Profile saved, but the avatar was not removed. Please try again.":
+    "Perfil guardado, pero no se eliminó el avatar. Inténtalo de nuevo.",
+  "Unable to add this friend.": "No se pudo añadir este amigo.",
+  "Unable to remove this friend.": "No se pudo eliminar este amigo.",
+  "This profile is unavailable.": "Este perfil no está disponible.",
+  "Invalid profile response.": "La respuesta del perfil no es válida.",
+  "Unable to load this profile.": "No se pudo cargar este perfil.",
+  "Cover unavailable.": "Portada no disponible.",
+  "Unable to save.": "No se pudo guardar.",
+  "Avatar must be a PNG, JPEG or WebP image.":
+    "El avatar debe ser una imagen PNG, JPEG o WebP.",
+  "Avatar must not exceed 2 MB.": "El avatar no debe superar los 2 MB.",
+  "Display name must contain 1 to 60 characters.":
+    "El nombre visible debe contener entre 1 y 60 caracteres.",
+  "Bio must contain no more than 160 characters.":
+    "La biografía no debe superar los 160 caracteres.",
+  "An unexpected error occurred.": "Se ha producido un error inesperado.",
+  "Preview unavailable.": "Vista previa no disponible.",
+  "Unable to upload this audio.": "No se pudo subir este audio.",
+  "Choose another cover.": "Elige otra portada.",
+  "This upload could not be removed now. It will be cleaned up after it expires.":
+    "No se pudo eliminar esta subida. Se borrará cuando caduque.",
+  "Cover upload failed. Choose another cover or continue without one.":
+    "La subida de la portada falló. Elige otra o continúa sin portada.",
+  "Unable to confirm publication. Please retry.":
+    "No se pudo confirmar la publicación. Inténtalo de nuevo.",
+  "Choose one audio file at a time.": "Elige un archivo de audio a la vez.",
+  "Unavailable tracks were removed from your restored queue.":
+    "Las canciones no disponibles se quitaron de tu cola restaurada.",
+  "Queue restored. Press play when you’re ready.":
+    "Cola restaurada. Pulsa reproducir cuando quieras.",
+  "Your saved queue could not be loaded. Retry restoration or choose a track.":
+    "No se pudo cargar tu cola guardada. Reintenta la restauración o elige una canción.",
+  "Playback could not start. Press play to retry.":
+    "No se pudo iniciar la reproducción. Pulsa reproducir para reintentar.",
+  "This track is unavailable.": "Esta canción no está disponible.",
+  "Network unavailable. Retry playback when connected.":
+    "Red no disponible. Reintenta la reproducción cuando tengas conexión.",
+  "No playable tracks remain. Retry playback or choose another track.":
+    "No quedan canciones reproducibles. Reintenta la reproducción o elige otra canción.",
+  "An unavailable track was skipped.": "Se omitió una canción no disponible.",
+  "Added to play next.": "Añadido para reproducirse a continuación.",
+  "Added to queue.": "Añadido a la cola.",
+  "Press play to resume audio.": "Pulsa reproducir para reanudar el audio.",
+  "Unable to remove track.": "No se pudo quitar la canción.",
+  "Passwords do not match.": "Las contraseñas no coinciden.",
+  "Password must contain at least 12 characters.":
+    "La contraseña debe contener al menos 12 caracteres.",
+  "Unable to load track.": "No se pudo cargar la canción.",
+  "The signed-in account changed.": "La cuenta conectada ha cambiado.",
+  "The playlist changed. Your action was not applied. Wait for the automatic update or retry when it becomes available.":
+    "La lista ha cambiado. Tu acción no se aplicó. Espera la actualización automática o reinténtalo cuando esté disponible.",
+  "The playlist changed and has been refreshed. Your action was not applied. Review it before trying again.":
+    "La lista ha cambiado y se ha actualizado. Tu acción no se aplicó. Revísala antes de reintentarlo.",
+  "Upload failed.": "La subida falló.",
+  "Choose a project type to add several tracks.":
+    "Elige un tipo de proyecto para añadir varias canciones.",
+  "A project can contain up to 100 tracks.":
+    "Un proyecto puede contener hasta 100 canciones.",
+  "Finish or remove failed uploads before publishing.":
+    "Completa o elimina las subidas fallidas antes de publicar.",
+  "Add an audio before saving the artwork.":
+    "Añade un audio antes de guardar la imagen.",
+  "Your project is live. Changes saved.":
+    "Tu proyecto está publicado. Cambios guardados.",
+  "Draft saved. Failed uploads will need to be selected again after leaving this page.":
+    "Borrador guardado. Al salir de esta página, tendrás que seleccionar de nuevo los archivos cuya subida falló.",
+  "Draft saved. You can come back later.":
+    "Borrador guardado. Puedes volver más tarde.",
+  "An audio is no longer available. Remove that track and choose its file again.":
+    "Un audio ya no está disponible. Quita esa canción y vuelve a elegir su archivo.",
+  "Unable to save. Retry to recover the result.":
+    "No se pudo guardar. Reinténtalo para recuperar el resultado.",
+  "Unable to load. Please retry.": "No se pudo cargar. Inténtalo de nuevo.",
+  "Unable to add track.": "No se pudo añadir la canción.",
+  "Unable to discard. Please retry.":
+    "No se pudo eliminar. Inténtalo de nuevo.",
+  "The playlist changed. Your inputs are preserved. Review them before saving again.":
+    "La lista ha cambiado. Tus datos se conservan. Revísalos antes de guardar de nuevo.",
+  "Unable to save playlist.": "No se pudo guardar la lista.",
+  "Unable to delete playlist.": "No se pudo eliminar la lista.",
+  "Unable to create playlist.": "No se pudo crear la lista.",
+  "Please log in first.": "Inicia sesión primero.",
+  "Your session is invalid or expired. Please log in again.":
+    "Tu sesión no es válida o ha caducado. Inicia sesión de nuevo.",
+  "Invalid artist list.": "La lista de artistas recibida no es válida.",
+  "Invalid artist response.": "La respuesta del artista no es válida.",
+  "Unable to create account.": "No se pudo crear la cuenta.",
+  "Unable to log in.": "No se pudo iniciar sesión.",
+  "Unable to load profile.": "No se pudo cargar el perfil.",
+  "Your registration is still in progress. Try again in {0} seconds.":
+    "Tu registro sigue en curso. Inténtalo de nuevo en {0} segundos.",
+  "Unable to load catalogue ({0}). Please retry.":
+    "No se pudo cargar el catálogo ({0}). Inténtalo de nuevo.",
+  "Invalid catalogue response. Please retry.":
+    "La respuesta del catálogo no es válida. Inténtalo de nuevo.",
+  "This track is no longer available.": "Esta canción ya no está disponible.",
+  "Unable to load track ({0}). Please retry.":
+    "No se pudo cargar la canción ({0}). Inténtalo de nuevo.",
+  "Invalid track response. Please retry.":
+    "La respuesta de la canción no es válida. Inténtalo de nuevo.",
+  "Invalid library response.": "La respuesta de la biblioteca no es válida.",
+  "The signed-in account changed. Check the automatically updated list before trying again.":
+    "La cuenta conectada ha cambiado. Comprueba la lista actualizada automáticamente antes de reintentarlo.",
+  "This file is still used in the catalog and was not deleted.":
+    "Este archivo sigue en uso en el catálogo y no se eliminó.",
+  "This file is no longer available. Check the automatically updated list before trying again.":
+    "Este archivo ya no está disponible. Comprueba la lista actualizada automáticamente antes de reintentarlo.",
+  "Unable to delete the file. It remains visible; please try again.":
+    "No se pudo eliminar el archivo. Sigue visible; inténtalo de nuevo.",
+  "Playlist loading cancelled.": "Carga de la lista cancelada.",
+  "Unable to load playlists. Please try again.":
+    "No se pudieron cargar las listas. Inténtalo de nuevo.",
+  "Invalid playlist response.": "La respuesta de la lista no es válida.",
+  "This playlist is no longer available.": "Esta lista ya no está disponible.",
+  "Unable to load playlist.": "No se pudo cargar la lista.",
+  "Check the playlist name and description.":
+    "Comprueba el nombre y la descripción de la lista.",
+  "Unable to create playlist. Please try again.":
+    "No se pudo crear la lista. Inténtalo de nuevo.",
+  "The playlist, track or occurrence is no longer available.":
+    "La lista, la canción o su entrada ya no está disponible.",
+  "Unable to change playlist. Check the automatically updated list before trying again.":
+    "No se pudo modificar la lista. Comprueba la lista actualizada automáticamente antes de reintentarlo.",
+  "Invalid playlist response. Please retry after the automatic update.":
+    "La respuesta de la lista no es válida. Reinténtalo después de la actualización automática.",
+  "Unable to delete playlist. Check the automatically updated list before trying again.":
+    "No se pudo eliminar la lista. Comprueba la lista actualizada automáticamente antes de reintentarlo.",
+  "Starting listening history…": "Iniciando historial de escucha…",
+  "Listening history could not be started or confirmed. Audio can continue.":
+    "No se pudo iniciar o confirmar el historial de escucha. El audio puede continuar.",
+  "Account changed.": "La cuenta ha cambiado.",
+  "Saving listening progress…": "Guardando progreso de escucha…",
+  "Listening progress saved.": "Progreso de escucha guardado.",
+  "Listening progress could not be saved. Audio can continue.":
+    "No se pudo guardar el progreso de escucha. El audio puede continuar.",
+  "Saving the end of this listening session…":
+    "Guardando el final de esta escucha…",
+  "Listening session saved.": "Escucha guardada.",
+  "The end of this listening session could not be saved. Audio can continue.":
+    "No se pudo guardar el final de esta escucha. El audio puede continuar.",
+  "Listening progress could not be saved.":
+    "No se pudo guardar el progreso de escucha.",
+  "Invalid listening response.":
+    "La respuesta del seguimiento de escucha no es válida.",
+  "Invalid listening session opening.": "El inicio de la escucha no es válido.",
+  "Unable to load listening history. Please retry.":
+    "No se pudo cargar el historial de escucha. Inténtalo de nuevo.",
+  "Invalid listening history response.":
+    "La respuesta del historial de escucha no es válida.",
+  "Invalid project response.": "La respuesta del proyecto no es válida.",
+  "Invalid project list.": "La lista de proyectos recibida no es válida.",
+  "Your session changed. Please sign in again.":
+    "Tu sesión ha cambiado. Inicia sesión de nuevo.",
+  "Check the title and description before publishing.":
+    "Comprueba el título y la descripción antes de publicar.",
+  "This audio is no longer available for publication. Cancel this upload and choose it again.":
+    "Este audio ya no está disponible para publicar. Cancela esta subida y selecciónalo de nuevo.",
+  "Publication could not be confirmed. Your audio is kept; retry without uploading it again.":
+    "No se pudo confirmar la publicación. Tu audio se conserva; reinténtalo sin volver a subirlo.",
+  "Publication could not be confirmed. Retry with this audio.":
+    "No se pudo confirmar la publicación. Reinténtalo con este audio.",
+  "Unable to load your files. Please try again.":
+    "No se pudieron cargar tus archivos. Inténtalo de nuevo.",
+  "Invalid file list.": "La lista de archivos recibida no es válida.",
+  "This audio has no cover.": "Este audio no tiene portada.",
+  "This file is no longer available.": "Este archivo ya no está disponible.",
+  "Unable to load the preview.": "No se pudo cargar la vista previa.",
+  "Invalid preview type or size.":
+    "El tipo o tamaño de la vista previa no es válido.",
+  "Preview cancelled.": "Vista previa cancelada.",
+  "The preview exceeds the declared size.":
+    "La vista previa supera el tamaño declarado.",
+  "The preview is incomplete or was cancelled.":
+    "La vista previa está incompleta o se canceló.",
+  "This item changed. Reload it before trying again.":
+    "Este elemento ha cambiado. Recárgalo antes de reintentarlo.",
+  "This item is no longer available.": "Este elemento ya no está disponible.",
+  "Check the information before trying again.":
+    "Comprueba la información antes de reintentarlo.",
+  "Unable to confirm this action. Please retry.":
+    "No se pudo confirmar esta acción. Inténtalo de nuevo.",
+  "Your session changed.": "Tu sesión ha cambiado.",
+  "Sign in to upload a file.": "Inicia sesión para subir un archivo.",
+  "Upload cancelled because the session changed.":
+    "Subida cancelada porque la sesión ha cambiado.",
+  "Your session expired. Please sign in again.":
+    "Tu sesión ha caducado. Inicia sesión de nuevo.",
+  "Invalid server response. Check the automatically updated list before trying again.":
+    "La respuesta del servidor no es válida. Comprueba la lista actualizada automáticamente antes de reintentarlo.",
+  "Invalid upload or empty file.": "Subida no válida o archivo vacío.",
+  "This file is currently in use.": "Este archivo está en uso.",
+  "The file exceeds the allowed size.":
+    "El archivo supera el tamaño permitido.",
+  "This audio format is not supported.":
+    "Este formato de audio no es compatible.",
+  "Image dimensions or processing limits exceeded.":
+    "Se superaron las dimensiones de imagen o los límites de procesamiento.",
+  "The service is busy or unavailable. Please try again.":
+    "El servicio está ocupado o no disponible. Inténtalo de nuevo.",
+  "Choose an audio file. Images are only covers.":
+    "Elige un archivo de audio. Las imágenes solo sirven como portadas.",
+  "The audio is corrupted or cannot be decoded.":
+    "El audio está dañado o no se puede decodificar.",
+  "The declared audio type does not match its content.":
+    "El tipo de audio declarado no coincide con su contenido.",
+  "The file was not confirmed as ready. Check the automatically updated list before trying again.":
+    "No se confirmó que el archivo estuviera listo. Comprueba la lista actualizada automáticamente antes de reintentarlo.",
+  "The network interrupted the upload. Check the automatically updated list before trying again.":
+    "La red interrumpió la subida. Comprueba la lista actualizada automáticamente antes de reintentarlo.",
+  "The upload timed out. Check the automatically updated list before trying again.":
+    "Se agotó el tiempo de subida. Comprueba la lista actualizada automáticamente antes de reintentarlo.",
+  "Upload cancelled.": "Subida cancelada.",
+  "Cover update cancelled after an account change.":
+    "Actualización de portada cancelada tras un cambio de cuenta.",
+  "This audio is no longer available.": "Este audio ya no está disponible.",
+  "The cover exceeds 25 MB.": "La portada supera los 25 MB.",
+  "This cover image is invalid or unsupported.":
+    "Esta imagen de portada no es válida o no es compatible.",
+  "Cover dimensions or processing limits exceeded.":
+    "Se superaron las dimensiones de portada o los límites de procesamiento.",
+  "The cover service is busy or unavailable. Please retry.":
+    "El servicio de portadas está ocupado o no disponible. Inténtalo de nuevo.",
+  "Unable to update the cover.": "No se pudo actualizar la portada.",
+  "Invalid cover response. Check the automatically updated list before trying again.":
+    "La respuesta de la portada no es válida. Comprueba la lista actualizada automáticamente antes de reintentarlo.",
+  "Cover removal cancelled after an account change.":
+    "Eliminación de portada cancelada tras un cambio de cuenta.",
+  "Unable to remove the cover. Please retry.":
+    "No se pudo eliminar la portada. Inténtalo de nuevo.",
+  "Unable to update profile.": "No se pudo actualizar el perfil.",
+  "The server returned an invalid response.":
+    "El servidor devolvió una respuesta no válida.",
+  "Unable to upload avatar.": "No se pudo subir el avatar.",
+  "Unable to contact the server while uploading the avatar.":
+    "No se pudo contactar con el servidor al subir el avatar.",
+  "Unable to remove avatar.": "No se pudo eliminar el avatar.",
+  "Unable to load users.": "No se pudieron cargar los usuarios.",
+  "Unable to load friends.": "No se pudieron cargar los amigos.",
+  "Unable to add friend.": "No se pudo añadir el amigo.",
+  "Unable to remove friend.": "No se pudo eliminar el amigo.",
+  "Unable to update online presence.":
+    "No se pudo actualizar la presencia en línea.",
+  "Unable to update offline presence.":
+    "No se pudo actualizar la presencia desconectada.",
+  "File check cancelled.": "Comprobación del archivo cancelada.",
+  "The image could not be decoded in time.":
+    "No se pudo decodificar la imagen a tiempo.",
+  "The image content is invalid.": "El contenido de la imagen no es válido.",
+  "The image exceeds the allowed dimensions.":
+    "La imagen supera las dimensiones permitidas.",
+  "The file is empty.": "El archivo está vacío.",
+  "The audio file must not exceed 500 MB.":
+    "El archivo de audio no debe superar los 500 MB.",
+  "Choose an audio file. Images can only be added as covers.":
+    "Elige un archivo de audio. Las imágenes solo se pueden añadir como portadas.",
+  "The image must not exceed 25 MB.": "La imagen no debe superar los 25 MB.",
+  "The declared file type does not match the image content.":
+    "El tipo de archivo declarado no coincide con el contenido de la imagen.",
+  "The dimensions of this image could not be verified.":
+    "No se pudieron comprobar las dimensiones de esta imagen.",
+  "The image exceeds 8,192 pixels per side or 25 million pixels.":
+    "La imagen supera los 8192 píxeles por lado o los 25 millones de píxeles.",
+  "Choose a PNG, JPEG or WebP cover image.":
+    "Elige una portada PNG, JPEG o WebP.",
+  "Choose an audio file.": "Elige un archivo de audio.",
+  "The content is not a usable audio file.":
+    "El contenido no es un archivo de audio utilizable.",
+  "The audio file is truncated.": "El archivo de audio está truncado.",
+  "Username must contain 3 to 24 lowercase letters, numbers, or underscores.":
+    "El nombre de usuario debe contener entre 3 y 24 letras minúsculas, números o guiones bajos.",
+  "valid email, password (8-128 chars), username and displayName required":
+    "Comprueba el correo, la contraseña, el nombre de usuario y el nombre visible.",
+  "email and password required": "El correo y la contraseña son obligatorios.",
+  "invalid credentials": "Correo o contraseña incorrectos.",
+  "email already registered": "Este correo ya está registrado.",
+  "profile provisioning failed": "La creación del perfil falló.",
+  "username already registered": "Este nombre de usuario ya está registrado.",
+  "profile conflicts with an existing registration":
+    "El perfil entra en conflicto con un registro existente.",
+  "profile not found": "Perfil no encontrado.",
+  "invalid user id": "Identificador de usuario no válido.",
+  "displayName must be between 1 and 60 chars":
+    "El nombre visible debe contener entre 1 y 60 caracteres.",
+  "username must match ^[a-z0-9_]{3,24}$":
+    "El nombre de usuario debe contener entre 3 y 24 letras minúsculas, números o guiones bajos.",
+  "bio must be null or contain no more than 160 chars":
+    "La biografía no debe superar los 160 caracteres.",
+  "username already in use": "Este nombre de usuario ya está en uso.",
+  "avatar file is required": "Elige un archivo para el avatar.",
+  "avatar field is required": "Falta el archivo del avatar.",
+  "unsupported avatar mime type": "Elige una imagen PNG, JPEG o WebP.",
+  "avatar content does not match its declared mime type":
+    "El contenido del avatar no coincide con el tipo declarado.",
+  "avatar must not exceed 2 MiB": "El avatar no debe superar los 2 MiB.",
+  "invalid file name": "Nombre de archivo no válido.",
+  "avatar not found": "Avatar no encontrado.",
+  "invalid friend id": "Identificador de amigo no válido.",
+  "cannot add yourself": "No puedes añadirte a ti mismo.",
+  "friend profile not found": "No se encontró el perfil de este amigo.",
+  Unauthorized: "Tu sesión no es válida. Inicia sesión de nuevo.",
+  unauthorized: "Tu sesión no es válida. Inicia sesión de nuevo.",
+  "Internal Server Error":
+    "El servidor no está disponible. Inténtalo de nuevo.",
+  "Too Many Requests": "Demasiados intentos. Inténtalo más tarde.",
+  "{count} track": "{count} canción",
+  "{count} tracks": "{count} canciones",
+  "{count} friend": "{count} amigo",
+  "{count} friends": "{count} amigos",
+  "{count} second": "{count} segundo",
+  "{count} seconds": "{count} segundos",
+  "Page {page}": "Página {page}",
+  "Page {page} of {pages}": "Página {page} de {pages}",
+  "Public playlist": "Lista pública",
+  Draft: "Borrador",
+  Published: "Publicado",
+  Single: "Sencillo",
+  Mixtape: "Mixtape",
+  EP: "EP",
+  ", playing": ", reproduciendo",
+  ", paused": ", en pausa",
+  "Your profile is being created. Try logging in after {delay}.":
+    "Tu perfil se está creando. Intenta iniciar sesión después de {delay}.",
+  "Please fill in this field.": "Completa este campo.",
+  "Enter a valid email address.": "Introduce un correo electrónico válido.",
+  "Check this field.": "Comprueba este campo.",
+  "Use at least {count} characters.": "Usa al menos {count} caracteres.",
+  "Use no more than {count} characters.": "Usa como máximo {count} caracteres.",
+  "Choose a file to continue.": "Elige un archivo para continuar.",
+  All: "Todo",
+  ARTIST: "ARTISTA",
+  DISCOVER: "DESCUBRIR",
+  "(optional)": "(opcional)",
+  "Search playlists": "Buscar listas",
+  "Sort playlists": "Ordenar listas",
+  "Recently modified": "Modificadas recientemente",
+  "Recently created": "Creadas recientemente",
+  "Playlist pages": "Páginas de listas",
+  "No playlists match this search.":
+    "Ninguna lista coincide con esta búsqueda.",
+  "Create your first playlist to collect music you love.":
+    "Crea tu primera lista para reunir tu música favorita.",
+  "Save a public playlist to find it here.":
+    "Guarda una lista pública para encontrarla aquí.",
+  "Playlist unavailable": "Lista de reproducción no disponible",
+  "Use automatic artwork": "Usar una portada automática",
+  "This playlist changed. Your inputs are preserved. Review them before saving again.":
+    "Esta lista ha cambiado. Tus datos se conservan. Revísalos antes de volver a guardar.",
+  "Everyone can view its contents.": "Todo el mundo podrá ver su contenido.",
+  "Its contents will no longer be publicly available.":
+    "Su contenido dejará de estar disponible públicamente.",
+  "Unable to add tracks.": "No se han podido añadir las canciones.",
+  "Add {tracks} to a playlist": "Añadir {tracks} a una lista",
+  "Find a playlist": "Buscar una lista",
+  Close: "Cerrar",
+  "Add tracks": "Añadir canciones",
+  "Find more music": "Encontrar más música",
+  "Search tracks to add": "Buscar canciones para añadir",
+  "Search by title or artist": "Buscar por título o artista",
+  "Add selection ({count})": "Añadir selección ({count})",
+  "Add selection to playlist ({count})":
+    "Añadir selección a una lista ({count})",
+  "Clear selection": "Borrar selección",
+  "No matching tracks.": "No hay canciones que coincidan.",
+  "Track search pages": "Páginas de búsqueda de canciones",
+  "Playlist search": "Búsqueda para la lista",
+  "Select {0}": "Seleccionar {0}",
+  "Retry removal": "Reintentar eliminación",
+  "Search in playlist": "Buscar en la lista",
+  "Title or artist": "Título o artista",
+  "Track order": "Orden de las canciones",
+  "Custom order": "Orden personalizado",
+  "Date added": "Fecha de incorporación",
+  "Drag the handle to arrange tracks in custom order, with search cleared. Keyboard: focus a handle and use Alt + ↑ or ↓.":
+    "Borra la búsqueda y arrastra los controles para personalizar el orden de las canciones. Con el teclado: enfoca un control y usa Alt + ↑ o ↓.",
+  "Drag, or Alt + arrow keys": "Arrastrar, o Alt + teclas de flecha",
+  "Reorder {0}": "Reordenar {0}",
+  "unavailable track": "canción no disponible",
+  "No tracks match this search.": "Ninguna canción coincide con esta búsqueda.",
+  "Unable to reorder playlist.": "No se ha podido reordenar la lista.",
+  "Add project to playlist": "Añadir el proyecto a una lista",
+  "Back to library": "Volver a la biblioteca",
+  "← Back to library": "← Volver a la biblioteca",
+  "PRIVATE PLAYLIST": "LISTA PRIVADA",
+  "Duplicate playlist": "Duplicar lista",
+  "Track removed.": "Canción eliminada.",
+  Undo: "Deshacer",
+  "Unable to update playlist.": "No se ha podido actualizar la lista.",
+  " (known duration)": " (duración conocida)",
+  "Select between 1 and 500 tracks.": "Selecciona entre 1 y 500 canciones.",
+  "This playlist changed. Review it before trying again.":
+    "Esta lista ha cambiado. Revísala antes de volver a intentarlo.",
+  "Choose a PNG, JPEG or WebP image up to 25 MB.":
+    "Elige una imagen PNG, JPEG o WebP de hasta 25 MB.",
+  "Unable to upload this image.": "No se ha podido subir esta imagen.",
+  "Invalid image response.": "La respuesta de la imagen no es válida.",
+  "Already present ({tracks}): {titles}. Add all selected tracks anyway?":
+    "Ya en la lista ({tracks}): {titles}. ¿Añadir todas las canciones seleccionadas de todos modos?",
+  "Failed to fetch": "Red no disponible. Vuelve a intentarlo.",
+} satisfies Dictionary;

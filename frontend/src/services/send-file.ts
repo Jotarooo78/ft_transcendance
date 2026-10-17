@@ -77,7 +77,7 @@ export function sendFile(
       } catch {
         return reject(
           new Error(
-            "Invalid server response. Refresh your files before trying again.",
+            "Invalid server response. Check the automatically updated list before trying again.",
           ),
         );
       }
@@ -95,7 +95,7 @@ export function sendFile(
             ((data as { error?: string })?.error === "audio_required" ? "Choose an audio file. Images are only covers." :
               ["invalid_file", "invalid_duration"].includes((data as { error?: string })?.error ?? "") ? "The audio is corrupted or cannot be decoded." :
               (data as { error?: string })?.error === "mime_mismatch" ? "The declared audio type does not match its content." : messages[xhr.status]) ??
-              "The file was not confirmed as ready. Refresh the list before trying again.",
+              "The file was not confirmed as ready. Check the automatically updated list before trying again.",
           ),
         );
       }
@@ -105,7 +105,7 @@ export function sendFile(
       cleanup();
       reject(
         new Error(
-          "The network interrupted the upload. Refresh the list before trying again.",
+          "The network interrupted the upload. Check the automatically updated list before trying again.",
         ),
       );
     };
@@ -113,7 +113,7 @@ export function sendFile(
       cleanup();
       reject(
         new Error(
-          "The upload timed out. Refresh the list before trying again.",
+          "The upload timed out. Check the automatically updated list before trying again.",
         ),
       );
     };

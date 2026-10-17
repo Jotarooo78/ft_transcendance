@@ -18,6 +18,13 @@ en clair sont exclusivement des identifiants de test dans une pile isolée.
 Le préfixe historique e2e des mots de passe est conservé pour reprendre les
 mêmes rôles de test ; il ne relie pas les stockages des deux projets.
 
+La campagne navigateur peut aussi utiliser la pile jetable des projets :
+`MUSIC_BASE_URL=https://127.0.0.1:5445 npm test` depuis `tests/music`.
+Le témoin SQL sélectionne alors exclusivement `transcendence_projects`.
+Installer auparavant les seeds Catalogue et Media dans cette même pile ; aucune
+autre origine n'est acceptée. History est accessible via Library et les playlists
+via Library → My playlists → la carte de la playlist.
+
 Les six migrations existantes construisent leurs schémas, puis
 apply-permissions attribue propriétaires et permissions. Son tmpfs évite le
 volume de données anonyme hérité de l'image PostgreSQL. Catalogue reçoit
@@ -176,3 +183,55 @@ Le suivi ne prouve pas l'attention humaine et n'active pas R15. Une fermeture
 brutale reste au mieux, sans garantie de clôture ni de sauvegarde des dernières
 secondes. Aucune reprise automatique, royalties ou statistique qualifiée.
 `docs/music/EXECUTION.md` conserve les résultats et les révisions observées.
+
+
+## Évolution des projets et de la bibliothèque
+
+Les scénarios navigateur utilisent désormais les trois catégories du catalogue,
+les lignes chronologiques d’historique et le lecteur commun. Les mesures d’écoute
+restent vérifiées par API et SQL, même si l’écran n’affiche plus leurs compteurs.
+Les playlists publiques restent modifiables par leur propriétaire ; `unlisted`
+est refusé par le contrat actuel. Le parcours complémentaire
+`bash tests/projects/run.sh` couvre les projets multi-pistes et les collections
+sur sa propre pile 5445. Les résultats observés figurent dans EXECUTION.md.
+
+### Commandes et reprise du lecteur
+
+`bash tests/projects/run.sh` exécute maintenant aussi
+`tests/projects/verify-player.mjs` après la création des publications de test.
+Il vérifie les commandes communes, répétition, aléatoire, occurrences répétées,
+menus indépendants du clic de ligne, retrait de file sans mutation de playlist,
+clavier, reprise en pause, comptes distincts et erreurs bornées. Les 127 likes
+sont des réponses simulées de Catalogue/Library pour prouver les deux niveaux
+de pagination ; comptes, playlists, fichiers audio et sessions sont réels.
+Les preuves navigateur de ce dossier restent complémentaires : elles contrôlent
+les mesures d’écoute et les reprises d’envoi avec témoins SQL.
+
+La barre ne montre plus les confirmations ordinaires de sauvegarde. Les tests
+attendent leurs réponses HTTP et vérifient l’absence d’erreur visible après
+confirmation. Un fichier audio indisponible passe désormais au suivant.
+
+## Actualisation automatique et stabilité visuelle
+
+`tests/projects/run.sh` exécute aussi `verify-interface.mjs` et `verify-refresh.mjs`
+sur la pile isolée 5445. Ils vérifient la hauteur du lecteur sous audio retardé,
+les pochettes de 1024 à 1440 px, la conservation des listes sous panne, les recherches
+concurrentes, les formulaires non enregistrés, l’annulation d’un GET avant mutation,
+l’ancre d’historique et la révocation d’une playlist publique.
+
+La cadence de 30 secondes et la visibilité masquée sont testées avec l’horloge
+et la propriété de visibilité simulées du navigateur ; elles ne constituent pas
+une mesure au trackpad physique. Les scénarios historiques utilisent désormais
+un retour sur l’onglet au lieu de cliquer sur les boutons Refresh supprimés.
+
+`node tests/projects/measure-scroll.mjs /tmp/scroll.json [répertoire-dist]`
+échantillonne trois secondes de défilement par page, avec et sans lecture.
+Sans répertoire, il utilise Vite ; avec un répertoire, Playwright sert ses fichiers
+compilés et garde les API isolées. Les références nombreuses sont simulées,
+l’audio et le compte sont réels. Les pages login/profil courts servent de témoins.
+Le script rapporte intervalle p95/max entre images, tâches longues et déplacements
+visuels ; il ne garantit aucun seuil sur un autre matériel. L’option diagnostique
+`--without-player-blur` après le répertoire permet d’isoler ce seul filtre CSS.
+`-` comme répertoire conserve Vite ; `--profile-js` ajoute un profil CPU
+Chromium dans `<sortie>.cpuprofile` pour attribuer les tâches longues. Ce mode
+introduit son propre coût : ses timings ne servent pas de mesure de référence.

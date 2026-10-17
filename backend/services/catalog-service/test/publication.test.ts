@@ -18,6 +18,7 @@ test('publication authenticates owner, reserves before writing and serializes ar
       read: async () => profile,
     },
     media: {
+      release: async () => {},
       reserve: async (id, owner) => {
         assert.equal(id, trackId)
         assert.equal(owner, userId)
@@ -40,7 +41,7 @@ test('publication authenticates owner, reserves before writing and serializes ar
     },
   })
   t.after(() => app.close())
-  const send = (payload: unknown, authorization?: string) =>
+  const send = (payload: Record<string, unknown>, authorization?: string) =>
     app.inject({
       method: 'POST',
       url: '/tracks',
@@ -75,6 +76,7 @@ test('an unavailable audio refuses publication before SQL', async (t) => {
   const app = await buildTestApp({
     users: { authenticate: async () => profile, read: async () => profile },
     media: {
+      release: async () => {},
       reserve: async () => {
         throw new DomainError(409, 'audio_not_available')
       },

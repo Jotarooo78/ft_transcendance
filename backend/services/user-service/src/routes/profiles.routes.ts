@@ -13,6 +13,8 @@
 import type { App } from '@ft/service-kit'
 import type { ProfilesController } from '../controllers/profiles.controller.js'
 import {
+  ArtistQuerySchema,
+  ArtistPageSchema,
   ProfileSchema,
   PublicProfileSchema,
   UserIdParamsSchema,
@@ -28,6 +30,11 @@ import {
  * @param profiles Contrôleur dont les fonctions répondent à ces routes.
  */
 export function registerProfilesRoutes(app: App, profiles: ProfilesController) {
+  app.get(
+    '/artists',
+    { schema: { querystring: ArtistQuerySchema, response: { 200: ArtistPageSchema } } },
+    profiles.searchArtists
+  )
   const onRequest = app.authenticate
   const response = { 200: ProfileSchema }
 

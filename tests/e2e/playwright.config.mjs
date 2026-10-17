@@ -24,7 +24,7 @@ export default defineConfig({
   outputDir: './test-results',
   use: {
     browserName: 'chromium', baseURL, headless: true,
-    ignoreHTTPSErrors: true,
+    locale: "en-US", ignoreHTTPSErrors: true,
     actionTimeout: 10000,
     // Traces can retain JWTs and passwords; observe only safe response facts below.
     trace: 'off', screenshot: 'only-on-failure', video: 'off',

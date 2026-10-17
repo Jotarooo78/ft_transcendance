@@ -11,6 +11,7 @@
  * routes/profiles.routes.ts.
  */
 
+import { toPagination, invalidRequest } from '@ft/service-kit'
 import type { FastifyRequest } from 'fastify'
 import { invalidUserId } from '../domain/errors.js'
 import { isUuid } from '../domain/identifiers.js'
@@ -29,6 +30,18 @@ export type ProfilesController = ReturnType<typeof createProfilesController>
  */
 export function createProfilesController(profiles: ProfilesService) {
   return {
+    /** Recherche publique bornée, validée par la route. */
+    searchArtists(
+      request: FastifyRequest<{ Querystring: { q?: string; page?: string; pageSize?: string } }>
+    ) {
+      const pagination = toPagination(request.query, {
+        defaultPageSize: 24,
+        maxPageSize: 50,
+        maxOffset: 5000000,
+      })
+      if (!pagination) throw invalidRequest()
+      return profiles.searchArtists(request.query.q ?? '', pagination.page, pagination.pageSize)
+    },
     /** Profil public d’artiste avec sa bio ; aucune donnée de connexion n’est renvoyée. */
     artist(request: FastifyRequest<{ Params: { userId: string } }>) {
       if (!isUuid(request.params.userId)) throw invalidUserId()
@@ -59,11 +72,6 @@ export function createProfilesController(profiles: ProfilesService) {
      */
     async directory(request: FastifyRequest) {
       return {
-        /** Profil public d’artiste avec sa bio ; aucune donnée de connexion n’est renvoyée. */
-        artist(request: FastifyRequest<{ Params: { userId: string } }>) {
-          if (!isUuid(request.params.userId)) throw invalidUserId()
-          return profiles.me(request.params.userId.toLowerCase())
-        },
         users: await profiles.directory(request.userId),
       }
     },

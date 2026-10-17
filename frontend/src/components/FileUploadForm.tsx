@@ -1,8 +1,18 @@
+import {
+  translate as t,
+  formatNumber,
+  translateError,
+} from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
+import EmptyArtwork from "./EmptyArtwork";
 /** Ajout public d’un morceau : transfert immédiat, édition simultanée et publication confirmée séparément. */
 import { useEffect, useRef, useState, type SubmitEvent } from "react";
 import { validateFile } from "../services/validate-file";
 import { sendFile } from "../services/send-file";
-import { replaceAudioCover, removeAudioCover } from "../services/update-audio-cover";
+import {
+  replaceAudioCover,
+  removeAudioCover,
+} from "../services/update-audio-cover";
 import { deleteFile } from "../services/delete-file";
 import { publishTrack, PublicationRejected } from "../services/publish-track";
 import type { ReadyFile, UploadProgress } from "../types/files";
@@ -23,6 +33,7 @@ type CoverChoice = "embedded" | "manual" | "none";
 
 /** Gère un seul audio provisoire ; un démontage interrompt les requêtes, sans supprimer une publication incertaine. */
 export default function FileUploadForm({ user, onPublished }: Props) {
+  useLanguage();
   const [file, setFile] = useState<File | null>(null);
   const [asset, setAsset] = useState<ReadyFile | null>(null);
   const [title, setTitle] = useState("");
@@ -44,27 +55,62 @@ export default function FileUploadForm({ user, onPublished }: Props) {
   const coverInput = useRef<HTMLInputElement | null>(null);
   const coverValidation = useRef<AbortController | null>(null);
   const [checkingCover, setCheckingCover] = useState(false);
-  useEffect(() => () => { current.current?.abort(); coverValidation.current?.abort(); }, []);
-  useEffect(() => () => { if (coverObjectUrl.current) URL.revokeObjectURL(coverObjectUrl.current); }, []);
+  useEffect(
+    () => () => {
+      current.current?.abort();
+      coverValidation.current?.abort();
+    },
+    [],
+  );
+  useEffect(
+    () => () => {
+      if (coverObjectUrl.current) URL.revokeObjectURL(coverObjectUrl.current);
+    },
+    [],
+  );
   const uploading = checking || progress !== null;
 
   /** Prévalide puis envoie un audio provisoire ; une nouvelle tentative conserve le texte déjà saisi. */
   async function upload(selected: File, retry = false) {
     if (current.current || published) return;
-    const controller = new AbortController(); current.current = controller;
-    setFile(selected); setError(""); setChecking(true); setAsset(null);
-    if (!retry) { setTitle(selected.name.replace(/\.[^.]+$/, "").slice(0, 200)); setDescription(""); setCover(null); setCoverChoice("embedded"); setCoverError(""); }
+    const controller = new AbortController();
+    current.current = controller;
+    setFile(selected);
+    setError("");
+    setChecking(true);
+    setAsset(null);
+    if (!retry) {
+      setTitle(selected.name.replace(/\.[^.]+$/, "").slice(0, 200));
+      setDescription("");
+      setCover(null);
+      setCoverChoice("embedded");
+      setCoverError("");
+    }
     try {
       await validateFile(selected, controller.signal);
       if (controller.signal.aborted) return;
       setChecking(false);
       setProgress({ phase: "sending", percent: 0, loaded: 0, total: null });
-      const saved = await sendFile(selected, setProgress, controller.signal, true);
+      const saved = await sendFile(
+        selected,
+        setProgress,
+        controller.signal,
+        true,
+      );
       if (!controller.signal.aborted) setAsset(saved);
     } catch (failure) {
-      if (!controller.signal.aborted) setError(failure instanceof Error ? failure.message : "Unable to upload this audio.");
+      if (!controller.signal.aborted)
+        setError(
+          failure instanceof Error
+            ? failure.message
+            : "Unable to upload this audio.",
+        );
     } finally {
-      if (current.current === controller) { current.current = null; setChecking(false); setProgress(null); }
+      if (current.current === controller) {
+        current.current = null;
+        setChecking(false);
+        setProgress(null);
+      }
     }
   }
 
@@ -72,111 +118,387 @@ export default function FileUploadForm({ user, onPublished }: Props) {
   async function selectCover(selected: File | null) {
     coverValidation.current?.abort();
     if (coverObjectUrl.current) URL.revokeObjectURL(coverObjectUrl.current);
-    coverObjectUrl.current = selected ? URL.createObjectURL(selected) : ""; setCoverUrl(coverObjectUrl.current);
-    setCover(selected); setCoverChoice(selected ? "manual" : "none"); setCoverError("");
-    if (!selected) { setCheckingCover(false); return; }
-    const controller = new AbortController(); coverValidation.current = controller; setCheckingCover(true);
-    try { await validateFile(selected, controller.signal, "image"); }
-    catch (failure) { if (!controller.signal.aborted) setCoverError(failure instanceof Error ? failure.message : "Choose another cover."); }
-    finally { if (!controller.signal.aborted) setCheckingCover(false); }
+    coverObjectUrl.current = selected ? URL.createObjectURL(selected) : "";
+    setCoverUrl(coverObjectUrl.current);
+    setCover(selected);
+    setCoverChoice(selected ? "manual" : "none");
+    setCoverError("");
+    if (!selected) {
+      setCheckingCover(false);
+      return;
+    }
+    const controller = new AbortController();
+    coverValidation.current = controller;
+    setCheckingCover(true);
+    try {
+      await validateFile(selected, controller.signal, "image");
+    } catch (failure) {
+      if (!controller.signal.aborted)
+        setCoverError(
+          failure instanceof Error ? failure.message : "Choose another cover.",
+        );
+    } finally {
+      if (!controller.signal.aborted) setCheckingCover(false);
+    }
   }
 
   /** Annule un envoi ou abandonne un audio confirmé avant toute tentative de publication. */
   async function cancel() {
-    current.current?.abort(); current.current = null;
+    current.current?.abort();
+    current.current = null;
     coverValidation.current?.abort();
     if (asset && !publicationAttempted) {
-      try { await deleteFile(asset.id, new AbortController().signal); }
-      catch { setError("This upload could not be removed now. It will be cleaned up after it expires."); return; }
+      try {
+        await deleteFile(asset.id, new AbortController().signal);
+      } catch {
+        setError(
+          "This upload could not be removed now. It will be cleaned up after it expires.",
+        );
+        return;
+      }
     }
-    setFile(null); setAsset(null); setProgress(null); setChecking(false); setCover(null); setError(""); setCoverError(""); setCheckingCover(false);
+    setFile(null);
+    setAsset(null);
+    setProgress(null);
+    setChecking(false);
+    setCover(null);
+    setError("");
+    setCoverError("");
+    setCheckingCover(false);
     if (input.current) input.current.value = "";
   }
 
   /** Confirme le visuel voulu puis publie ; après un résultat incertain, seul le même audio est réessayé. */
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!asset || !title.trim() || publishing || checkingCover || coverError || uploading || current.current) return;
-    const controller = new AbortController(); current.current = controller;
-    setPublishing(true); setError("");
+    if (
+      !asset ||
+      !title.trim() ||
+      publishing ||
+      checkingCover ||
+      coverError ||
+      uploading ||
+      current.current
+    )
+      return;
+    const controller = new AbortController();
+    current.current = controller;
+    setPublishing(true);
+    setError("");
     try {
       if (coverChoice === "manual" && cover) {
         try {
-          const saved = await replaceAudioCover(asset.id, cover, controller.signal);
+          const saved = await replaceAudioCover(
+            asset.id,
+            cover,
+            controller.signal,
+          );
           if (controller.signal.aborted) return;
-          setAsset({ ...asset, cover: saved }); setCoverChoice("embedded"); setCover(null);
+          setAsset({ ...asset, cover: saved });
+          setCoverChoice("embedded");
+          setCover(null);
         } catch (failure) {
-          if (!controller.signal.aborted) setCoverError(failure instanceof Error ? failure.message : "Cover upload failed. Choose another cover or continue without one.");
+          if (!controller.signal.aborted)
+            setCoverError(
+              failure instanceof Error
+                ? failure.message
+                : "Cover upload failed. Choose another cover or continue without one.",
+            );
           return;
         }
-      } else if (coverChoice === "none") await removeAudioCover(asset.id, controller.signal);
+      } else if (coverChoice === "none")
+        await removeAudioCover(asset.id, controller.signal);
       if (controller.signal.aborted) return;
       setPublicationAttempted(true);
-      const track = await publishTrack(asset.id, title, description, controller.signal);
+      const track = await publishTrack(
+        asset.id,
+        title,
+        description,
+        controller.signal,
+      );
       if (!controller.signal.aborted) setPublished(track);
     } catch (failure) {
       if (!controller.signal.aborted) {
-        if (failure instanceof PublicationRejected) setPublicationAttempted(false);
-        setError(failure instanceof Error ? failure.message : "Unable to confirm publication. Please retry.");
+        if (failure instanceof PublicationRejected)
+          setPublicationAttempted(false);
+        setError(
+          failure instanceof Error
+            ? failure.message
+            : "Unable to confirm publication. Please retry.",
+        );
+      }
+    } finally {
+      if (current.current === controller) {
+        current.current = null;
+        setPublishing(false);
       }
     }
-    finally { if (current.current === controller) { current.current = null; setPublishing(false); } }
   }
 
-  if (published) return <section className="publish-success" aria-live="polite">
-    <span className="publish-success-icon" aria-hidden="true">✓</span><h2>Your track is live</h2>
-    <p><strong>{published.title}</strong> is now in the catalogue.</p>
-    <button className="publish-primary" onClick={() => onPublished(published)}>View in catalogue</button>
-  </section>;
+  if (published)
+    return (
+      <section className="publish-success" aria-live="polite">
+        <span className="publish-success-icon" aria-hidden="true">
+          ✓
+        </span>
+        <h2>{t("Your track is live")}</h2>
+        <p>
+          <strong>{published.title}</strong> {t("is now in the catalogue.")}
+        </p>
+        <button
+          className="publish-primary"
+          onClick={() => onPublished(published)}
+        >
+          {t("View in catalogue")}
+        </button>
+      </section>
+    );
 
-  return <form className="publish-form" onSubmit={submit}>
-    {!file ? <div className={`audio-dropzone${dragging ? " is-dragging" : ""}`}
-      onDragOver={event => { event.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)}
-      onDrop={event => { event.preventDefault(); setDragging(false); if (event.dataTransfer.files.length !== 1) { setError("Choose one audio file at a time."); return; } const selected = event.dataTransfer.files[0]; if (selected) void upload(selected); }}>
-      <span className="upload-symbol" aria-hidden="true">↑</span><h2>Drag and drop your track here</h2><p>Share your sound with the community.</p>
-      <button className="publish-primary" type="button" onClick={() => input.current?.click()}>Choose a file</button>
-      <input className="visually-hidden" id="track-audio" aria-label="Audio file" ref={input} type="file" accept="audio/*,.mp3,.wav,.flac,.m4a,.aac,.ogg,.opus,.aiff,.wma" onChange={event => { const selected = event.target.files?.[0]; if (selected) void upload(selected); }} />
-      <p className="publish-help">One audio file · Up to 500 MB</p>
-    </div> : <>
-      <div className="upload-status" aria-live="polite">
-        <span className="upload-filename">{file.name}</span>
-        {/* Même emplacement et même espace réservé à chaque phase, y compris avant la confirmation. */}
-        <div className="upload-status-content">
-          {progress?.phase === "sending" && <div className="upload-state" key="sending"><div className="upload-transfer-line"><progress aria-label="Upload progress" max={100} {...(progress.percent === null ? {} : { value: progress.percent })} /><span>{progress.percent === null ? "Uploading audio…" : `Uploading audio — ${progress.percent}%`}</span></div></div>}
-          {checking && <div className="upload-state" key="checking"><span>Checking audio…</span></div>}
-          {progress?.phase === "validating" && <AudioPreparation />}
-          {!uploading && asset && <div className="upload-state" key="ready"><span className="upload-ready">✓ Audio ready</span></div>}
+  return (
+    <form className="publish-form" onSubmit={submit}>
+      {!file ? (
+        <div
+          className={`audio-dropzone${dragging ? " is-dragging" : ""}`}
+          onDragOver={(event) => {
+            event.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(event) => {
+            event.preventDefault();
+            setDragging(false);
+            if (event.dataTransfer.files.length !== 1) {
+              setError("Choose one audio file at a time.");
+              return;
+            }
+            const selected = event.dataTransfer.files[0];
+            if (selected) void upload(selected);
+          }}
+        >
+          <span className="upload-symbol" aria-hidden="true">
+            ↑
+          </span>
+          <h2>{t("Drag and drop your track here")}</h2>
+          <p>{t("Share your sound with the community.")}</p>
+          <button
+            className="publish-primary"
+            type="button"
+            onClick={() => input.current?.click()}
+          >
+            {t("Choose a file")}
+          </button>
+          <input
+            className="visually-hidden"
+            id="track-audio"
+            aria-label={t("Audio file")}
+            ref={input}
+            type="file"
+            accept="audio/*,.mp3,.wav,.flac,.m4a,.aac,.ogg,.opus,.aiff,.wma"
+            onChange={(event) => {
+              const selected = event.target.files?.[0];
+              if (selected) void upload(selected);
+            }}
+          />
+          <p className="publish-help">{t("One audio file · Up to 500 MB")}</p>
         </div>
-      </div>
-      <div className="publish-layout">
-        <div className="publish-artwork">
-          <div className="publish-artwork-preview">
-            {coverChoice === "manual" && cover && coverUrl ? <img src={coverUrl} alt="Selected cover" /> : coverChoice === "embedded" && asset ? <AudioCover file={asset} /> : <div className="publish-artwork-placeholder" aria-label="No cover">♪</div>}
-            <button type="button" className="cover-select" disabled={publishing} onClick={() => coverInput.current?.click()}>Choose artwork</button>
+      ) : (
+        <>
+          <div className="upload-status" aria-live="polite">
+            <span className="upload-filename">{file.name}</span>
+            {/* Même emplacement et même espace réservé à chaque phase, y compris avant la confirmation. */}
+            <div className="upload-status-content">
+              {progress?.phase === "sending" && (
+                <div className="upload-state" key="sending">
+                  <div className="upload-transfer-line">
+                    <progress
+                      aria-label={t("Upload progress")}
+                      max={100}
+                      {...(progress.percent === null
+                        ? {}
+                        : { value: progress.percent })}
+                    />
+                    <span>
+                      {progress.percent === null
+                        ? t("Uploading audio…")
+                        : t("Uploading audio — {0}%", {
+                            "0": progress.percent,
+                          })}
+                    </span>
+                  </div>
+                </div>
+              )}
+              {checking && (
+                <div className="upload-state" key="checking">
+                  <span>{t("Checking audio…")}</span>
+                </div>
+              )}
+              {progress?.phase === "validating" && <AudioPreparation />}
+              {!uploading && asset && (
+                <div className="upload-state" key="ready">
+                  <span className="upload-ready">{t("✓ Audio ready")}</span>
+                </div>
+              )}
+            </div>
           </div>
-          <input className="visually-hidden" aria-label="Cover image" ref={coverInput} type="file" accept="image/png,image/jpeg,image/webp" disabled={publishing} onChange={event => void selectCover(event.target.files?.[0] ?? null)} />
-          {(cover || asset?.cover) && coverChoice !== "none" && <button type="button" className="publish-text-button" disabled={publishing} onClick={() => void selectCover(null)}>Remove artwork</button>}
-          <p className="publish-help">Artwork is optional.<br />JPG, PNG or WebP · Up to 25 MB</p>
-          {checkingCover && <p role="status">Checking artwork…</p>}
-          {coverError && <div role="alert"><p>{coverError}</p><button type="button" onClick={() => void selectCover(null)}>Continue without artwork</button></div>}
-          {asset?.warning && coverChoice === "embedded" && <p role="status">The embedded artwork could not be used. You can choose another image.</p>}
-        </div>
-        <div className="publish-fields">
-          <label htmlFor="track-title">Title <span aria-hidden="true">*</span></label>
-          <input id="track-title" value={title} required maxLength={200} disabled={publishing || publicationAttempted} onChange={event => setTitle(event.target.value)} />
-          <span className="publish-label">Artist</span>
-          <div className="publishing-artist">{user.avatarUrl ? <img src={user.avatarUrl} alt="" /> : <span className="artist-avatar-placeholder" aria-hidden="true">{user.displayName.slice(0, 1)}</span>}<div><strong>{user.displayName}</strong><span>@{user.username}</span></div></div>
-          <label htmlFor="track-description">Description <span className="publish-optional">(optional)</span></label>
-          <textarea id="track-description" rows={6} maxLength={5000} placeholder="Tell the story behind your track. Add credits or lyrics…" value={description} disabled={publishing || publicationAttempted} onChange={event => setDescription(event.target.value)} />
-          <span className="publish-counter">{description.length} / 5,000</span>
-        </div>
-      </div>
-      <footer className="publish-footer"><p>Your track will be public when you publish it.</p><div>
-        {!publicationAttempted && <button type="button" className="publish-text-button" disabled={publishing} onClick={() => void cancel()}>{uploading ? "Cancel upload" : "Cancel"}</button>}
-        {!asset && !uploading && <button type="button" onClick={() => void upload(file, true)}>Retry upload</button>}
-        <button className="publish-primary" type="submit" disabled={!asset || uploading || publishing || checkingCover || !!coverError || !title.trim()}>{publishing ? "Publishing…" : publicationAttempted ? "Retry publication" : "Publish track"}</button>
-      </div></footer>
-    </>}
-    {error && <p role="alert" className="publish-error">{error}</p>}
-  </form>;
+          <div className="publish-layout">
+            <div className="publish-artwork">
+              <div className="publish-artwork-preview">
+                {coverChoice === "manual" && cover && coverUrl ? (
+                  <img src={coverUrl} alt={t("Selected cover")} />
+                ) : coverChoice === "embedded" && asset ? (
+                  <AudioCover file={asset} />
+                ) : (
+                  <EmptyArtwork
+                    className="publish-artwork-placeholder"
+                    label={t("No cover")}
+                  />
+                )}
+                <button
+                  type="button"
+                  className="cover-select"
+                  disabled={publishing}
+                  onClick={() => coverInput.current?.click()}
+                >
+                  {t("Choose artwork")}
+                </button>
+              </div>
+              <input
+                className="visually-hidden"
+                aria-label={t("Cover image")}
+                ref={coverInput}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                disabled={publishing}
+                onChange={(event) =>
+                  void selectCover(event.target.files?.[0] ?? null)
+                }
+              />
+              {(cover || asset?.cover) && coverChoice !== "none" && (
+                <button
+                  type="button"
+                  className="publish-text-button"
+                  disabled={publishing}
+                  onClick={() => void selectCover(null)}
+                >
+                  {t("Remove artwork")}
+                </button>
+              )}
+              <p className="publish-help">
+                {t("Artwork is optional.")}
+                <br />
+                {t("JPG, PNG or WebP · Up to 25 MB")}
+              </p>
+              {checkingCover && <p role="status">{t("Checking artwork…")}</p>}
+              {coverError && (
+                <div role="alert">
+                  <p>{translateError(coverError)}</p>
+                  <button type="button" onClick={() => void selectCover(null)}>
+                    {t("Continue without artwork")}
+                  </button>
+                </div>
+              )}
+              {asset?.warning && coverChoice === "embedded" && (
+                <p role="status">
+                  {t(
+                    "The embedded artwork could not be used. You can choose another image.",
+                  )}
+                </p>
+              )}
+            </div>
+            <div className="publish-fields">
+              <label htmlFor="track-title">
+                {t("Title")} <span aria-hidden="true">*</span>
+              </label>
+              <input
+                id="track-title"
+                value={title}
+                required
+                maxLength={200}
+                disabled={publishing || publicationAttempted}
+                onChange={(event) => setTitle(event.target.value)}
+              />
+              <span className="publish-label">{t("Artist")}</span>
+              <div className="publishing-artist">
+                {user.avatarUrl ? (
+                  <img src={user.avatarUrl} alt="" />
+                ) : (
+                  <span
+                    className="artist-avatar-placeholder"
+                    aria-hidden="true"
+                  >
+                    {user.displayName.slice(0, 1)}
+                  </span>
+                )}
+                <div>
+                  <strong>{user.displayName}</strong>
+                  <span>@{user.username}</span>
+                </div>
+              </div>
+              <label htmlFor="track-description">
+                {t("Description")}{" "}
+                <span className="publish-optional">{t("(optional)")}</span>
+              </label>
+              <textarea
+                id="track-description"
+                rows={6}
+                maxLength={5000}
+                placeholder={t(
+                  "Tell the story behind your track. Add credits or lyrics…",
+                )}
+                value={description}
+                disabled={publishing || publicationAttempted}
+                onChange={(event) => setDescription(event.target.value)}
+              />
+              <span className="publish-counter">
+                {formatNumber(description.length)} / {formatNumber(5000)}
+              </span>
+            </div>
+          </div>
+          <footer className="publish-footer">
+            <p>{t("Your track will be public when you publish it.")}</p>
+            <div>
+              {!publicationAttempted && (
+                <button
+                  type="button"
+                  className="publish-text-button"
+                  disabled={publishing}
+                  onClick={() => void cancel()}
+                >
+                  {uploading ? t("Cancel upload") : t("Cancel")}
+                </button>
+              )}
+              {!asset && !uploading && (
+                <button type="button" onClick={() => void upload(file, true)}>
+                  {t("Retry upload")}
+                </button>
+              )}
+              <button
+                className="publish-primary"
+                type="submit"
+                disabled={
+                  !asset ||
+                  uploading ||
+                  publishing ||
+                  checkingCover ||
+                  !!coverError ||
+                  !title.trim()
+                }
+              >
+                {publishing
+                  ? t("Publishing…")
+                  : publicationAttempted
+                    ? t("Retry publication")
+                    : t("Publish track")}
+              </button>
+            </div>
+          </footer>
+        </>
+      )}
+      {error && (
+        <p role="alert" className="publish-error">
+          {translateError(error)}
+        </p>
+      )}
+    </form>
+  );
 }

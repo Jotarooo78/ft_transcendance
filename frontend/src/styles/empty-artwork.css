@@ -1,0 +1,13 @@
+/* L’icône ne participe pas aux dimensions intrinsèques : même une vignette de 40 px
+   conserve une marge intérieure et ne dépend ni de la police ni de sa ligne de base. */
+.empty-artwork {
+  position: relative;
+  overflow: hidden;
+}
+.empty-artwork > svg {
+  position: absolute;
+  inset: 25%;
+  width: 50%;
+  height: 50%;
+  display: block;
+}

@@ -1,0 +1,12 @@
+# Publication dans une pile jetable ; aucun fichier .env ni volume de développement.
+services:
+  media-service:
+    environment:
+      JWT_SECRET: e2e_test_only_jwt_secret_with_sufficient_length
+      INTERNAL_SERVICE_TOKEN: e2e_test_only_internal_token_with_sufficient_length
+  catalog-service:
+    environment:
+      INTERNAL_SERVICE_TOKEN: e2e_test_only_internal_token_with_sufficient_length
+  nginx:
+    ports: !override
+      - "127.0.0.1:5445:443"

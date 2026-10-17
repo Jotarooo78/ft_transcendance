@@ -1,86 +1,127 @@
-/** Historique privé persistant : la position enregistrée et le temps effectivement crédité sont affichés séparément. */
-import { useEffect, useState } from "react";
-import AudioPlayer from "../components/AudioPlayer";
-import { getTrack } from "../services/catalog";
-import { getPlaybackHistory, type PlaybackHistory, type PlaybackSession } from "../services/playback";
-import { getAccessToken } from "../services/session";
-import type { Track } from "../types/music";
-
-/**
- * Charge les détails actuels du morceau d’une session et affiche sa position, son temps crédité et sa
- * clôture ; un morceau indisponible conserve l’historique lisible.
- */
-function HistoryItem({ session, onPlay }: {
-  /** Session confirmée ou état transactionnel de la session concernée. */
-  session: PlaybackSession;
-  /** Sélectionne le morceau confirmé à lire dans le lecteur. */
-  onPlay: (track: Track) => void }) {
-  const [detail, setDetail] = useState<{
-    /** Détail public du morceau chargé depuis Catalogue. */
-    track?: Track;
-    /** Erreur à rendre visible pour ce résultat ; son absence représente un résultat sans erreur enregistrée. */
-    error?: string }>({});
-  useEffect(() => {
-    const controller = new AbortController();
-    void getTrack(session.trackId, controller.signal).then(track => {
-      if (!controller.signal.aborted) setDetail({ track });
-    }).catch(() => { if (!controller.signal.aborted) setDetail({ error: "Track unavailable" }); });
-    return () => controller.abort();
-  }, [session.trackId]);
-  return <li data-session-id={session.id}>
-    <h2>{detail.track?.title ?? detail.error ?? "Loading track details…"}</h2>
-    <p><time dateTime={session.startedAt}>{new Date(session.startedAt).toLocaleString()}</time></p>
-    <dl>
-      <dt>Time listened</dt><dd data-field="listened" data-ms={session.listenedMs}>{(session.listenedMs / 1000).toFixed(1)} s</dd>
-      <dt>Last position</dt><dd data-field="position" data-ms={session.positionMs}>{(session.positionMs / 1000).toFixed(1)} s</dd>
-      <dt>Track duration</dt><dd>{(session.trackDurationMs / 1000).toFixed(1)} s</dd>
-      <dt>Session</dt><dd>{session.endedAt ? "Closed" : "Open"}</dd>
-    </dl>
-    <button type="button" disabled={!detail.track?.audioUrl} onClick={() => { if (detail.track) onPlay(detail.track); }}>Play track</button>
-  </li>;
-}
-
-/**
- * Charge une page d’historique du compte avec annulation et garde de token ; permet une nouvelle
- * lecture et ignore les anciennes réponses de session.
- */
+import {
+  translate as t,
+  translateError,
+  formatDate,
+  formatNumber,
+} from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
+import RefreshNotice from "../components/RefreshNotice";
+import { useCallback, useEffect } from "react";
+import { useLibraryView } from "../contexts/library-view";
+import { useResource } from "../hooks/useResource";
+import { readTrackDetails } from "../services/track-details";
+import { getPlaybackHistory } from "../services/playback";
+import MusicTrackRow from "../components/MusicTrackRow";
+/** Historique chronologique : chaque écoute reste une ligne, même pour un titre répété. */
 export default function HistoryPage() {
-  const [page, setPage] = useState(1), [retry, setRetry] = useState(0);
-  const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
-  const token = getAccessToken(), key = JSON.stringify([token, page, retry]);
-  const [result, setResult] = useState<{
-    /** Identité de la requête ou de l’état ; empêche d’afficher une réponse devenue périmée. */
-    key: string;
-    /** Résultat validé ou champs de la commande regroupés par ce contrat. */
-    data?: PlaybackHistory;
-    /** Erreur à rendre visible pour ce résultat ; son absence représente un résultat sans erreur enregistrée. */
-    error?: string }>({ key: "" });
+  useLanguage();
+  const [view, setView] = useLibraryView("history");
+  const page = view.page;
+  /** Conserve la page de l'historique lors d'une visite d'une autre section. */
+  const setPage = (change: (page: number) => number) =>
+    setView((v) => ({ ...v, page: change(v.page) }));
+  const history = useResource(
+    useCallback(
+      async (signal) => {
+        const data = await getPlaybackHistory(page, signal);
+        const tracks = await readTrackDetails(
+          data.items.map((item) => item.trackId),
+          signal,
+          true,
+        );
+        return { ...data, tracks };
+      },
+      [page],
+    ),
+  );
+  const { reload } = history;
   useEffect(() => {
-    const controller = new AbortController();
-    void getPlaybackHistory(page, controller.signal).then(data => {
-      if (!controller.signal.aborted && token === getAccessToken()) setResult({ key, data });
-    }).catch(error => {
-      if (!controller.signal.aborted && token === getAccessToken()) setResult({ key, error: error instanceof Error ? error.message : "Unable to load history." });
-    });
-    return () => controller.abort();
-  }, [key, page, token]);
-  const loading = result.key !== key, data = loading ? undefined : result.data;
-  const pages = Math.max(1, Math.ceil((data?.total ?? 0) / 20));
-  return <>
-    <main className="playlists-page">
-      <header><p className="page-label">Your listening</p><h1>History</h1><p>Listening progress saved to your account.</p></header>
-      <button type="button" disabled={loading} onClick={() => setRetry(value => value + 1)}>Refresh history</button>
-      {loading ? <p role="status">Loading listening history…</p> : result.error ?
-        <div role="alert"><p>{result.error}</p><button type="button" onClick={() => setRetry(value => value + 1)}>Retry history</button></div> : <>
-          {data?.items.length === 0 && <p>No listening sessions on this page.</p>}
-          <ol className="history-list">{data?.items.map(session => <HistoryItem key={session.id} session={session} onPlay={setSelectedTrack} />)}</ol>
-          <nav className="pagination" aria-label="History pagination">
-            <button type="button" disabled={page === 1} onClick={() => { setSelectedTrack(null); setPage(value => value - 1); }}>Previous</button>
-            <span>Page {page} of {pages}</span>
-            <button type="button" disabled={page >= pages} onClick={() => { setSelectedTrack(null); setPage(value => value + 1); }}>Next</button>
+    window.addEventListener("music-history-changed", reload);
+    return () => window.removeEventListener("music-history-changed", reload);
+  }, [reload]);
+  const pages = Math.max(1, Math.ceil((history.data?.total ?? 0) / 20));
+  return (
+    <section className="history-page">
+      <header>
+        <p className="page-label">{t("YOUR LISTENING")}</p>
+        <h1>{t("Recently played")}</h1>
+        <p>{t("Every listen, from newest to oldest.")}</p>
+      </header>
+      {history.loading ? (
+        <p role="status">{t("Loading listening history…")}</p>
+      ) : history.error ? (
+        <p role="alert">
+          {translateError(history.error)}
+          <button onClick={history.reload}>{t("Retry history")}</button>
+        </p>
+      ) : (
+        <>
+          {!history.data?.items.length && (
+            <p>{t("No listening sessions on this page.")}</p>
+          )}
+          <ol className="music-occurrences">
+            {history.data?.items.map((session) => {
+              const track = history.data?.tracks[session.trackId];
+              const date = (
+                <time dateTime={session.startedAt}>
+                  {formatDate(session.startedAt, true)}
+                </time>
+              );
+              return (
+                <li
+                  key={session.id}
+                  data-session-id={session.id}
+                  data-scroll-anchor={session.id}
+                >
+                  {track ? (
+                    <MusicTrackRow
+                      track={track}
+                      source="History"
+                      sourceLocalized
+                      extra={date}
+                    />
+                  ) : (
+                    <div className="music-unavailable">
+                      <span>{t("Track unavailable")}</span>
+                      {date}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+          {history.data &&
+            Object.values(history.data.tracks).some((track) => !track) && (
+              <button onClick={history.reload}>
+                {t("Retry track details")}
+              </button>
+            )}
+          <nav
+            className="music-pagination"
+            aria-label={t("History pagination")}
+          >
+            <button disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
+              {" "}
+              {t("Previous")}{" "}
+            </button>
+            <span>
+              {" "}
+              {t("Page {page} of {pages}", {
+                page: formatNumber(page),
+                pages: formatNumber(pages),
+              })}
+            </span>
+            <button
+              disabled={page >= pages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              {" "}
+              {t("Next")}{" "}
+            </button>
           </nav>
-        </>}
-    </main>
-    {selectedTrack && <AudioPlayer key={selectedTrack.id} track={selectedTrack} onClose={() => setSelectedTrack(null)} />}
-  </>;
+        </>
+      )}
+      <RefreshNotice error={history.refreshError} retry={history.reload} />
+    </section>
+  );
 }

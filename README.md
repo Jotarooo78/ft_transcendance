@@ -45,7 +45,8 @@ Les prérequis, les ressources ciblées et le diagnostic sont décrits dans
 Le catalogue vient de PostgreSQL, les fichiers audio de Media et les playlists
 du compte authentifié. Une lecture ouvre une session Playback ; la progression
 ordonnée et les renvois identiques conservent un seul effet. L'onglet History
-relit le temps crédité, la dernière position et l'état ouvert ou clos du compte.
+présente chaque écoute de la plus récente à la plus ancienne, sans fusionner
+les répétitions. Les mesures détaillées restent conservées dans Playback.
 
 `tests/music/run.sh playback` reconstruit la pile isolée sur le port 3443,
 teste les quatre services musicaux et le frontend, puis vérifie HTTPS, SQL,
@@ -57,17 +58,53 @@ redémarrages et Chromium avant nettoyage. Prérequis et commandes dans
 Le temps déclaré par le lecteur est plafonné par le serveur. Un déplacement
 dans le morceau ne représente pas une durée écoutée. Une fermeture brutale
 peut perdre les dernières mesures et laisser une session ouverte ; aucune
-qualification R15, statistique commerciale ou reprise automatique n'est activée.
+qualification R15 ni statistique commerciale n'est activée. La reprise locale du
+lecteur est décrite dans le contrat de lecture et reste toujours en pause.
+
+The **Library** tab separates liked tracks, saved projects, followed artists,
+owned playlists, saved public playlists and uploads. Following an artist does
+not create a friendship. Playlists are private by default; visibility can be
+chosen during creation or changed later with confirmation. Public playlists
+have stable links; making one private immediately rejects further public reads.
+The desktop catalogue offers artist, project and track results; recent additions
+lead the project/track hub and artists are listed by name.
+
+The shared desktop player provides previous/next, shuffle, repeat off/queue/one,
+seek, volume and an editable playback queue. Click a track row to play it;
+buttons and links keep their own actions. Queue, position and preferences are
+restored paused for the same account in the same browser. See
+[the playback contract](docs/music/PLAYBACK_CONTRACT.md) for behavior and limits.
+
+`bash tests/projects/run.sh` verifies the complete project/library/player journey on
+port 5445 with disposable accounts and volumes. It uses the Chromium dependency
+from `tests/files` (`npm ci --prefix tests/files`, then
+`npm run install:browser --prefix tests/files`). Catalogue/Library migrations and
+SQL ownership/grant updates run through the existing Compose migration chain.
 
 ## 📝 Repartition des modules
+
+### Support de trois langues — Minor, 1 point
+
+L’interface propose le français, l’anglais et l’espagnol sur tous les parcours,
+y compris les erreurs, validations, confirmations et textes accessibles.
+Un sélecteur est disponible avant et après connexion. Le choix mémorisé dans le
+navigateur prime sur ses préférences linguistiques ; l’anglais sert de repli.
+Le changement conserve les saisies, les transferts et la lecture en cours.
+
+`npm run test:languages --prefix frontend` vérifie les dictionnaires, les règles
+de langue et les textes statiques des 42 fichiers visuels.
+`bash tests/projects/run.sh languages` vérifie les trois langues avec de vrais
+comptes et fichiers sur la pile HTTPS jetable, puis nettoie ses ressources.
+Les règles, les limites des contrôles, la méthode d’ajout d’une traduction et
+les résultats observés sont décrits dans le [guide frontend](frontend/README.md).
 
 ### File upload and management system — Minor, 1 point
 
 The **Upload** screen starts audio transfer immediately and lets the signed-in
-user edit a title, description and optional artwork before choosing **Publish
-track**. The artist is always the publishing account. Published tracks appear
-in the catalogue with public playback, artwork and a link to the current artist
-profile, and can be added to private playlists. Embedded artwork is extracted
+user publish a single track, album, mixtape or EP. Projects support ordered
+multi-file imports, a shared cover, persistent drafts and edits after publication.
+The artist is always the publishing account and the first release date is automatic.
+Published projects and tracks appear in the catalogue alongside searchable artists. Embedded artwork is extracted
 automatically; a manual replacement or explicit removal takes precedence.
 
 Audio originals are preserved, up to 500,000,000 bytes, with a separate MP3

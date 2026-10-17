@@ -220,7 +220,7 @@ async function library() {
   /** Relit la playlist du compte A et exige qu’un refus testé n’ait modifié aucun de ses champs. */
   const sameA = async () => assert.deepEqual(await libraryCall(ta, `/${p.id}`), p);
   for (const body of [{ name: '' }, { name: ' '.repeat(3) }, { name: 'x'.repeat(101) }, { name: 'ok', description: 'x'.repeat(2001) },
-    { name: 'ok', ownerUserId: a.id }, { name: 'ok', visibility: 'public' }, { name: 'ok', version: 99 }, { name: 123 }]) {
+    { name: 'ok', ownerUserId: a.id }, { name: 'ok', visibility: 'unlisted' }, { name: 'ok', version: 99 }, { name: 123 }]) {
     await libraryCall(ta, '', 'POST', body, 400); await sameA();
   }
   const boundary = await libraryCall(ta, '', 'POST', { name: '🎵'.repeat(100), description: 'd'.repeat(2000) }, 201);
@@ -263,7 +263,7 @@ async function library() {
   p = await libraryCall(ta, `/${p.id}`); assert.equal(p.version, 5);
   assert.deepEqual(p.items.map(item => item.position), [2, 3]); assert.equal(new Set(p.items.map(item => item.id)).size, 2);
   for (const body of [{ name: '', description: 'must not write', expectedVersion: 5 }, { description: 'x'.repeat(2001), expectedVersion: 5 },
-    { ownerUserId: b.id, expectedVersion: 5 }, { visibility: 'public', expectedVersion: 5 }]) {
+    { ownerUserId: b.id, expectedVersion: 5 }, { visibility: 'unlisted', expectedVersion: 5 }]) {
     await libraryCall(ta, `/${p.id}`, 'PATCH', body, 400); await sameA();
   }
   await libraryCall(ta, `/${p.id}`, 'PATCH', { name: 'stale', expectedVersion: 4 }, 409); await sameA();

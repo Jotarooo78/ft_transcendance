@@ -51,6 +51,10 @@ const keyOf = (request: Versioned<{ expectedVersion: number }>) => ({
  */
 export function createPlaylistsController(playlists: PlaylistsService) {
   return {
+    /** @brief Lit une playlist publique sans identité de visiteur. */
+    publicShow(request: FastifyRequest<{ Params: PlaylistParams }>) {
+      return playlists.getPublic(request.params.id.toLowerCase())
+    },
     /**
      * @brief Répond à `GET /playlists` : renvoie une page des playlists du compte connecté.
      * @param request Requête reçue ; `request.query` contient `page` et `pageSize`.
@@ -80,7 +84,11 @@ export function createPlaylistsController(playlists: PlaylistsService) {
      * @param reply Réponse ; elle est envoyée avec le statut 201, qui signifie « créé ».
      */
     async create(request: FastifyRequest<{ Body: CreatePlaylistBody }>, reply: FastifyReply) {
-      const playlist = await playlists.create(request.userId, toPlaylistInput(request.body))
+      const playlist = await playlists.create(
+        request.userId,
+        toPlaylistInput(request.body),
+        request.body.creationId?.toLowerCase()
+      )
       return reply.code(201).send(playlist)
     },
 

@@ -55,7 +55,7 @@ export function withLockedPlaylist<T>(
   return prisma.$transaction(async (tx) => {
     const rows = await tx.$queryRaw<{ version: bigint }[]>`
       SELECT version FROM library.playlists
-      WHERE id = ${id}::uuid AND owner_user_id = ${owner}::uuid AND visibility = 'private'
+      WHERE id = ${id}::uuid AND owner_user_id = ${owner}::uuid
       FOR UPDATE`
     const locked = rows[0]
     if (!locked) {

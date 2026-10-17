@@ -131,6 +131,14 @@ model TrackArtist {
 
 /// Sortie musicale et ses métadonnées ; coverAssetId est une référence logique vers Media.
 model Release {
+  /// Fichiers retirés à nettoyer ; liste durable permettant de reprendre après panne Media.
+  pendingCleanup String[] @default([]) @map("pending_cleanup") @db.Uuid
+  /// Compte propriétaire ; null pour les sorties historiques créées par le seed.
+  ownerUserId  String?   @map("owner_user_id") @db.Uuid
+  /// Présentation facultative du projet, limitée à 5 000 caractères.
+  description  String?
+  /// Version attendue pour empêcher deux onglets d’écraser leurs changements.
+  version      Int       @default(1)
   /// Identifiant de cette entité ; distinct des identifiants des objets liés.
   id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   /// Titre du morceau publié.
@@ -139,6 +147,8 @@ model Release {
   releaseType  String    @map("release_type")
   /// Date de sortie sans heure ni fuseau, contrairement aux dates techniques de création.
   releaseDate  DateTime? @map("release_date") @db.Date
+  /// Instant de première publication, immuable pour classer les ajouts récents.
+  publishedAt DateTime? @map("published_at") @db.Timestamptz(6)
   /// UUID logique de la couverture Media ; protège la suppression même pour une sortie en brouillon.
   coverAssetId String?   @map("cover_asset_id") @db.Uuid
   /// draft ou published ; les lectures publiques filtrent published.
@@ -153,6 +163,7 @@ model Release {
   /// Associations aux morceaux, selon le modèle local contenant cette relation.
   tracks  ReleaseTrack[]
 
+  @@index([status, publishedAt(sort: Desc), id], map: "releases_recent_idx")
   @@map("releases")
   @@schema("catalog")
 }

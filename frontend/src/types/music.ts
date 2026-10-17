@@ -1,4 +1,6 @@
 export type Track = {
+  /** Projet publié auquel appartient ce titre. */
+  projectId?: string | null;
   id: string;
   title: string;
   artistName: string;
@@ -37,6 +39,8 @@ export type Playlist = {
  * différents.
  */
 export type PlaylistItem = {
+  /** Date ISO de cette occurrence, indépendante de la publication du morceau. */
+  addedAt?: string;
   /** Identifiant de cette entité ; distinct des identifiants des objets liés. */
   id: string;
   /** UUID du morceau Catalogue, distinct de l’occurrence de playlist ou de la session. */
@@ -45,10 +49,19 @@ export type PlaylistItem = {
   position: number;
 };
 /**
- * Playlist persistante privée du compte, avec version de concurrence et occurrences renvoyées par
+ * Playlist persistante du compte ou projection publique, avec version de concurrence et occurrences renvoyées par
  * Library.
  */
-export type PrivatePlaylist = {
+export type MusicPlaylist = {
+  /** Identité publique du créateur ; absente seulement sur les anciennes réponses. */
+  ownerUserId?: string;
+  /** Dates ISO utilisées par les tris de la bibliothèque. */
+  createdAt?: string;
+  updatedAt?: string;
+  /** Image Media privée ou publique selon la playlist. */
+  coverAssetId?: string | null;
+  /** Visibilité actuelle ; privé reste la valeur initiale. */
+  visibility: "private" | "public";
   /** Identifiant de cette entité ; distinct des identifiants des objets liés. */
   id: string;
   /** Nom de la playlist ou libellé lu par cette projection. */

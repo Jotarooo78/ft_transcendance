@@ -69,6 +69,9 @@ export function createFakePlaylists(initial: PlaylistRow | null = emptyRow()) {
   const visible = (subject: string) => (subject === owner && state.row ? state.row : null)
 
   const repository: PlaylistsRepository = {
+    async findPublic(id) {
+      return state.row?.id === id && state.row.visibility === 'public' ? state.row : null
+    },
     async list(subject) {
       if (state.failure) {
         throw new Error('private SQL')

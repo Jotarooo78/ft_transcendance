@@ -12,7 +12,7 @@ import { invalidRequest, toPagination, type Pagination } from '@ft/service-kit'
 import type { Track } from './track.js'
 
 /** @brief Les trois façons de trier la liste : par titre, par artiste ou par durée. */
-export type TrackSort = 'title' | 'artist' | 'duration'
+export type TrackSort = 'title' | 'artist' | 'duration' | 'recent'
 
 /**
  * @brief Critères de recherche prêts à être transmis à la base.
@@ -20,7 +20,12 @@ export type TrackSort = 'title' | 'artist' | 'duration'
  *   = pas de recherche) ; `genre` est le genre exact à filtrer (chaîne vide = tous les genres) ;
  *   `sort` est l'ordre de tri.
  */
-export type TrackListQuery = Pagination & { q: string; genre: string; sort: TrackSort }
+export type TrackListQuery = Pagination & {
+  q: string
+  genre: string
+  sort: TrackSort
+  owner?: string
+}
 
 /**
  * @brief Une page de résultats telle que le client la reçoit.
@@ -45,6 +50,8 @@ type RawTrackQuery = {
   /** @brief Genre exact à filtrer. */
   genre?: string
   /** @brief Critère de tri. */
+  /** Compte artiste utilisé pour sa page publique. */
+  owner?: string
   sort?: TrackSort
 }
 
@@ -67,6 +74,7 @@ export function toTrackListQuery(query: RawTrackQuery): TrackListQuery {
     q: (query.q ?? '').trim(),
     genre: (query.genre ?? '').trim(),
     sort: query.sort ?? 'title',
+    ...(query.owner ? { owner: query.owner.toLowerCase() } : {}),
   }
 }
 

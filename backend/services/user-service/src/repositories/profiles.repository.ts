@@ -47,6 +47,30 @@ export const isUniqueViolation = (error: unknown) =>
  */
 export function createProfilesRepository(prisma: Database) {
   return {
+    /** Cherche les comptes artistes par nom, sans présence ni donnée de connexion. */
+    async searchArtists(q: string, page: number, pageSize: number) {
+      const text = q.replace(/[\\%_]/g, '\\$&')
+      const where: Prisma.ProfileWhereInput = {
+        OR: [
+          { displayName: { contains: text, mode: 'insensitive' } },
+          { username: { contains: text, mode: 'insensitive' } },
+        ],
+      }
+      const [items, total] = await prisma.$transaction(
+        [
+          prisma.profile.findMany({
+            where,
+            select: publicFields,
+            orderBy: [{ displayName: 'asc' }, { userId: 'asc' }],
+            skip: (page - 1) * pageSize,
+            take: pageSize,
+          }),
+          prisma.profile.count({ where }),
+        ],
+        { isolationLevel: 'RepeatableRead' }
+      )
+      return { items, total, page, pageSize }
+    },
     /**
      * @brief Lit le profil complet d'un compte.
      * @param userId Identifiant du compte.

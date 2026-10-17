@@ -107,3 +107,61 @@ ce stade. Les preuves réelles sont prévues dans CAT-9 à CAT-11.
 
 Ce fichier est la référence du format des requêtes/réponses pour le service,
 le client et leurs tests ; il n'exécute aucune migration ni installation.
+# Projets musicaux — contrat de l’évolution
+
+Le parcours ordinateur conserve l’ajout d’un titre seul et ajoute album, mixtape
+et EP. Un projet appartient au compte connecté ; les noms d’artistes viennent de
+Users. Aucun crédit éditable, genre obligatoire ou programmation n’est ajouté.
+Les titres sont préremplis, la pochette est facultative et la date de sortie est
+fixée à la première publication, puis conservée lors des modifications.
+
+Les projets réutilisent `Release` et `ReleaseTrack`. Les modifications privées
+portent une version attendue pour refuser l’écrasement d’un autre onglet. Le
+brouillon garde ses fichiers prêts après reconnexion ; un transfert interrompu
+peut nécessiter une nouvelle sélection. La publication est une transition
+atomique du catalogue : les morceaux doivent tous être prêts et appartenir au
+compte. Réessayer une publication ne crée pas de nouvelle identité.
+
+Routes prévues, relatives à `/api/catalog` : `GET /projects` (public),
+`GET /projects/:id` (public), `GET /me/projects` (privé),
+`PUT /me/projects/:id` (création ou sauvegarde versionnée),
+`POST /me/projects/:id/publish` et `DELETE /me/projects/:id` (abandon d’un brouillon).
+Le client choisit un UUID stable avant la création pour retrouver un résultat
+incertain. Les détails publiés contiennent les morceaux dans leur ordre.
+Les brouillons ne paraissent ni dans la recherche ni dans les lectures publiques.
+
+La recherche distingue comptes artistes, projets et titres. Les modifications
+de titre, description, pochette et ordre conservent les identifiants des objets.
+Le remplacement des octets d’un audio publié n’est pas inclus dans cette étape.
+Ces paragraphes définissent la cible ; ils ne constituent pas une preuve
+d’implémentation ou de tests réussis.
+
+## Responsabilités des projets réalisés
+
+`domain/project.ts` nettoie les textes et contrôle les références de pochette et
+les doublons. `schemas/projects.schema.ts` borne les requêtes à cent pistes.
+`repositories/projects.repository.ts` conserve l’ordre, prend les verrous de
+projet et d’audio, vérifie les versions et écrit les transitions atomiquement.
+`services/projects.service.ts` authentifie auprès de Users, réserve dans Media
+puis transforme les données privées ou publiques. Le contrôleur adapte HTTP ;
+les routes appliquent les schémas et interdisent le cache. `server.ts` injecte
+le stockage réel ; les tests injectent seulement les dépendances nécessaires.
+
+Le nettoyage des pistes retirées est une liste `pending_cleanup` durable sur le
+projet. Une piste abandonnée garde un identifiant retiré, sans référence audio,
+pour interdire sa republication par l’ancien endpoint. Media vérifie encore
+l’absence de référence avant libération et suppression. Un échec de nettoyage
+renvoie une erreur ; reprendre la même sauvegarde ou suppression traite la file
+restante sans perdre le projet déjà enregistré. Un fichier réservé avant une
+écriture au résultat incertain reste protégé plutôt que supprimé prématurément.
+
+`test/projects.integration.ts` exerce de vraies transactions PostgreSQL avec
+Users/Media simulés : ces preuves couvrent le stockage, pas le transport audio.
+Sa variable PROJECT_TEST_DATABASE_URL exige une cible jetable explicite ; la
+campagne HTTP complète reste nécessaire pour vérifier le parcours interservices.
+
+Le tri récent des projets utilise `publishedAt`, instant immuable de première
+publication, distinct de `releaseDate` (date affichée) et `createdAt` (création du
+brouillon). Une édition ne remonte donc pas artificiellement le projet dans les
+ajouts récents. Les anciennes sorties sont reprises avec leur meilleure date
+historique disponible lors de la migration.

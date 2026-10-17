@@ -1,3 +1,5 @@
+import { translate as t } from "../services/translate";
+import { useLanguage } from "../hooks/useLanguage";
 import UserCard from "../components/UserCard";
 import type { PublicUser } from "../types/auth";
 
@@ -8,27 +10,29 @@ type UsersPageProps = {
   onRemoveFriend: (userId: string) => void;
 };
 
+/** Affiche UsersPage dans la langue choisie en conservant son état. */
 function UsersPage({
   users,
   friendIds,
   onAddFriend,
   onRemoveFriend,
 }: UsersPageProps) {
+  useLanguage();
   return (
     <main className="users-page">
       <header>
-        <p className="page-label">Community</p>
+        <p className="page-label">{t("Community")}</p>
 
-        <h1>Users</h1>
+        <h1>{t("Users")}</h1>
 
-        <p>Discover other members of the music community.</p>
+        <p>{t("Discover other members of the music community.")}</p>
       </header>
 
       <section className="users-section" aria-labelledby="users-title">
-        <h2 id="users-title">Community members</h2>
+        <h2 id="users-title">{t("Community members")}</h2>
 
         {users.length === 0 ? (
-          <p className="empty-users-message">No users are available.</p>
+          <p className="empty-users-message">{t("No users are available.")}</p>
         ) : (
           <div className="user-list">
             {users.map((user) => {

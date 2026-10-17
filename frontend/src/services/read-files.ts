@@ -60,22 +60,37 @@ export async function readFilePreview(
   file: Pick<ReadyFile, "id">,
   signal: AbortSignal,
 ): Promise<Blob> {
-  return readPrivateBlob(`/api/media/assets/${encodeURIComponent(file.id)}/private-content`, "audio/mpeg", audioByteLimit, signal);
+  return readPrivateBlob(
+    `/api/media/assets/${encodeURIComponent(file.id)}/private-content`,
+    "audio/mpeg",
+    audioByteLimit,
+    signal,
+  );
 }
 
 /** Charge les octets de la pochette actuelle par la route privée de son audio, sans JWT dans l’URL. */
-export async function readAudioCover(file: ReadyFile, signal: AbortSignal): Promise<Blob> {
+export async function readAudioCover(
+  file: ReadyFile,
+  signal: AbortSignal,
+): Promise<Blob> {
   if (!file.cover) throw new Error("This audio has no cover.");
-  return readPrivateBlob(`/api/media/assets/${encodeURIComponent(file.id)}/cover`, file.cover.mimeType, imageByteLimit, signal);
+  return readPrivateBlob(
+    `/api/media/assets/${encodeURIComponent(file.id)}/cover`,
+    file.cover.mimeType,
+    imageByteLimit,
+    signal,
+  );
 }
 
 /** Lit un contenu privé borné, vérifie ses en-têtes et annule toute réponse d’un ancien compte. */
-async function readPrivateBlob(path: string, expected: string, maximum: number, signal: AbortSignal): Promise<Blob> {
+export async function readPrivateBlob(
+  path: string,
+  expected: string | string[],
+  maximum: number,
+  signal: AbortSignal,
+): Promise<Blob> {
   const token = getAccessToken();
-  const response = await authenticatedFetch(
-    path,
-    { signal },
-  );
+  const response = await authenticatedFetch(path, { signal });
   if (!response.ok || !response.body)
     throw new Error(
       response.status === 404
@@ -85,7 +100,8 @@ async function readPrivateBlob(path: string, expected: string, maximum: number, 
   const mime = response.headers.get("Content-Type")?.split(";", 1)[0];
   const length = Number(response.headers.get("Content-Length"));
   if (
-    mime !== expected ||
+    !mime ||
+    !(Array.isArray(expected) ? expected.includes(mime) : mime === expected) ||
     !Number.isSafeInteger(length) ||
     length <= 0 ||
     length > maximum
@@ -112,5 +128,18 @@ async function readPrivateBlob(path: string, expected: string, maximum: number, 
   }
   if (size !== length || signal.aborted || token !== getAccessToken())
     throw new Error("The preview is incomplete or was cancelled.");
-  return new Blob(chunks, { type: expected });
+  return new Blob(chunks, { type: mime });
+}
+
+/** Charge la pochette d’un projet sauvegardé sans demander toutes les métadonnées de ses fichiers. */
+export function readProjectArtwork(
+  id: string,
+  signal: AbortSignal,
+): Promise<Blob> {
+  return readPrivateBlob(
+    `/api/media/assets/${encodeURIComponent(id)}/cover`,
+    ["image/png", "image/jpeg", "image/webp"],
+    imageByteLimit,
+    signal,
+  );
 }
