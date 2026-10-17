@@ -1,0 +1,67 @@
+/* Pied de page commun et pages légales (confidentialité, conditions d’utilisation). */
+.site-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 24px;
+  /* Pousse le pied de page en bas de #root, même quand la page est courte. */
+  margin-top: auto;
+  padding: 18px max(20px, calc((100% - 1200px) / 2));
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 0.875rem;
+}
+
+.site-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+}
+
+.site-footer a,
+.legal-page a {
+  color: var(--accent);
+  text-underline-offset: 3px;
+}
+
+.site-footer a:hover,
+.legal-page a:hover {
+  color: var(--accent-hover);
+}
+
+.site-footer a[aria-current="page"] {
+  color: var(--text-h);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.legal-page {
+  width: min(100% - 40px, 760px);
+}
+
+.legal-page h1:focus {
+  outline: none;
+}
+
+.legal-page section {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.legal-page h2 {
+  font-size: 1.2rem;
+}
+
+.legal-page p,
+.legal-page ul {
+  margin: 0;
+  max-width: 70ch;
+}
+
+.legal-page ul {
+  display: grid;
+  gap: 6px;
+  padding-inline-start: 1.25em;
+}

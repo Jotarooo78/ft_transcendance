@@ -776,6 +776,10 @@ export const en = {
   "Restoring your session…": "Restoring your session…",
   "Unable to restore your session.": "Unable to restore your session.",
   "Sign in again": "Sign in again",
+  "Legal information": "Legal information",
+  "FT Music · Student project from the 42 curriculum": "FT Music · Student project from the 42 curriculum",
+  "Last updated: {date}": "Last updated: {date}",
+  "Back to FT Music": "Back to FT Music",
 } as const;
 
 /** Identifiants communs aux trois dictionnaires. */

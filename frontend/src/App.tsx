@@ -10,7 +10,10 @@ import MusicPlayerProvider from "./components/MusicPlayerProvider";
 import ProjectPage from "./pages/ProjectPage";
 import ArtistPage from "./pages/ArtistPage";
 import { useMusicRoute } from "./hooks/useMusicRoute";
+import { useLegalRoute } from "./hooks/useLegalRoute";
 import { readMusicRoute } from "./services/music-navigation";
+import LegalPage from "./pages/LegalPage";
+import SiteFooter from "./components/SiteFooter";
 import { useCallback, useEffect, useState } from "react";
 
 import LoginPage from "./pages/LoginPage";
@@ -51,6 +54,7 @@ import type { AvatarUploadProgress } from "./services/users";
 import "./App.css";
 import "./styles/playlists.css";
 import "./styles/messages.css";
+import "./styles/legal.css";
 
 type PublicPage = "register" | "login";
 
@@ -105,6 +109,10 @@ function getErrorMessage(error: unknown, fallbackMessage: string): string {
 function App() {
   useLanguage();
   const musicRoute = useMusicRoute();
+  /** Page légale ouverte depuis le pied de page ; elle remplace l’onglet sans fermer la session. */
+  const legalRoute = useLegalRoute();
+  /** Adresse qui prend la place des onglets principaux : contenu musical ou page légale. */
+  const pageRoute = musicRoute ?? legalRoute;
   const [currentPage, setCurrentPage] = useState<PublicPage>("register");
 
   const [currentUser, setCurrentUser] = useState<AuthenticatedUser | null>(
@@ -133,7 +141,7 @@ function App() {
   }, []);
   const libraryVisible =
     musicRoute?.kind === "library" ||
-    (!musicRoute && privatePage === "library");
+    (!pageRoute && privatePage === "library");
 
   /** Revient à un onglet principal sans interrompre le lecteur commun. */
   function navigate(page: PrivatePage) {
@@ -159,7 +167,7 @@ function App() {
     !musicRoute &&
     ["profile", "users", "messages"].includes(privatePage);
   /** Le répertoire complet ne sert qu’à Users ; Profil utilise uniquement les amis. */
-  const directoryVisible = !!ownerId && !musicRoute && privatePage === "users";
+  const directoryVisible = !!ownerId && !pageRoute && privatePage === "users";
   const userData = useResource(
     useCallback(
       async (signal) => {
@@ -410,11 +418,11 @@ function App() {
                   <button
                     type="button"
                     className={
-                      privatePage === "files"
+                      !pageRoute && privatePage === "files"
                         ? "navigation-button active"
                         : "navigation-button"
                     }
-                    aria-pressed={!musicRoute && privatePage === "files"}
+                    aria-pressed={!pageRoute && privatePage === "files"}
                     onClick={() => navigate("files")}
                   >
                     {" "}
@@ -423,11 +431,11 @@ function App() {
                   <button
                     type="button"
                     className={
-                      privatePage === "profile"
+                      !pageRoute && privatePage === "profile"
                         ? "navigation-button active"
                         : "navigation-button"
                     }
-                    aria-pressed={!musicRoute && privatePage === "profile"}
+                    aria-pressed={!pageRoute && privatePage === "profile"}
                     onClick={() => {
                       navigate("profile");
                     }}
@@ -439,11 +447,11 @@ function App() {
                   <button
                     type="button"
                     className={
-                      privatePage === "catalog"
+                      !pageRoute && privatePage === "catalog"
                         ? "navigation-button active"
                         : "navigation-button"
                     }
-                    aria-pressed={!musicRoute && privatePage === "catalog"}
+                    aria-pressed={!pageRoute && privatePage === "catalog"}
                     onClick={() => {
                       navigate("catalog");
                     }}
@@ -455,11 +463,11 @@ function App() {
                   <button
                     type="button"
                     className={
-                      privatePage === "users"
+                      !pageRoute && privatePage === "users"
                         ? "navigation-button active"
                         : "navigation-button"
                     }
-                    aria-pressed={!musicRoute && privatePage === "users"}
+                    aria-pressed={!pageRoute && privatePage === "users"}
                     onClick={() => {
                       navigate("users");
                     }}
@@ -469,7 +477,7 @@ function App() {
                   </button>
 
                   <MessagesNavButton
-                    active={!musicRoute && privatePage === "messages"}
+                    active={!pageRoute && privatePage === "messages"}
                     onClick={() => {
                       setChatStart(null);
                       navigate("messages");
@@ -516,13 +524,14 @@ function App() {
               {musicRoute?.kind === "artists" && (
                 <ArtistPage key={musicRoute.id} id={musicRoute.id} />
               )}
+              {legalRoute && <LegalPage id={legalRoute} />}
               {errorMessage && (
                 <p className="message error-message" role="alert">
                   {translateError(errorMessage)}
                 </p>
               )}
 
-              {!musicRoute && privatePage === "profile" && (
+              {!pageRoute && privatePage === "profile" && (
                 <ProfilePage
                   user={currentUser}
                   friends={friends}
@@ -532,7 +541,7 @@ function App() {
                 />
               )}
 
-              {!musicRoute && privatePage === "catalog" && (
+              {!pageRoute && privatePage === "catalog" && (
                 <CatalogPage
                   key={currentUser.id}
                   playlists={library.playlists}
@@ -541,11 +550,11 @@ function App() {
               )}
 
               {/* La clé du compte remonte les écrans privés pour libérer les états et aperçus de l’ancien compte. */}
-              {!musicRoute && privatePage === "files" && (
+              {!pageRoute && privatePage === "files" && (
                 <FilesPage key={currentUser.id} user={currentUser} />
               )}
 
-              {!musicRoute && privatePage === "users" && (
+              {!pageRoute && privatePage === "users" && (
                 <UsersPage
                   users={users}
                   friendIds={friendIds}
@@ -555,7 +564,7 @@ function App() {
                 />
               )}
 
-              {!musicRoute && privatePage === "messages" && (
+              {!pageRoute && privatePage === "messages" && (
                 <MessagesPage
                   key={`${currentUser.id}:${chatStart?.id ?? ""}`}
                   user={currentUser}
@@ -563,6 +572,7 @@ function App() {
                   initialConversation={chatStart}
                 />
               )}
+              <SiteFooter />
             </CollectionsProvider>
           </LibraryViewProvider>
         </ChatProvider>
@@ -607,6 +617,7 @@ function App() {
             </div>
           )}
         </main>
+        <SiteFooter />
       </>
     );
 
@@ -633,6 +644,7 @@ function App() {
         ) : (
           <ArtistPage key={musicRoute.id} id={musicRoute.id} />
         )}
+        <SiteFooter />
       </MusicPlayerProvider>
     );
 
@@ -646,12 +658,13 @@ function App() {
           <button
             type="button"
             className={
-              currentPage === "register"
+              !legalRoute && currentPage === "register"
                 ? "navigation-button active"
                 : "navigation-button"
             }
-            aria-pressed={currentPage === "register"}
+            aria-pressed={!legalRoute && currentPage === "register"}
             onClick={() => {
+              window.location.hash = "";
               setCurrentPage("register");
             }}
           >
@@ -662,12 +675,13 @@ function App() {
           <button
             type="button"
             className={
-              currentPage === "login"
+              !legalRoute && currentPage === "login"
                 ? "navigation-button active"
                 : "navigation-button"
             }
-            aria-pressed={currentPage === "login"}
+            aria-pressed={!legalRoute && currentPage === "login"}
             onClick={() => {
+              window.location.hash = "";
               setCurrentPage("login");
             }}
           >
@@ -677,11 +691,14 @@ function App() {
         </nav>
       </header>
 
-      {currentPage === "register" ? (
-        <RegisterPage />
-      ) : (
-        <LoginPage onLoginSuccess={handleLoginSuccess} />
-      )}
+      {legalRoute && <LegalPage id={legalRoute} />}
+      {!legalRoute &&
+        (currentPage === "register" ? (
+          <RegisterPage />
+        ) : (
+          <LoginPage onLoginSuccess={handleLoginSuccess} />
+        ))}
+      <SiteFooter />
     </>
   );
 }
