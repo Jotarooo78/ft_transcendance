@@ -9,6 +9,7 @@ services:
       - frontend
       - auth-service
       - user-service
+      - status
     networks:
       - ft_network
     restart: unless-stopped
@@ -147,7 +148,13 @@ services:
       CATALOG_SERVICE_URL: http://catalog-service:4002
     # Vérifie /ready de Playback pour attendre sa disponibilité HTTP et PostgreSQL.
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4005/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4005/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
       interval: 2s
       timeout: 3s
       retries: 30
