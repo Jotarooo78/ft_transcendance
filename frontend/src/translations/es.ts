@@ -788,7 +788,7 @@ export const es = {
   "Unable to restore your session.": "No se pudo restaurar tu sesión.",
   "Sign in again": "Iniciar sesión de nuevo",
   "Legal information": "Información legal",
-  "FT Music · Student project from the 42 curriculum": "FT Music · Proyecto estudiantil del programa 42",
+  "FT Music": "FT Music",
   "Last updated: {date}": "Última actualización: {date}",
   "Back to FT Music": "Volver a FT Music",
 } satisfies Dictionary;
