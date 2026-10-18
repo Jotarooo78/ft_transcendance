@@ -369,7 +369,14 @@ Prisma clients and commands: [backend/docs/PRISMA.md](backend/docs/PRISMA.md).
 
 - PostgreSQL container and its health check.
 - One schema and two roles (migration and runtime) per service, least-privilege permissions.
-- Challenges: _to be completed._
+- Challenges: building this database meant organising ownership, distributing power and
+  limiting privileges. Seven services had to share the same resources without any one of
+  them claiming the right to govern the others. Separating schemas, distinguishing roles
+  and managing migrations gave concrete form to this principle: "to each according to his
+  needs", down to the permissions. Behind this division of labour were four people learning
+  to build something together. Watching our contributions come to life as a whole gave new
+  meaning to these words: "the free development of each is the condition for the free
+  development of all".
 
 ### Tiphaine (tlay) — Frontend
 
