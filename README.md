@@ -1,4 +1,4 @@
-*This project has been created as part of the 42 curriculum by messengu, &lt;login2&gt;, &lt;login3&gt;, &lt;login4&gt;.*
+_This project has been created as part of the 42 curriculum by messengu, armosnie, eazard, tlay._
 
 # FT Music
 
@@ -73,12 +73,12 @@ make setup        # docker compose up -d --build
 On a fresh volume, PostgreSQL creates the roles and schemas, the migration containers apply the
 Prisma migrations, the permissions are granted, then the HTTP services start.
 
-| URL | Content |
-| --- | --- |
-| https://localhost:1443 | the application |
-| https://localhost:1443/status | status page |
-| https://localhost:1443/monitoring/grafana/ | Grafana dashboards |
-| https://localhost:1443/monitoring/prometheus/ | Prometheus |
+| URL                                           | Content            |
+| --------------------------------------------- | ------------------ |
+| https://localhost:1443                        | the application    |
+| https://localhost:1443/status                 | status page        |
+| https://localhost:1443/monitoring/grafana/    | Grafana dashboards |
+| https://localhost:1443/monitoring/prometheus/ | Prometheus         |
 
 The certificate is self-signed: accept it once in the browser.
 
@@ -103,39 +103,38 @@ rebuild the database with `docker compose down --volumes`.
 
 ### 4. Tests
 
-| Command | What it checks |
-| --- | --- |
-| `bash tests/e2e/run.sh` | auth and users, HTTPS, SQL, restarts, Chromium journey ([guide](tests/e2e/README.md)) |
-| `bash tests/music/run.sh playback` | catalogue, media, library, playback on an isolated stack ([guide](tests/music/README.md)) |
-| `bash tests/files/run.sh` | file upload and management on an isolated stack ([guide](tests/files/README.md)) |
-| `bash tests/publication/run.sh` | publication with real accounts ([guide](tests/publication/README.md)) |
-| `bash tests/projects/run.sh` | project, library and player journey |
-| `npm run test:languages --prefix frontend` | dictionaries and translation coverage |
-| `node tests/chat/recette.mjs` | chat scenario against the running stack |
+| Command                                    | What it checks                                                                            |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| `bash tests/e2e/run.sh`                    | auth and users, HTTPS, SQL, restarts, Chromium journey ([guide](tests/e2e/README.md))     |
+| `bash tests/music/run.sh playback`         | catalogue, media, library, playback on an isolated stack ([guide](tests/music/README.md)) |
+| `bash tests/files/run.sh`                  | file upload and management on an isolated stack ([guide](tests/files/README.md))          |
+| `bash tests/publication/run.sh`            | publication with real accounts ([guide](tests/publication/README.md))                     |
+| `bash tests/projects/run.sh`               | project, library and player journey                                                       |
+| `npm run test:languages --prefix frontend` | dictionaries and translation coverage                                                     |
+| `node tests/chat/recette.mjs`              | chat scenario against the running stack                                                   |
 
 The isolated test stacks use their own Compose project, ports and volumes, and do not touch the
 development stack.
 
 ## Team Information
 
-| Member | Login | Role(s) | Responsibilities |
-| --- | --- | --- | --- |
-| Matis | messengu | *To be assigned* | Backend: microservices, APIs, authentication, real-time chat |
-| Armand | `<login>` | *To be assigned* | DevOps: Docker, Nginx, monitoring, backups |
-| Emile | `<login>` | *To be assigned* | Database: PostgreSQL container, schemas, roles and permissions |
-| Tiphaine | `<login>` | *To be assigned* | Frontend: React interface, translations |
+| Member   | Login    | Role(s)                    | Responsibilities                                               |
+| -------- | -------- | -------------------------- | -------------------------------------------------------------- |
+| Matis    | messengu | Technical Lead / Architect | Backend: microservices, APIs, authentication, real-time chat   |
+| Armand   | armosnie | Test Lead                  | DevOps: Docker, Nginx, monitoring, backups                     |
+| Emile    | eazard   | Product Owner              | Database: PostgreSQL container, schemas, roles and permissions |
+| Tiphaine | tlay     | Project Manager            | Frontend: React interface, translations                        |
 
 Roles (Product Owner, Project Manager, Technical Lead, Developers) will be assigned and
 documented here.
 
 ## Project Management
 
-- **Work organisation**: the project is split by domain (backend, DevOps, database, frontend),
-  with one owner per domain. *Meetings and planning: to be completed.*
-- **Version control**: Git, with the commit convention described below. The team pushes
-  directly to `main`.
-- **Project management tools**: *to be completed.*
-- **Communication channels**: *to be completed.*
+- **Work organisation**: The project is split by domain (backend, DevOps, database, and frontend), with one owner per domain.
+- **Meetings and planning**: The team holds one scheduled meeting per week to review progress, discuss blockers, and plan the next tasks. Additional informal check-ins are held when team members work together in person.
+- **Version control**: Git and GitHub are used for version control, following the commit convention described below. The team pushes directly to `main`.
+- **Project management tools**: GitHub is used to host and manage the repository, while Notion is used for task planning, documentation, and progress tracking.
+- **Communication channels**: Discord is used for day-to-day communication, technical discussions, and coordination between team members.
 
 ### Git commit convention
 
@@ -143,29 +142,29 @@ documented here.
 <type>(<module>): <description>
 ```
 
-| Type | Description | Example |
-| --- | --- | --- |
-| `feat` | Add a new feature | `feat(chat): add read receipts` |
-| `fix` | Fix a bug | `fix(web): fix rate limiting` |
+| Type       | Description                             | Example                                         |
+| ---------- | --------------------------------------- | ----------------------------------------------- |
+| `feat`     | Add a new feature                       | `feat(chat): add read receipts`                 |
+| `fix`      | Fix a bug                               | `fix(web): fix rate limiting`                   |
 | `refactor` | Improve code without changing behaviour | `refactor(backend): simplify service structure` |
-| `docs` | Documentation changes | `docs(web): update API documentation` |
-| `test` | Add or modify tests | `test(web): add API authentication tests` |
-| `chore` | Maintenance / configuration | `chore: update Docker configuration` |
-| `style` | Formatting / code style changes | `style(web): format API routes` |
-| `perf` | Performance improvements | `perf(player): isolate progress updates` |
-| `build` | Build system / dependencies | `build: update backend dependencies` |
-| `ci` | CI/CD configuration | `ci: add GitHub Actions workflow` |
+| `docs`     | Documentation changes                   | `docs(web): update API documentation`           |
+| `test`     | Add or modify tests                     | `test(web): add API authentication tests`       |
+| `chore`    | Maintenance / configuration             | `chore: update Docker configuration`            |
+| `style`    | Formatting / code style changes         | `style(web): format API routes`                 |
+| `perf`     | Performance improvements                | `perf(player): isolate progress updates`        |
+| `build`    | Build system / dependencies             | `build: update backend dependencies`            |
+| `ci`       | CI/CD configuration                     | `ci: add GitHub Actions workflow`               |
 
 ## Technical Stack
 
-| Layer | Technologies |
-| --- | --- |
-| Frontend | React 19, TypeScript, Vite, custom CSS design tokens (no external CSS framework) |
-| Backend | Node.js, TypeScript, Fastify 5 (`@fastify/websocket`, `@fastify/rate-limit`, `@fastify/jwt`), TypeBox schemas |
-| Database | PostgreSQL 16 with Prisma 7 (ORM and migrations) |
-| Real time | WebSocket (chat-service) |
-| Security | Argon2 password hashing, JWT, HTTPS through Nginx, one database role pair per service |
-| Infrastructure | Docker Compose, Nginx (reverse proxy, TLS), Prometheus, Grafana |
+| Layer          | Technologies                                                                                                  |
+| -------------- | ------------------------------------------------------------------------------------------------------------- |
+| Frontend       | React 19, TypeScript, Vite, custom CSS design tokens (no external CSS framework)                              |
+| Backend        | Node.js, TypeScript, Fastify 5 (`@fastify/websocket`, `@fastify/rate-limit`, `@fastify/jwt`), TypeBox schemas |
+| Database       | PostgreSQL 16 with Prisma 7 (ORM and migrations)                                                              |
+| Real time      | WebSocket (chat-service)                                                                                      |
+| Security       | Argon2 password hashing, JWT, HTTPS through Nginx, one database role pair per service                         |
+| Infrastructure | Docker Compose, Nginx (reverse proxy, TLS), Prometheus, Grafana                                               |
 
 ### Justification of the main choices
 
@@ -177,21 +176,21 @@ documented here.
   constraints and transactions; one schema per service keeps ownership explicit inside a single
   instance that stays simple to evaluate.
 - **Prisma**: typed queries and versioned migrations for every service.
-- **React**: component model suited to an application with a persistent player and many views.
+- **React**: its component-based architecture is well suited to a music streaming application with multiple views, reusable interface elements, and a persistent audio player.
 - **Nginx**: single HTTPS entry point that routes `/api/<service>/` to each service and hides
   internal and metrics routes.
 
 ### Services
 
-| Service | Internal port | Responsibility |
-| --- | --- | --- |
-| `auth-service` | 4000 | Identity and authentication |
-| `user-service` | 4001 | Profiles, avatars, friends and presence |
-| `catalog-service` | 4002 | Artists, tracks, credits and releases |
-| `media-service` | 4003 | Upload, validation and storage of media files |
-| `library-service` | 4004 | Playlists, favourites and saved items |
-| `playback-service` | 4005 | Listening sessions and progress |
-| `chat-service` | 4006 | Conversations, messages and WebSocket |
+| Service            | Internal port | Responsibility                                |
+| ------------------ | ------------- | --------------------------------------------- |
+| `auth-service`     | 4000          | Identity and authentication                   |
+| `user-service`     | 4001          | Profiles, avatars, friends and presence       |
+| `catalog-service`  | 4002          | Artists, tracks, credits and releases         |
+| `media-service`    | 4003          | Upload, validation and storage of media files |
+| `library-service`  | 4004          | Playlists, favourites and saved items         |
+| `playback-service` | 4005          | Listening sessions and progress               |
+| `chat-service`     | 4006          | Conversations, messages and WebSocket         |
 
 Backend organisation and rules: [backend/docs/CONVENTIONS.md](backend/docs/CONVENTIONS.md).
 Service contents: [docs/STRUCTURE_SERVICES.md](docs/STRUCTURE_SERVICES.md).
@@ -223,55 +222,55 @@ erDiagram
     CONVERSATIONS ||--o{ MESSAGES : contains
 ```
 
-| Schema | Tables | Key fields |
-| --- | --- | --- |
-| `auth` | `accounts`, `outbox_messages` | `accounts`: `id` uuid, `email` text unique, `password_hash` text, `state` text |
-| `users` | `profiles`, `friends`, `presences`, `inbox_messages` | `profiles`: `user_id` uuid (= account id), `username` text unique, `display_name`, `bio`, `avatar_url`; `friends`: (`user_id`, `friend_id`); `presences`: `is_online` boolean, `last_seen_at` timestamptz |
-| `catalog` | `artists`, `artist_members`, `tracks`, `track_artists`, `releases`, `release_artists`, `release_tracks`, `genres`, `track_genres` | `tracks`: `id` uuid, `title`, audio asset uuid, `duration`, `status`; `releases`: `title`, `type` (single, EP, album, mixtape), `date`, cover, `status` |
-| `media` | `assets`, `variants` | `assets`: `id` uuid, uploader uuid, usage, state, storage key, MIME type, size, duration, checksum; `variants`: rendition (MP3 preview), bitrate, size |
-| `library` | `playlists`, `playlist_items`, `playlist_changes`, `track_favorites`, `saved_items` | `playlists`: `owner_id` uuid, `name`, `description`, `visibility`, `version`; `playlist_items`: track uuid, `position` |
-| `playback` | `sessions`, `events` | `sessions`: user uuid, track uuid, duration snapshot, time listened, sequence; `events`: (`session_id`, `sequence`) progress |
-| `chat` | `conversations`, `messages` | `conversations`: `user_a_id`, `user_b_id` (unique pair), last read message per user; `messages`: `id` bigint, `sender_user_id`, `body` (≤ 2000 chars), `track_id`, `deleted_at` |
+| Schema     | Tables                                                                                                                            | Key fields                                                                                                                                                                                                |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `auth`     | `accounts`, `outbox_messages`                                                                                                     | `accounts`: `id` uuid, `email` text unique, `password_hash` text, `state` text                                                                                                                            |
+| `users`    | `profiles`, `friends`, `presences`, `inbox_messages`                                                                              | `profiles`: `user_id` uuid (= account id), `username` text unique, `display_name`, `bio`, `avatar_url`; `friends`: (`user_id`, `friend_id`); `presences`: `is_online` boolean, `last_seen_at` timestamptz |
+| `catalog`  | `artists`, `artist_members`, `tracks`, `track_artists`, `releases`, `release_artists`, `release_tracks`, `genres`, `track_genres` | `tracks`: `id` uuid, `title`, audio asset uuid, `duration`, `status`; `releases`: `title`, `type` (single, EP, album, mixtape), `date`, cover, `status`                                                   |
+| `media`    | `assets`, `variants`                                                                                                              | `assets`: `id` uuid, uploader uuid, usage, state, storage key, MIME type, size, duration, checksum; `variants`: rendition (MP3 preview), bitrate, size                                                    |
+| `library`  | `playlists`, `playlist_items`, `playlist_changes`, `track_favorites`, `saved_items`                                               | `playlists`: `owner_id` uuid, `name`, `description`, `visibility`, `version`; `playlist_items`: track uuid, `position`                                                                                    |
+| `playback` | `sessions`, `events`                                                                                                              | `sessions`: user uuid, track uuid, duration snapshot, time listened, sequence; `events`: (`session_id`, `sequence`) progress                                                                              |
+| `chat`     | `conversations`, `messages`                                                                                                       | `conversations`: `user_a_id`, `user_b_id` (unique pair), last read message per user; `messages`: `id` bigint, `sender_user_id`, `body` (≤ 2000 chars), `track_id`, `deleted_at`                           |
 
 Full column list, cardinalities and rebuild procedure: [docs/SCHEMA_DONNEES.md](docs/SCHEMA_DONNEES.md).
 Prisma clients and commands: [backend/docs/PRISMA.md](backend/docs/PRISMA.md).
 
 ## Features List
 
-| Feature | Description | Member(s) |
-| --- | --- | --- |
-| Sign-up and login | Email and password, Argon2 hash, JWT session restored after reload, rate limits | Matis (backend), Tiphaine (frontend) |
-| Profile management | Edit username, display name and bio; upload or remove an avatar with progress, default avatar | Matis, Tiphaine |
-| User directory and artist pages | Search users, public artist pages with their releases | Matis, Tiphaine |
-| Friends and online status | Add or remove friends, online status from a heartbeat | Matis, Tiphaine |
-| Real-time chat | Conversations between friends, live delivery over WebSocket, automatic reconnection, read receipts, deletion, track sharing, persistent history | Matis, Tiphaine |
-| Music upload and publication | Singles, EPs, albums and mixtapes; ordered multi-file import; drafts; cover extraction and replacement; MP3 preview; validation of type, size and format | Matis, Tiphaine |
-| File management | List, preview and delete uploaded files; temporary uploads expire after 24 hours | Matis, Tiphaine |
-| Catalogue | Artists, projects and tracks with search, categories and pagination | Matis, Tiphaine |
-| Library and playlists | Liked tracks, saved projects, followed artists, private or public playlists with share links and artwork | Matis, Tiphaine |
-| Player and history | Queue, shuffle, repeat, seek, volume, state restored after reload; private listening history | Matis, Tiphaine |
-| Internationalisation | French, English and Spanish on every screen, including errors | Tiphaine |
-| Legal pages | Privacy Policy and Terms of Service in three languages, linked from the footer | Tiphaine |
-| Database | PostgreSQL container, one schema and two roles per service, least-privilege grants | Emile |
-| Deployment | Single-command Docker Compose stack, Nginx HTTPS reverse proxy | Armand |
-| Monitoring and alerts | Prometheus metrics for every service, alert rules, Grafana dashboards | Armand |
-| Status page and backups | Status page, daily automated backups kept 7 days, restore script | Armand |
+| Feature                         | Description                                                                                                                                              | Member(s)                            |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| Sign-up and login               | Email and password, Argon2 hash, JWT session restored after reload, rate limits                                                                          | Matis (backend), Tiphaine (frontend) |
+| Profile management              | Edit username, display name and bio; upload or remove an avatar with progress, default avatar                                                            | Matis, Tiphaine                      |
+| User directory and artist pages | Search users, public artist pages with their releases                                                                                                    | Matis, Tiphaine                      |
+| Friends and online status       | Add or remove friends, online status from a heartbeat                                                                                                    | Matis, Tiphaine                      |
+| Real-time chat                  | Conversations between friends, live delivery over WebSocket, automatic reconnection, read receipts, deletion, track sharing, persistent history          | Matis, Tiphaine                      |
+| Music upload and publication    | Singles, EPs, albums and mixtapes; ordered multi-file import; drafts; cover extraction and replacement; MP3 preview; validation of type, size and format | Matis, Tiphaine                      |
+| File management                 | List, preview and delete uploaded files; temporary uploads expire after 24 hours                                                                         | Matis, Tiphaine                      |
+| Catalogue                       | Artists, projects and tracks with search, categories and pagination                                                                                      | Matis, Tiphaine                      |
+| Library and playlists           | Liked tracks, saved projects, followed artists, private or public playlists with share links and artwork                                                 | Matis, Tiphaine                      |
+| Player and history              | Queue, shuffle, repeat, seek, volume, state restored after reload; private listening history                                                             | Matis, Tiphaine                      |
+| Internationalisation            | French, English and Spanish on every screen, including errors                                                                                            | Tiphaine                             |
+| Legal pages                     | Privacy Policy and Terms of Service in three languages, linked from the footer                                                                           | Tiphaine                             |
+| Database                        | PostgreSQL container, one schema and two roles per service, least-privilege grants                                                                       | Emile                                |
+| Deployment                      | Single-command Docker Compose stack, Nginx HTTPS reverse proxy                                                                                           | Armand                               |
+| Monitoring and alerts           | Prometheus metrics for every service, alert rules, Grafana dashboards                                                                                    | Armand                               |
+| Status page and backups         | Status page, daily automated backups kept 7 days, restore script                                                                                         | Armand                               |
 
 ## Modules
 
-| # | Module | Type | Points | Member(s) |
-| --- | --- | --- | --- | --- |
-| 1 | Web — Use a framework for both the frontend and the backend | Major | 2 | Matis, Tiphaine |
-| 2 | Web — Real-time features using WebSockets | Major | 2 | Matis, Tiphaine |
-| 3 | Web — Allow users to interact with other users | Major | 2 | Matis, Tiphaine |
-| 4 | Web — Use an ORM for the database | Minor | 1 | Matis, Emile |
-| 5 | Web — File upload and management system | Minor | 1 | Matis, Tiphaine |
-| 6 | User Management — Standard user management and authentication | Major | 2 | Matis, Tiphaine |
-| 7 | Accessibility and Internationalization — Support for multiple languages | Minor | 1 | Tiphaine |
-| 8 | DevOps — Backend as microservices | Major | 2 | Matis, Armand |
-| 9 | DevOps — Monitoring system with Prometheus and Grafana | Major | 2 | Armand |
-| 10 | DevOps — Health check and status page with automated backups and disaster recovery | Minor | 1 | Armand |
-| | **Total** | | **16** | |
+| #   | Module                                                                             | Type  | Points | Member(s)       |
+| --- | ---------------------------------------------------------------------------------- | ----- | ------ | --------------- |
+| 1   | Web — Use a framework for both the frontend and the backend                        | Major | 2      | Matis, Tiphaine |
+| 2   | Web — Real-time features using WebSockets                                          | Major | 2      | Matis, Tiphaine |
+| 3   | Web — Allow users to interact with other users                                     | Major | 2      | Matis, Tiphaine |
+| 4   | Web — Use an ORM for the database                                                  | Minor | 1      | Matis, Emile    |
+| 5   | Web — File upload and management system                                            | Minor | 1      | Matis, Tiphaine |
+| 6   | User Management — Standard user management and authentication                      | Major | 2      | Matis, Tiphaine |
+| 7   | Accessibility and Internationalization — Support for multiple languages            | Minor | 1      | Tiphaine        |
+| 8   | DevOps — Backend as microservices                                                  | Major | 2      | Matis, Armand   |
+| 9   | DevOps — Monitoring system with Prometheus and Grafana                             | Major | 2      | Armand          |
+| 10  | DevOps — Health check and status page with automated backups and disaster recovery | Minor | 1      | Armand          |
+|     | **Total**                                                                          |       | **16** |                 |
 
 ### 1. Frameworks for frontend and backend (Major)
 
@@ -359,25 +358,25 @@ Prisma clients and commands: [backend/docs/PRISMA.md](backend/docs/PRISMA.md).
   cross-domain rules (friendship before a message, published track before sharing), solved
   with internal REST calls and explicit 503 responses when a dependency is down.
 
-### Armand (`<login>`) — DevOps
+### Armand (armosnie) — DevOps
 
 - Docker Compose stack started with a single command, Nginx reverse proxy with HTTPS.
 - Prometheus, alert rules, Grafana dashboards, status page.
 - Automated daily backups and restore script.
-- Challenges: *to be completed.*
+- Challenges: _to be completed._
 
-### Emile (`<login>`) — Database
+### Emile (eazard) — Database
 
 - PostgreSQL container and its health check.
 - One schema and two roles (migration and runtime) per service, least-privilege permissions.
-- Challenges: *to be completed.*
+- Challenges: _to be completed._
 
-### Tiphaine (`<login>`) — Frontend
+### Tiphaine (tlay) — Frontend
 
 - React interface: authentication, profile, users, messages, upload, catalogue, library,
   player and history screens.
 - Internationalisation in three languages, legal pages and footer.
-- Challenges: *to be completed.*
+- Challenges: learning a new language and framework, keeping the frontend consistent with the contracts and requirements of the other domains, and implementing modular components that could be tested and adapted easily while the backend was still under development.
 
 ## Resources
 
@@ -413,7 +412,7 @@ AI assistants (Claude Code) were used for:
 - drafting the Privacy Policy, the Terms of Service and this README from the codebase.
 
 Every generated piece was reviewed, tested and understood by the team member responsible for
-the part concerned. *Each member: complete with your own use of AI.*
+the part concerned.
 
 ## Known limitations
 
