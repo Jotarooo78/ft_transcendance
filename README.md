@@ -356,7 +356,24 @@ Prisma clients and commands: [backend/docs/PRISMA.md](backend/docs/PRISMA.md).
 - Prisma schemas and migrations for every service, internal service-to-service contracts.
 - Challenges: keeping each service the only owner of its data while still checking
   cross-domain rules (friendship before a message, published track before sharing), solved
-  with internal REST calls and explicit 503 responses when a dependency is down.
+  with internal REST calls and explicit 503 responses when a dependency is down. ET : 
+  Le poids des jours s'installe en silence,
+Chaque matin demande un effort.
+On avance malgré l'absence,
+On tente encor d'être plus fort.
+Le cœur est fatigué de combattre,
+De porter l'ombre et le présent,
+De voir ses rêves se débattre
+Contre le mur du temps qui ment.
+On cherche un souffle, une clairière,
+Un peu de paix au creux du soir,
+Mais la montée est si sévère
+Quand on trébuche sur l'espoir.
+Pourtant l'âme tremble et persiste,
+Dans ce silence où tout s'écrit :
+C'est déjà grand, quand on résiste,
+De ne pas laisser fuir la vie.
+
 
 ### Armand (armosnie) — DevOps
 
