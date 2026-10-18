@@ -41,7 +41,7 @@ architecture, real-time communication and production-style monitoring.
 - Docker Engine with the Docker Compose v2 plugin (`docker compose`).
 - GNU Make.
 - Free local ports **1443** (HTTPS) and **1080** (HTTP, redirected to HTTPS).
-- The latest stable version of Google Chrome.
+- The latest stable version of Google Chrome or Mozilla Firefox.
 
 ### 1. Configure the environment
 
@@ -270,7 +270,8 @@ Prisma clients and commands: [backend/docs/PRISMA.md](backend/docs/PRISMA.md).
 | 8   | DevOps — Backend as microservices                                                  | Major | 2      | Matis, Armand   |
 | 9   | DevOps — Monitoring system with Prometheus and Grafana                             | Major | 2      | Armand          |
 | 10  | DevOps — Health check and status page with automated backups and disaster recovery | Minor | 1      | Armand          |
-|     | **Total**                                                                          |       | **16** |                 |
+| 11  | Accessibility and Internationalization — Support for additional browsers           | Minor | 1      | Tiphaine        |
+|     | **Total**                                                                          |       | **17** |                 |
 
 ### 1. Frameworks for frontend and backend (Major)
 
@@ -345,6 +346,14 @@ Prisma clients and commands: [backend/docs/PRISMA.md](backend/docs/PRISMA.md).
 - **How**: Docker health checks (PostgreSQL, playback), a status page fed by Prometheus at
   `/status`, a backup container that dumps the database, audio files and avatars every day and
   keeps 7 days, and `make restore` to restore a backup. See [HEALTHCHECK.md](HEALTHCHECK.md).
+
+### 11. Additional browser support (Minor)
+
+- **Why**: users should not be forced to use a single browser engine to access the platform.
+- **How**: the frontend relies on standard web APIs and responsive CSS rather than
+  browser-specific extensions. The complete interface supports the latest stable versions of
+  Google Chrome and Mozilla Firefox, including authentication, uploads, audio playback and the
+  WebSocket chat.
 
 ## Individual Contributions
 
