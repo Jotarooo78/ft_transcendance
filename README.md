@@ -380,7 +380,7 @@ De ne pas laisser fuir la vie.
 - Docker Compose stack started with a single command, Nginx reverse proxy with HTTPS.
 - Prometheus, alert rules, Grafana dashboards, status page.
 - Automated daily backups and restore script.
-- Challenges: _to be completed._
+- Challenges: My main challenge was deepening my devops knowledge while coordinating the infrastructure with my teammates, who each worked on a different part of the project like backend, database, and frontend. I had to make sure that every service, its database schema, and its configuration fit together without interfering with the others, which required constant communication and clear agreements on ports, environment variables, startup order, etc
 
 ### Emile (eazard) — Database
 
