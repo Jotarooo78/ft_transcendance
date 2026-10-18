@@ -1,7 +1,7 @@
 import { mockPlaylists } from "../data/playlists";
 import type { Playlist } from "../types/music";
 
-const STORAGE_KEY = "ft-music:playlists:v1";
+const STORAGE_KEY = "ft-goodvibes:playlists:v1";
 
 export function loadPlaylists(): Playlist[] {
   try {

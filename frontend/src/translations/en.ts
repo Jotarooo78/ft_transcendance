@@ -777,9 +777,9 @@ export const en = {
   "Unable to restore your session.": "Unable to restore your session.",
   "Sign in again": "Sign in again",
   "Legal information": "Legal information",
-  "FT Music": "FT Music",
+  "FT GoodVibes": "FT GoodVibes",
   "Last updated: {date}": "Last updated: {date}",
-  "Back to FT Music": "Back to FT Music",
+  "Back to FT GoodVibes": "Back to FT GoodVibes",
 } as const;
 
 /** Identifiants communs aux trois dictionnaires. */

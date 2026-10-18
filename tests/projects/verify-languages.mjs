@@ -240,7 +240,7 @@ try {
     await page.reload();
     await expect(page.locator("html")).toHaveAttribute("lang", "es");
     await page.evaluate(() =>
-      localStorage.setItem("ft-music-language", "invalid"),
+      localStorage.setItem("ft-goodvibes-language", "invalid"),
     );
     await page.reload();
     await expect(page.locator("html")).toHaveAttribute("lang", expected);

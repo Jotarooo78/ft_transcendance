@@ -63,7 +63,12 @@ type PublicPage = "register" | "login";
  * et de playlists.
  */
 type PrivatePage =
-  "profile" | "catalog" | "library" | "users" | "files" | "messages";
+  | "profile"
+  | "catalog"
+  | "library"
+  | "users"
+  | "files"
+  | "messages";
 
 /** Onglets que l'on peut retrouver après un rechargement. */
 const privatePages: PrivatePage[] = [
@@ -140,8 +145,7 @@ function App() {
     return () => window.removeEventListener("hashchange", rememberSection);
   }, []);
   const libraryVisible =
-    musicRoute?.kind === "library" ||
-    (!pageRoute && privatePage === "library");
+    musicRoute?.kind === "library" || (!pageRoute && privatePage === "library");
 
   /** Revient à un onglet principal sans interrompre le lecteur commun. */
   function navigate(page: PrivatePage) {
@@ -396,7 +400,7 @@ function App() {
           <LibraryViewProvider>
             <CollectionsProvider active={musicVisible}>
               <header className="site-header">
-                <strong className="site-title">FT Music</strong>
+                <strong className="site-title">FT GoodVibes</strong>
                 <LanguageSelector />
 
                 <nav
@@ -584,7 +588,7 @@ function App() {
     return (
       <>
         <header className="site-header">
-          <strong className="site-title">FT Music</strong>
+          <strong className="site-title">FT GoodVibes</strong>
           <LanguageSelector />
         </header>
         <main>
@@ -625,7 +629,7 @@ function App() {
     return (
       <MusicPlayerProvider>
         <header className="site-header">
-          <strong className="site-title">FT Music</strong>
+          <strong className="site-title">FT GoodVibes</strong>
           <LanguageSelector />
           <button
             onClick={() => {
@@ -651,7 +655,7 @@ function App() {
   return (
     <>
       <header className="site-header">
-        <strong className="site-title">FT Music</strong>
+        <strong className="site-title">FT GoodVibes</strong>
         <LanguageSelector />
 
         <nav className="main-navigation" aria-label={t("Authentication")}>

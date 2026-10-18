@@ -11,7 +11,7 @@ export default function SiteFooter() {
   const route = useLegalRoute();
   return (
     <footer className="site-footer">
-      <span>{t("FT Music")}</span>
+      <span>{t("FT GoodVibes")}</span>
       <nav aria-label={t("Legal information")}>
         {(["privacy", "terms"] as const).map((id) => (
           <a

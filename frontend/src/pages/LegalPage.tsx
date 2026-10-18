@@ -46,7 +46,7 @@ export default function LegalPage({ id }: { id: LegalDocumentId }) {
         </section>
       ))}
       <p>
-        <a href="#">{t("Back to FT Music")}</a>
+        <a href="#">{t("Back to FT GoodVibes")}</a>
       </p>
     </main>
   );

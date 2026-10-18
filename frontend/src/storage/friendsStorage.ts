@@ -1,4 +1,4 @@
-const STORAGE_KEY = "ft-music:friend-ids:v1";
+const STORAGE_KEY = "ft-goodvibes:friend-ids:v1";
 
 export function loadFriendIds(): string[] {
   try {

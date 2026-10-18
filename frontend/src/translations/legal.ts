@@ -34,12 +34,12 @@ export const legalDocuments: Record<
     en: {
       title: "Privacy Policy",
       summary:
-        "This policy explains which personal data FT Music processes, why it does so, how long the data is kept and how you can exercise your rights.",
+        "This policy explains which personal data FT GoodVibes processes, why it does so, how long the data is kept and how you can exercise your rights.",
       sections: [
         {
           title: "1. Who is responsible for your data",
           paragraphs: [
-            "FT Music is a music upload, streaming and sharing platform built by a team of students as part of the 42 curriculum. It is a free, non-commercial educational project.",
+            "FT GoodVibes is a music upload, streaming and sharing platform built by a team of students as part of the 42 curriculum. It is a free, non-commercial educational project.",
             "The student team that runs this instance, listed in the project README, is responsible for processing your personal data.",
           ],
         },
@@ -76,13 +76,13 @@ export const legalDocuments: Record<
             "The team: technical access for maintenance only.",
           ],
           paragraphs: [
-            "No data is sent to third parties. All services and the database run in the project's own containers; FT Music uses no external analytics, advertising, font or tracking service.",
+            "No data is sent to third parties. All services and the database run in the project's own containers; FT GoodVibes uses no external analytics, advertising, font or tracking service.",
           ],
         },
         {
           title: "5. Data stored in your browser",
           paragraphs: [
-            "FT Music does not use cookies. It only keeps the following items in your browser, which are strictly necessary for the features and are never used for tracking:",
+            "FT GoodVibes does not use cookies. It only keeps the following items in your browser, which are strictly necessary for the features and are never used for tracking:",
           ],
           items: [
             "Session storage, erased when the tab is closed: your login token, valid for one hour, and the screen you had open.",
@@ -100,13 +100,13 @@ export const legalDocuments: Record<
             "Technical logs and metrics: kept only as long as needed to operate and monitor the service.",
           ],
           paragraphs: [
-            "As FT Music is an educational project, the whole instance and its data may be deleted at the end of the project.",
+            "As FT GoodVibes is an educational project, the whole instance and its data may be deleted at the end of the project.",
           ],
         },
         {
           title: "7. Security",
           items: [
-            "Every connection between your browser and FT Music uses HTTPS.",
+            "Every connection between your browser and FT GoodVibes uses HTTPS.",
             "Passwords are hashed with Argon2 and are never stored or sent back in clear text.",
             "Each service has its own database account, limited to the operations it actually needs.",
             "Sign-up and login attempts are rate-limited.",
@@ -138,12 +138,12 @@ export const legalDocuments: Record<
     fr: {
       title: "Politique de confidentialité",
       summary:
-        "Cette politique explique quelles données personnelles FT Music traite, pour quelles raisons, combien de temps elles sont conservées et comment exercer vos droits.",
+        "Cette politique explique quelles données personnelles FT GoodVibes traite, pour quelles raisons, combien de temps elles sont conservées et comment exercer vos droits.",
       sections: [
         {
           title: "1. Responsable de vos données",
           paragraphs: [
-            "FT Music est une plateforme de publication, d’écoute et de partage de musique créée par une équipe d’étudiants dans le cadre du cursus 42. C’est un projet pédagogique gratuit et non commercial.",
+            "FT GoodVibes est une plateforme de publication, d’écoute et de partage de musique créée par une équipe d’étudiants dans le cadre du cursus 42. C’est un projet pédagogique gratuit et non commercial.",
             "L’équipe d’étudiants qui fait fonctionner cette instance, présentée dans le README du projet, est responsable du traitement de vos données personnelles.",
           ],
         },
@@ -180,13 +180,13 @@ export const legalDocuments: Record<
             "L’équipe : un accès technique, uniquement pour la maintenance.",
           ],
           paragraphs: [
-            "Aucune donnée n’est transmise à des tiers. Tous les services et la base de données fonctionnent dans les conteneurs du projet ; FT Music n’utilise aucun service externe de mesure d’audience, de publicité, de polices ou de suivi.",
+            "Aucune donnée n’est transmise à des tiers. Tous les services et la base de données fonctionnent dans les conteneurs du projet ; FT GoodVibes n’utilise aucun service externe de mesure d’audience, de publicité, de polices ou de suivi.",
           ],
         },
         {
           title: "5. Données conservées dans votre navigateur",
           paragraphs: [
-            "FT Music n’utilise pas de cookies. L’application garde uniquement les éléments suivants dans votre navigateur ; ils sont strictement nécessaires aux fonctionnalités et ne servent jamais au suivi :",
+            "FT GoodVibes n’utilise pas de cookies. L’application garde uniquement les éléments suivants dans votre navigateur ; ils sont strictement nécessaires aux fonctionnalités et ne servent jamais au suivi :",
           ],
           items: [
             "Stockage de session, effacé à la fermeture de l’onglet : votre jeton de connexion, valable une heure, et l’écran que vous aviez ouvert.",
@@ -204,13 +204,13 @@ export const legalDocuments: Record<
             "Journaux et mesures techniques : conservés seulement le temps nécessaire au fonctionnement et à la surveillance du service.",
           ],
           paragraphs: [
-            "FT Music étant un projet pédagogique, l’instance entière et ses données peuvent être supprimées à la fin du projet.",
+            "FT GoodVibes étant un projet pédagogique, l’instance entière et ses données peuvent être supprimées à la fin du projet.",
           ],
         },
         {
           title: "7. Sécurité",
           items: [
-            "Toutes les connexions entre votre navigateur et FT Music utilisent HTTPS.",
+            "Toutes les connexions entre votre navigateur et FT GoodVibes utilisent HTTPS.",
             "Les mots de passe sont hachés avec Argon2 et ne sont jamais stockés ni renvoyés en clair.",
             "Chaque service dispose de son propre compte de base de données, limité aux opérations dont il a réellement besoin.",
             "Les tentatives d’inscription et de connexion sont limitées en fréquence.",
@@ -227,7 +227,9 @@ export const legalDocuments: Record<
         },
         {
           title: "9. Âge minimum",
-          paragraphs: ["Vous devez avoir au moins 15 ans pour créer un compte."],
+          paragraphs: [
+            "Vous devez avoir au moins 15 ans pour créer un compte.",
+          ],
         },
         {
           title: "10. Modifications de cette politique",
@@ -240,12 +242,12 @@ export const legalDocuments: Record<
     es: {
       title: "Política de privacidad",
       summary:
-        "Esta política explica qué datos personales trata FT Music, con qué fines, durante cuánto tiempo se conservan y cómo puedes ejercer tus derechos.",
+        "Esta política explica qué datos personales trata FT GoodVibes, con qué fines, durante cuánto tiempo se conservan y cómo puedes ejercer tus derechos.",
       sections: [
         {
           title: "1. Responsable de tus datos",
           paragraphs: [
-            "FT Music es una plataforma para publicar, escuchar y compartir música creada por un equipo de estudiantes en el marco del programa 42. Es un proyecto educativo gratuito y sin fines comerciales.",
+            "FT GoodVibes es una plataforma para publicar, escuchar y compartir música creada por un equipo de estudiantes en el marco del programa 42. Es un proyecto educativo gratuito y sin fines comerciales.",
             "El equipo de estudiantes que gestiona esta instancia, presentado en el README del proyecto, es responsable del tratamiento de tus datos personales.",
           ],
         },
@@ -282,13 +284,13 @@ export const legalDocuments: Record<
             "El equipo: acceso técnico, únicamente para el mantenimiento.",
           ],
           paragraphs: [
-            "No se envía ningún dato a terceros. Todos los servicios y la base de datos funcionan en los contenedores del propio proyecto; FT Music no utiliza servicios externos de analítica, publicidad, fuentes ni seguimiento.",
+            "No se envía ningún dato a terceros. Todos los servicios y la base de datos funcionan en los contenedores del propio proyecto; FT GoodVibes no utiliza servicios externos de analítica, publicidad, fuentes ni seguimiento.",
           ],
         },
         {
           title: "5. Datos guardados en tu navegador",
           paragraphs: [
-            "FT Music no utiliza cookies. Solo guarda en tu navegador los siguientes elementos, estrictamente necesarios para las funciones y nunca usados para el seguimiento:",
+            "FT GoodVibes no utiliza cookies. Solo guarda en tu navegador los siguientes elementos, estrictamente necesarios para las funciones y nunca usados para el seguimiento:",
           ],
           items: [
             "Almacenamiento de sesión, borrado al cerrar la pestaña: tu token de sesión, válido durante una hora, y la pantalla que tenías abierta.",
@@ -306,13 +308,13 @@ export const legalDocuments: Record<
             "Registros y métricas técnicas: se conservan solo el tiempo necesario para operar y supervisar el servicio.",
           ],
           paragraphs: [
-            "Como FT Music es un proyecto educativo, la instancia completa y sus datos pueden eliminarse al final del proyecto.",
+            "Como FT GoodVibes es un proyecto educativo, la instancia completa y sus datos pueden eliminarse al final del proyecto.",
           ],
         },
         {
           title: "7. Seguridad",
           items: [
-            "Todas las conexiones entre tu navegador y FT Music usan HTTPS.",
+            "Todas las conexiones entre tu navegador y FT GoodVibes usan HTTPS.",
             "Las contraseñas se procesan con Argon2 y nunca se guardan ni se devuelven en texto claro.",
             "Cada servicio tiene su propia cuenta de base de datos, limitada a las operaciones que realmente necesita.",
             "Los intentos de registro e inicio de sesión tienen un límite de frecuencia.",
@@ -344,12 +346,12 @@ export const legalDocuments: Record<
     en: {
       title: "Terms of Service",
       summary:
-        "These terms set the rules for using FT Music. By creating an account or using the service, you accept them.",
+        "These terms set the rules for using FT GoodVibes. By creating an account or using the service, you accept them.",
       sections: [
         {
           title: "1. The service",
           paragraphs: [
-            "FT Music lets you upload, publish and stream music, organise it in playlists, add friends and chat with them. The service is free and provided by a team of students as part of the 42 curriculum, for educational and non-commercial purposes.",
+            "FT GoodVibes lets you upload, publish and stream music, organise it in playlists, add friends and chat with them. The service is free and provided by a team of students as part of the 42 curriculum, for educational and non-commercial purposes.",
           ],
         },
         {
@@ -364,7 +366,7 @@ export const legalDocuments: Record<
         {
           title: "3. Content you publish",
           paragraphs: [
-            "You keep all your rights on the music, images and texts you upload. By uploading them, you grant FT Music a free, non-exclusive licence limited to running the service: storing your files, creating an MP3 preview, extracting embedded artwork, and displaying and streaming the content to the people allowed by the visibility you chose.",
+            "You keep all your rights on the music, images and texts you upload. By uploading them, you grant FT GoodVibes a free, non-exclusive licence limited to running the service: storing your files, creating an MP3 preview, extracting embedded artwork, and displaying and streaming the content to the people allowed by the visibility you chose.",
             "This licence ends when you delete the content, except for backup copies, which disappear within 7 days.",
             "You guarantee that you own, or are authorised to use, every right attached to what you publish: recording, composition, lyrics and artwork.",
           ],
@@ -379,7 +381,7 @@ export const legalDocuments: Record<
         },
         {
           title: "5. Prohibited behaviour",
-          paragraphs: ["When using FT Music, you must not:"],
+          paragraphs: ["When using FT GoodVibes, you must not:"],
           items: [
             "publish content that infringes copyright or other people's rights;",
             "publish illegal, violent, hateful, discriminatory or sexually explicit content, or any content involving minors in a sexual context;",
@@ -414,14 +416,14 @@ export const legalDocuments: Record<
         {
           title: "9. Availability and liability",
           paragraphs: [
-            "FT Music is an educational project provided \"as is\", without any guarantee of availability or continuity. The service may be interrupted for maintenance and may be shut down at the end of the project. Data is backed up every day, but you should keep your own copy of your files.",
+            'FT GoodVibes is an educational project provided "as is", without any guarantee of availability or continuity. The service may be interrupted for maintenance and may be shut down at the end of the project. Data is backed up every day, but you should keep your own copy of your files.',
             "To the extent permitted by law, the team is not liable for indirect damage, for the loss of data or for content published by users. Each user is responsible for the content they publish and the messages they send.",
           ],
         },
         {
           title: "10. Ending your use",
           paragraphs: [
-            "You can stop using FT Music at any time and ask the team to delete your account. The team may close an account that seriously or repeatedly breaks these terms.",
+            "You can stop using FT GoodVibes at any time and ask the team to delete your account. The team may close an account that seriously or repeatedly breaks these terms.",
           ],
         },
         {
@@ -433,7 +435,7 @@ export const legalDocuments: Record<
         {
           title: "12. Changes and applicable law",
           paragraphs: [
-            "These terms may be updated when the application changes; the date at the top of the page shows the latest version. Continuing to use FT Music after an update means you accept the new version.",
+            "These terms may be updated when the application changes; the date at the top of the page shows the latest version. Continuing to use FT GoodVibes after an update means you accept the new version.",
             "These terms are governed by French law. Any dispute will first be resolved amicably with the team.",
           ],
         },
@@ -442,12 +444,12 @@ export const legalDocuments: Record<
     fr: {
       title: "Conditions d’utilisation",
       summary:
-        "Ces conditions fixent les règles d’utilisation de FT Music. En créant un compte ou en utilisant le service, vous les acceptez.",
+        "Ces conditions fixent les règles d’utilisation de FT GoodVibes. En créant un compte ou en utilisant le service, vous les acceptez.",
       sections: [
         {
           title: "1. Le service",
           paragraphs: [
-            "FT Music permet de publier, d’écouter et de diffuser de la musique, de l’organiser en playlists, d’ajouter des amis et de discuter avec eux. Le service est gratuit et proposé par une équipe d’étudiants dans le cadre du cursus 42, à des fins pédagogiques et non commerciales.",
+            "FT GoodVibes permet de publier, d’écouter et de diffuser de la musique, de l’organiser en playlists, d’ajouter des amis et de discuter avec eux. Le service est gratuit et proposé par une équipe d’étudiants dans le cadre du cursus 42, à des fins pédagogiques et non commerciales.",
           ],
         },
         {
@@ -462,7 +464,7 @@ export const legalDocuments: Record<
         {
           title: "3. Contenus que vous publiez",
           paragraphs: [
-            "Vous conservez tous vos droits sur la musique, les images et les textes que vous envoyez. En les envoyant, vous accordez à FT Music une licence gratuite et non exclusive, limitée au fonctionnement du service : stocker vos fichiers, créer un aperçu MP3, extraire la pochette intégrée, et afficher et diffuser le contenu aux personnes autorisées par la visibilité que vous avez choisie.",
+            "Vous conservez tous vos droits sur la musique, les images et les textes que vous envoyez. En les envoyant, vous accordez à FT GoodVibes une licence gratuite et non exclusive, limitée au fonctionnement du service : stocker vos fichiers, créer un aperçu MP3, extraire la pochette intégrée, et afficher et diffuser le contenu aux personnes autorisées par la visibilité que vous avez choisie.",
             "Cette licence prend fin lorsque vous supprimez le contenu, à l’exception des copies de sauvegarde, qui disparaissent sous 7 jours.",
             "Vous garantissez détenir, ou être autorisé à utiliser, tous les droits attachés à ce que vous publiez : enregistrement, composition, paroles et visuels.",
           ],
@@ -477,7 +479,9 @@ export const legalDocuments: Record<
         },
         {
           title: "5. Comportements interdits",
-          paragraphs: ["En utilisant FT Music, vous vous engagez à ne pas :"],
+          paragraphs: [
+            "En utilisant FT GoodVibes, vous vous engagez à ne pas :",
+          ],
           items: [
             "publier de contenu qui porte atteinte au droit d’auteur ou aux droits d’autrui ;",
             "publier de contenu illégal, violent, haineux, discriminatoire ou sexuellement explicite, ni aucun contenu impliquant des mineurs dans un contexte sexuel ;",
@@ -512,14 +516,14 @@ export const legalDocuments: Record<
         {
           title: "9. Disponibilité et responsabilité",
           paragraphs: [
-            "FT Music est un projet pédagogique fourni « en l’état », sans garantie de disponibilité ni de continuité. Le service peut être interrompu pour maintenance et arrêté à la fin du projet. Les données sont sauvegardées chaque jour, mais nous vous conseillons de garder votre propre copie de vos fichiers.",
+            "FT GoodVibes est un projet pédagogique fourni « en l’état », sans garantie de disponibilité ni de continuité. Le service peut être interrompu pour maintenance et arrêté à la fin du projet. Les données sont sauvegardées chaque jour, mais nous vous conseillons de garder votre propre copie de vos fichiers.",
             "Dans les limites permises par la loi, l’équipe n’est pas responsable des dommages indirects, de la perte de données ni des contenus publiés par les utilisateurs. Chaque utilisateur est responsable des contenus qu’il publie et des messages qu’il envoie.",
           ],
         },
         {
           title: "10. Fin de l’utilisation",
           paragraphs: [
-            "Vous pouvez cesser d’utiliser FT Music à tout moment et demander à l’équipe la suppression de votre compte. L’équipe peut fermer un compte qui enfreint gravement ou de façon répétée ces conditions.",
+            "Vous pouvez cesser d’utiliser FT GoodVibes à tout moment et demander à l’équipe la suppression de votre compte. L’équipe peut fermer un compte qui enfreint gravement ou de façon répétée ces conditions.",
           ],
         },
         {
@@ -531,7 +535,7 @@ export const legalDocuments: Record<
         {
           title: "12. Modifications et droit applicable",
           paragraphs: [
-            "Ces conditions peuvent être mises à jour lorsque l’application évolue ; la date en haut de la page indique la version en vigueur. Continuer à utiliser FT Music après une mise à jour vaut acceptation de la nouvelle version.",
+            "Ces conditions peuvent être mises à jour lorsque l’application évolue ; la date en haut de la page indique la version en vigueur. Continuer à utiliser FT GoodVibes après une mise à jour vaut acceptation de la nouvelle version.",
             "Ces conditions sont régies par le droit français. Tout litige sera d’abord traité à l’amiable avec l’équipe.",
           ],
         },
@@ -540,12 +544,12 @@ export const legalDocuments: Record<
     es: {
       title: "Condiciones de uso",
       summary:
-        "Estas condiciones establecen las reglas para usar FT Music. Al crear una cuenta o utilizar el servicio, las aceptas.",
+        "Estas condiciones establecen las reglas para usar FT GoodVibes. Al crear una cuenta o utilizar el servicio, las aceptas.",
       sections: [
         {
           title: "1. El servicio",
           paragraphs: [
-            "FT Music te permite subir, publicar y escuchar música, organizarla en playlists, añadir amigos y chatear con ellos. El servicio es gratuito y lo ofrece un equipo de estudiantes en el marco del programa 42, con fines educativos y sin fines comerciales.",
+            "FT GoodVibes te permite subir, publicar y escuchar música, organizarla en playlists, añadir amigos y chatear con ellos. El servicio es gratuito y lo ofrece un equipo de estudiantes en el marco del programa 42, con fines educativos y sin fines comerciales.",
           ],
         },
         {
@@ -560,7 +564,7 @@ export const legalDocuments: Record<
         {
           title: "3. Contenido que publicas",
           paragraphs: [
-            "Conservas todos tus derechos sobre la música, las imágenes y los textos que subes. Al subirlos, concedes a FT Music una licencia gratuita y no exclusiva, limitada al funcionamiento del servicio: almacenar tus archivos, crear una vista previa en MP3, extraer la portada integrada y mostrar y reproducir el contenido para las personas permitidas por la visibilidad que elegiste.",
+            "Conservas todos tus derechos sobre la música, las imágenes y los textos que subes. Al subirlos, concedes a FT GoodVibes una licencia gratuita y no exclusiva, limitada al funcionamiento del servicio: almacenar tus archivos, crear una vista previa en MP3, extraer la portada integrada y mostrar y reproducir el contenido para las personas permitidas por la visibilidad que elegiste.",
             "Esta licencia termina cuando eliminas el contenido, salvo las copias de seguridad, que desaparecen en un plazo de 7 días.",
             "Garantizas que eres titular, o que tienes autorización para usar, todos los derechos de lo que publicas: grabación, composición, letra e imágenes.",
           ],
@@ -575,7 +579,7 @@ export const legalDocuments: Record<
         },
         {
           title: "5. Comportamientos prohibidos",
-          paragraphs: ["Al usar FT Music, te comprometes a no:"],
+          paragraphs: ["Al usar FT GoodVibes, te comprometes a no:"],
           items: [
             "publicar contenido que infrinja los derechos de autor u otros derechos de terceros;",
             "publicar contenido ilegal, violento, de odio, discriminatorio o sexualmente explícito, ni ningún contenido que implique a menores en un contexto sexual;",
@@ -610,14 +614,14 @@ export const legalDocuments: Record<
         {
           title: "9. Disponibilidad y responsabilidad",
           paragraphs: [
-            "FT Music es un proyecto educativo ofrecido «tal cual», sin garantía de disponibilidad ni de continuidad. El servicio puede interrumpirse por mantenimiento y cerrarse al final del proyecto. Los datos se copian cada día, pero te recomendamos conservar tu propia copia de tus archivos.",
+            "FT GoodVibes es un proyecto educativo ofrecido «tal cual», sin garantía de disponibilidad ni de continuidad. El servicio puede interrumpirse por mantenimiento y cerrarse al final del proyecto. Los datos se copian cada día, pero te recomendamos conservar tu propia copia de tus archivos.",
             "En la medida en que lo permita la ley, el equipo no es responsable de los daños indirectos, de la pérdida de datos ni del contenido publicado por los usuarios. Cada usuario es responsable del contenido que publica y de los mensajes que envía.",
           ],
         },
         {
           title: "10. Fin del uso",
           paragraphs: [
-            "Puedes dejar de usar FT Music en cualquier momento y pedir al equipo que elimine tu cuenta. El equipo puede cerrar una cuenta que incumpla estas condiciones de forma grave o reiterada.",
+            "Puedes dejar de usar FT GoodVibes en cualquier momento y pedir al equipo que elimine tu cuenta. El equipo puede cerrar una cuenta que incumpla estas condiciones de forma grave o reiterada.",
           ],
         },
         {
@@ -629,7 +633,7 @@ export const legalDocuments: Record<
         {
           title: "12. Cambios y legislación aplicable",
           paragraphs: [
-            "Estas condiciones pueden actualizarse cuando la aplicación cambie; la fecha en la parte superior de la página indica la versión vigente. Seguir usando FT Music después de una actualización implica aceptar la nueva versión.",
+            "Estas condiciones pueden actualizarse cuando la aplicación cambie; la fecha en la parte superior de la página indica la versión vigente. Seguir usando FT GoodVibes después de una actualización implica aceptar la nueva versión.",
             "Estas condiciones se rigen por la legislación francesa. Cualquier conflicto se resolverá primero de forma amistosa con el equipo.",
           ],
         },

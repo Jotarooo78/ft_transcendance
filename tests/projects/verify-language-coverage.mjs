@@ -8,7 +8,7 @@ import ts from "../../frontend/node_modules/typescript/lib/typescript.js";
 const root = new URL("../../frontend/src/", import.meta.url);
 /** Exceptions visibles : marque, noms natifs des langues et symbole de fermeture HTML. */
 const literalExceptions = new Set([
-  "FT Music",
+  "FT GoodVibes",
   "Français",
   "English",
   "Español",

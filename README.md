@@ -1,10 +1,10 @@
 _This project has been created as part of the 42 curriculum by messengu, armosnie, eazard, tlay._
 
-# FT Music
+# FT GoodVibes
 
 ## Description
 
-**FT Music** is a web platform where independent artists upload and publish their music, and
+**FT GoodVibes** is a web platform where independent artists upload and publish their music, and
 listeners discover it, organise it in playlists, follow artists and share tracks with their
 friends in real time.
 

@@ -182,7 +182,7 @@ test('library: confirmed gestures, failures, persistence and account isolation',
   const userA = await createAccount(page, 'library_a');
   const tokenA = (await (await loginResponse).json()).token;
   const witness = JSON.stringify([{ id: 'legacy-local', name: 'Local witness only', description: 'preserve', trackIds: [] }]);
-  await page.evaluate(value => localStorage.setItem('ft-music:playlists:v1', value), witness);
+  await page.evaluate(value => localStorage.setItem('ft-goodvibes:playlists:v1', value), witness);
   await openPlaylists(page);
   await expect(page.getByText('Create your first playlist to collect music you love.', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Create a playlist', exact: true }).click();
@@ -270,7 +270,7 @@ test('library: confirmed gestures, failures, persistence and account isolation',
   await page.getByRole('button', { name: 'Log out', exact: true }).click(); await login(page, userA);
   await openPlaylists(page);
   await expect(rows.first()).toHaveAttribute('data-item-id', ids[1]);
-  expect(await page.evaluate(() => localStorage.getItem('ft-music:playlists:v1'))).toBe(witness);
+  expect(await page.evaluate(() => localStorage.getItem('ft-goodvibes:playlists:v1'))).toBe(witness);
   // Unavailable Catalogue details keep the stored occurrence and its Remove control.
   const trackPattern = '**/api/catalog/tracks/20000000-0000-4000-8000-000000000001';
   await page.route(trackPattern, route => route.fulfill({ status: 404, body: '{}' }));
@@ -294,7 +294,7 @@ test('library: confirmed gestures, failures, persistence and account isolation',
   const latestToken = (await relogin.json()).token;
   expect((await page.request.get(`/api/library/playlists/${empty.id}`, { headers: { Authorization: `Bearer ${latestToken}` } })).status()).toBe(404);
   expect(userB.email).not.toBe(userA.email);
-  expect(await page.evaluate(() => localStorage.getItem('ft-music:playlists:v1'))).toBe(witness);
+  expect(await page.evaluate(() => localStorage.getItem('ft-goodvibes:playlists:v1'))).toBe(witness);
 });
 
 /** Inscrit un compte de scénario via les formulaires et conserve ses identifiants pour la reconnexion. */
