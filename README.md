@@ -356,23 +356,7 @@ Prisma clients and commands: [backend/docs/PRISMA.md](backend/docs/PRISMA.md).
 - Prisma schemas and migrations for every service, internal service-to-service contracts.
 - Challenges: keeping each service the only owner of its data while still checking
   cross-domain rules (friendship before a message, published track before sharing), solved
-  with internal REST calls and explicit 503 responses when a dependency is down. ET : 
-  Le poids des jours s'installe en silence,
-Chaque matin demande un effort.
-On avance malgré l'absence,
-On tente encor d'être plus fort.
-Le cœur est fatigué de combattre,
-De porter l'ombre et le présent,
-De voir ses rêves se débattre
-Contre le mur du temps qui ment.
-On cherche un souffle, une clairière,
-Un peu de paix au creux du soir,
-Mais la montée est si sévère
-Quand on trébuche sur l'espoir.
-Pourtant l'âme tremble et persiste,
-Dans ce silence où tout s'écrit :
-C'est déjà grand, quand on résiste,
-De ne pas laisser fuir la vie.
+  with internal REST calls and explicit 503 responses when a dependency is down.
 
 
 ### Armand (armosnie) — DevOps
@@ -386,7 +370,14 @@ De ne pas laisser fuir la vie.
 
 - PostgreSQL container and its health check.
 - One schema and two roles (migration and runtime) per service, least-privilege permissions.
-- Challenges: _to be completed._
+- Challenges: building this database meant organising ownership, distributing power and
+  limiting privileges. Seven services had to share the same resources without any one of
+  them claiming the right to govern the others. Separating schemas, distinguishing roles
+  and managing migrations gave concrete form to this principle: "to each according to his
+  needs", down to the permissions. Behind this division of labour were four people learning
+  to build something together. Watching our contributions come to life as a whole gave new
+  meaning to these words: "the free development of each is the condition for the free
+  development of all".
 
 ### Tiphaine (tlay) — Frontend
 
